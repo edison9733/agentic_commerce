@@ -1,0 +1,31 @@
+{
+  "name": "@tessera/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5173 --strictPort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview --port 5173 --strictPort"
+  },
+  "dependencies": {
+    "@solana-program/token": "^0.17.0",
+    "@solana/kit": "^8.3.0",
+    "@solana/kit-plugin-rpc": "^0.19.0",
+    "@solana/kit-plugin-wallet": "^0.20.0",
+    "@solana/react": "^8.3.0",
+    "@tessera/sdk": "*",
+    "motion": "^14.0.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4.3.0",
+    "typescript": "^5.7.2",
+    "vite": "^8.0.0"
+  }
+}

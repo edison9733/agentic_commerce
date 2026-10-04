@@ -1,0 +1,251 @@
+@import "tailwindcss";
+
+/*
+ * Two surfaces. "Paper" carries the argument: warm, serif, lots of air.
+ * "Night" carries the evidence: live chain data in mono on near-black.
+ *
+ * Tier colours are an ordinal ramp in one hue, validated on each surface
+ * (monotone lightness, light end above 2:1). Tiers are always also shown as
+ * pips and a label, never by colour alone. Chart series use a categorical
+ * palette validated for colour-blind separation on the night surface.
+ */
+@theme {
+  --font-display: "EB Garamond", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+  --font-sans: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --color-paper: #fbf8ef;
+  --color-paper-2: #f4efe0;
+  --color-paper-3: #ebe4d0;
+  --color-ink: #14130f;
+  --color-ink-2: #4b483e;
+  --color-ink-3: #878371;
+  --color-line: #ded7c2;
+
+  --color-night: #0a0b09;
+  --color-night-2: #10120e;
+  --color-night-3: #181b15;
+  --color-night-line: #272b21;
+  --color-fog: #c9c6b6;
+  --color-fog-2: #8b8a7c;
+
+  --color-mint: #b9f8da;
+  --color-mint-2: #4fd19a;
+  --color-lilac: #dccbff;
+
+  /* ordinal tier ramp, light surface: New -> Trusted */
+  --color-tier-l0: #62ad89;
+  --color-tier-l1: #2f8f66;
+  --color-tier-l2: #126b4a;
+  --color-tier-l3: #083d2a;
+  /* ordinal tier ramp, dark surface: New -> Trusted */
+  --color-tier-d0: #35705a;
+  --color-tier-d1: #2f9e73;
+  --color-tier-d2: #4fd19a;
+  --color-tier-d3: #b9f8da;
+
+  /* categorical series, dark surface (fixed order) */
+  --color-s1: #3987e5;
+  --color-s2: #d95926;
+  --color-s3: #199e70;
+  --color-s4: #c98500;
+
+  /* status, always shipped with a label */
+  --color-good: #0ca30c;
+  --color-warn: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  line-height: 0.98;
+}
+
+.display em {
+  font-style: italic;
+  font-weight: 400;
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-feature-settings: "zero", "ss01";
+  letter-spacing: -0.01em;
+}
+
+.eyebrow {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.wrap {
+  width: min(1180px, 100% - 2.5rem);
+  margin-inline: auto;
+}
+
+.night {
+  background: var(--color-night);
+  color: var(--color-fog);
+}
+
+/* a faint dot grid, the only texture on the night surface */
+.gridded {
+  background-image: radial-gradient(circle at 1px 1px, rgba(201, 198, 182, 0.09) 1px, transparent 0);
+  background-size: 22px 22px;
+}
+
+.card {
+  border: 1px solid var(--color-line);
+  border-radius: 20px;
+  background: color-mix(in oklab, var(--color-paper) 70%, white);
+}
+
+.night .card,
+.card-night {
+  border: 1px solid var(--color-night-line);
+  border-radius: 18px;
+  background: var(--color-night-2);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  border-radius: 999px;
+  padding: 0.7rem 1.15rem;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.25s var(--ease-out-expo), background 0.2s, color 0.2s, border-color 0.2s;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ink {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn-ink:hover:not(:disabled) {
+  background: #2a2820;
+}
+
+.btn-ghost {
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+  background: transparent;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.btn-mint {
+  background: var(--color-mint);
+  color: var(--color-ink);
+}
+
+.night .btn-ghost {
+  border-color: var(--color-night-line);
+  color: var(--color-fog);
+}
+
+.night .btn-ghost:hover:not(:disabled) {
+  background: var(--color-night-3);
+  color: white;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.link {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
+  text-underline-offset: 3px;
+}
+
+.link:hover {
+  text-decoration-color: currentColor;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+.field {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--color-line);
+  background: white;
+  padding: 0.7rem 0.85rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.field:focus {
+  border-color: var(--color-ink);
+  box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-mint) 70%, transparent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-tier-l1);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}
+
+/* scrollbars on night panels */
+.night *::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.night *::-webkit-scrollbar-thumb {
+  background: var(--color-night-line);
+  border-radius: 8px;
+}

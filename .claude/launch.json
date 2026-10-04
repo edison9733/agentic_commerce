@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "web", "runtimeExecutable": "npm", "runtimeArgs": ["run", "web"], "port": 5173 },
+    { "name": "agents", "runtimeExecutable": "npm", "runtimeArgs": ["run", "agents"], "port": 4020 }
+  ]
+}

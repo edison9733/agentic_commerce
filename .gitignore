@@ -1,0 +1,29 @@
+# Rust / Anchor
+target/
+**/*.rs.bk
+.anchor/
+test-ledger/
+.surfpool/
+
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Secrets. Keypairs are never committed; regenerate or restore them out of band.
+.env
+.env.*
+!.env.example
+.keys/
+*-keypair.json
+
+# Local state
+*.db
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# Rendered media is rebuilt from source (see pitch/README.md)
+pitch/out/*.webm
+pitch/out/frames/

@@ -1,0 +1,43 @@
+{
+  "name": "tessera",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tessera: the credit layer for agent commerce. x402 escrow on Solana that settles at the speed of trust.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=20.18"
+  },
+  "scripts": {
+    "build:program": "NO_DNA=1 anchor build",
+    "codegen": "tsx packages/sdk/codama.ts",
+    "test:formula": "tsx --test packages/sdk/test/*.test.ts",
+    "test:local": "tsx scripts/test-local.ts",
+    "setup:devnet": "tsx scripts/setup-devnet.ts",
+    "agents": "npm run start -w @tessera/agents",
+    "swarm": "npm run swarm -w @tessera/agents",
+    "web": "npm run dev -w @tessera/web",
+    "build:web": "npm run build -w @tessera/web",
+    "typecheck": "tsc -p packages/sdk/tsconfig.json --noEmit && tsc -p apps/agents/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "snapshot": "tsx scripts/snapshot.ts",
+    "buy": "npm run buy -w @tessera/agents --",
+    "video": "node pitch/render.mjs"
+  },
+  "devDependencies": {
+    "@solana-program/compute-budget": "^0.19.0",
+    "@solana-program/system": "^0.15.0",
+    "@solana-program/token": "^0.17.0",
+    "@solana/kit": "^8.3.0",
+    "@solana/kit-plugin-rpc": "^0.19.0",
+    "@solana/kit-plugin-signer": "^0.19.0",
+    "@tessera/sdk": "*",
+    "@types/node": "^22.10.2",
+    "playwright-core": "^1.63.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  },
+  "type": "module"
+}

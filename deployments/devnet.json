@@ -1,0 +1,109 @@
+{
+  "cluster": "devnet",
+  "program": "TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ",
+  "config": "DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2",
+  "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
+  "feeBps": 100,
+  "authority": "5i7zzV9hQUCbpg8MXSNJB3QQkL6zscDd8VQKow46vg7E",
+  "arbiter": "3GydKy3acrVxvwyF26oDMwvbxVjrQ5yBDEc1GzUoVKz2",
+  "treasury": "2n9iDG52o2oqqdUEbaGEbjYEtyA4Lk4SZb4bsyJ4XPoi",
+  "server": "BGPhehu5s6WaiLsgvuwT1VfnhiKtcJ4h8CFxKTsc4h7K",
+  "agents": {
+    "atlas": {
+      "address": "BZ5MNkHdmvLoyof5ojyvsJuK5b1gGo4esPPTb4DGukoJ",
+      "role": "merchant",
+      "title": "Atlas: Solana network telemetry",
+      "behaviour": "honest"
+    },
+    "quill": {
+      "address": "BhQ7t1MkFc8HtvoJs5Ej4qDff2dacppVB2742zba16Rc",
+      "role": "merchant",
+      "title": "Quill: text summaries",
+      "behaviour": "honest"
+    },
+    "vera": {
+      "address": "7BVf6Kjou5SKZpsetCmPkD744R4tTEv6TXd2ppEprqjG",
+      "role": "merchant",
+      "title": "Vera: Tessera credit reports",
+      "behaviour": "honest"
+    },
+    "pixel": {
+      "address": "9VaRtBKTed5ghhYJgsuwVbJJWtvf9FRUiFTWtTaL7UMZ",
+      "role": "merchant",
+      "title": "Pixel: generated identicons",
+      "behaviour": "honest"
+    },
+    "scout": {
+      "address": "CWhwN2uPxBBaTjNJax4LUxy4PZeVYJfJqqYYQFZfb25q",
+      "role": "buyer",
+      "title": "Scout: research agent",
+      "behaviour": "honest"
+    },
+    "nova": {
+      "address": "9HHurQTLvG6hVoEcEH9bG9jNVDZCzgxqPPLFbpWsc2QV",
+      "role": "buyer",
+      "title": "Nova: trading agent",
+      "behaviour": "honest"
+    },
+    "orbit": {
+      "address": "FF6JJCM8Xbaj2GEGLFgbU5nNGJRfDSj34WyNQkMKWJvB",
+      "role": "buyer",
+      "title": "Orbit: monitoring agent",
+      "behaviour": "honest"
+    },
+    "lumen": {
+      "address": "CCvbgooNJpPRqvHQ6YGmdKuPN6MkdWozFS5arMgCk5st",
+      "role": "buyer",
+      "title": "Lumen: content agent",
+      "behaviour": "honest"
+    },
+    "drift": {
+      "address": "98PMdiwp1cnZrEh4txcLLrUvMABQ4bwvLsppprKdwBTi",
+      "role": "buyer",
+      "title": "Drift: data agent",
+      "behaviour": "honest"
+    },
+    "echo": {
+      "address": "7bDijWvoFRoLCdPBNM4BvDpi6oDKv3eV6FvbvLYQoc2y",
+      "role": "buyer",
+      "title": "Echo: support agent",
+      "behaviour": "honest"
+    },
+    "mallory": {
+      "address": "Be5DnxbJ1WJqKa2fe2qm4ceaV134NEJfQ16srXcmGGaA",
+      "role": "merchant",
+      "title": "Mallory: takes orders, never delivers",
+      "behaviour": "no-show"
+    },
+    "charlie": {
+      "address": "FaLXk6LUQHtyik3rhemUtBwmBA9LcyyoigbX8VtspnNn",
+      "role": "buyer",
+      "title": "Charlie: disputes what it received",
+      "behaviour": "friendly-fraud"
+    },
+    "washer": {
+      "address": "8APikJq3HgAHNUm6xRDLB6ZqgTiGBBMELZvBC2NWHmGk",
+      "role": "merchant",
+      "title": "Washer: wash-trades with its own wallets",
+      "behaviour": "ring-merchant"
+    },
+    "sock-1": {
+      "address": "n9pzwkxKFty1ZoYWnpCu4UemQtay9KJLbTAFF8KAtxi",
+      "role": "buyer",
+      "title": "Sock puppet 1",
+      "behaviour": "ring-buyer"
+    },
+    "sock-2": {
+      "address": "4KodVmV6mcEfugf8JyCztwVZe2ku6nLaJ8ngoJ4QLsP5",
+      "role": "buyer",
+      "title": "Sock puppet 2",
+      "behaviour": "ring-buyer"
+    },
+    "sock-3": {
+      "address": "4nr6eNy2m7frGqsbqxS5nm5CnrFobqksDiozvCnHUiyK",
+      "role": "buyer",
+      "title": "Sock puppet 3",
+      "behaviour": "ring-buyer"
+    }
+  }
+}

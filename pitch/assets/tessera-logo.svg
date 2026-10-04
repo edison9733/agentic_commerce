@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" rx="224" fill="#0a0b09"/>
+  <!-- Two halves of one token: the tessera a Roman host and guest each kept. -->
+  <path d="M190 512a290 290 0 0 1 290-290v580a290 290 0 0 1-290-290z" fill="#fbf8ef"/>
+  <path d="M556 222a290 290 0 0 1 0 580l80-145-80-145 80-145z" fill="#b9f8da"/>
+</svg>

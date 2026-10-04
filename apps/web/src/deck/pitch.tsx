@@ -1,0 +1,372 @@
+import { motion } from 'motion/react';
+import { useMemo } from 'react';
+import { attacks, MAINNET_TARGET_PARAMS as P, OrderState, PROTOCOL_FEE_BPS } from '@tessera/sdk';
+import { Bars, LineChart, type Series } from '../components/charts';
+import { Graph } from '../components/Graph';
+import { Counter, EASE, Logo, TierBadge } from '../components/ui';
+import { compactUsd, duration, SERIES, TIER_DARK } from '../lib/format';
+import { useChain, useProfiles } from '../lib/store';
+import snapshot from '../../../../deployments/snapshot.json';
+import { Big, Body, Deck, Frame, Kicker, Rise, Source, type Slide } from './Deck';
+
+const USDC = 1_000_000n;
+const mint = '#b9f8da';
+const white = '#f1eee2';
+
+function LiveSlide() {
+  const { pairs, orders, feed, config } = useChain();
+  const { profiles } = useProfiles();
+  const trusted = profiles.filter((p) => p.eval.tier === 3).length;
+  const instant = orders.filter((o) => o.data.state === OrderState.Released && o.data.instant).length;
+  const ring = profiles.find((p) => p.name === 'washer');
+  const stat = (v: React.ReactNode, label: string) => (
+    <div>
+      <div className="display" style={{ fontSize: 76, color: white, lineHeight: 1 }}>{v}</div>
+      <div className="mono" style={{ fontSize: 16, color: '#8b8a7c', marginTop: 10 }}>{label}</div>
+    </div>
+  );
+  return (
+    <Frame pad={72}>
+      <Kicker>Live on Solana devnet · read from the chain while you watch</Kicker>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: 48, marginTop: 22, flex: 1, minHeight: 0 }}>
+        <div className="card-night" style={{ overflow: 'hidden' }}>
+          <Graph profiles={profiles} pairs={pairs} orders={orders} feed={feed} height={640} />
+        </div>
+        <div style={{ display: 'grid', alignContent: 'center', gap: 34 }}>
+          <Rise delay={0.2}>{stat(<Counter value={Number(config?.ordersSettled ?? 0n)} />, 'orders settled through escrow')}</Rise>
+          <Rise delay={0.35}>{stat(<Counter value={trusted} />, 'agents that have earned Trusted')}</Rise>
+          <Rise delay={0.5}>{stat(<Counter value={instant} />, 'orders settled instantly')}</Rise>
+          <Rise delay={0.65}>{stat(ring ? ring.eval.score : '–', `score of the wash-trading ring's merchant (${ring ? ['New', 'Building', 'Established', 'Trusted'][ring.eval.tier] : ''})`)}</Rise>
+        </div>
+      </div>
+      <div className="mono" style={{ fontSize: 14, color: '#5d5c52', marginTop: 14 }}>
+        Demo network: this project's own agents, recycled test USDC, time compressed (one period = 60 s). {compactUsd(config?.volumeSettled ?? 0n)} settled.
+      </div>
+    </Frame>
+  );
+}
+
+function RingSlide() {
+  const { series, rows } = useMemo(() => {
+    const days = 120;
+    const honest = attacks.simulateHonestMerchant({ params: P, feeBps: PROTOCOL_FEE_BPS, buyers: 25, buyerTier: 3, orderSize: 40n * USDC, rating: 5, periods: days });
+    const rings = [3, 6, 12].map((wallets) => ({ wallets, r: attacks.simulateRing({ params: P, feeBps: PROTOCOL_FEE_BPS, wallets, orderSize: 100n * USDC, periods: days }) }));
+    const series: Series[] = [
+      { name: 'Honest merchant', color: SERIES[0], points: honest.map((s) => ({ x: s.period, y: s.score })) },
+      ...rings.map(({ wallets, r }, i) => ({ name: `Ring of ${wallets}`, color: SERIES[i + 1]!, dashed: true, points: r.snapshots.map((s) => ({ x: s.period, y: s.score })) })),
+    ];
+    return { series, rows: rings };
+  }, []);
+  const big = rows[2]!.r;
+  return (
+    <Frame pad={80}>
+      <Kicker>We assumed people would cheat</Kicker>
+      <Big size={66} max="24ch" color={white}>
+        Faking a record costs money and time <em>that never come back.</em>
+      </Big>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 56, marginTop: 26, alignItems: 'center' }}>
+        <Rise delay={0.4}>
+          <LineChart series={series} height={330} hint={false} xLabel="day" yLabel="best score in the group" yMax={1000} bands={[{ y: 750, label: 'Trusted' }]} />
+        </Rise>
+        <div style={{ display: 'grid', gap: 26 }}>
+          <Rise delay={0.6}>
+            <div className="display" style={{ fontSize: 64, color: white, lineHeight: 1 }}>never</div>
+            <div style={{ fontSize: 22, marginTop: 8 }}>when a ring of 3 or 6 of your own wallets reaches Trusted (a full year simulated)</div>
+          </Rise>
+          <Rise delay={0.75}>
+            <div className="display" style={{ fontSize: 64, color: white, lineHeight: 1 }}>${Number(big.fees / USDC).toLocaleString()}</div>
+            <div style={{ fontSize: 22, marginTop: 8 }}>burned in fees by a ring of 12 to get there, over {big.trustedAt} days</div>
+          </Rise>
+          <Rise delay={0.9}>
+            <div className="display" style={{ fontSize: 64, color: mint, lineHeight: 1 }}>${Number(P.instantBase / USDC)}</div>
+            <div style={{ fontSize: 22, marginTop: 8 }}>net of an exit scam per wallet, at any size</div>
+          </Rise>
+        </div>
+      </div>
+      <Source>Computed by the same arithmetic the program runs, at the mainnet target parameters. Reproduce: npm run test:formula</Source>
+    </Frame>
+  );
+}
+
+function CostSlide() {
+  const payment = 0.07;
+  return (
+    <Frame pad={96}>
+      <Kicker>Why this could not run on cards</Kicker>
+      <Big size={84} max="18ch" color={white}>
+        What it costs to move <em>seven cents.</em>
+      </Big>
+      <Rise delay={0.5} style={{ marginTop: 56, maxWidth: 1180 }}>
+        <Bars
+          format={(v) => `$${v.toFixed(4)}`}
+          rows={[
+            { label: 'Card processor, list price (2.9% + 30¢)', value: payment * 0.029 + 0.3, note: `${Math.round(((payment * 0.029 + 0.3) / payment) * 100)}% of the payment`, color: SERIES[1] },
+            { label: 'Tessera escrow (1% protocol fee)', value: payment * 0.01, note: '1% of the payment', color: SERIES[0] },
+          ]}
+        />
+      </Rise>
+      <Body delay={0.9} size={28} max="46ch">
+        And the buyer pays no network fee: the x402 facilitator does. On devnet, a buyer agent's SOL balance was identical before and after its purchase.
+      </Body>
+      <Source>Card price: stripe.com/pricing, “2.9% + 30¢ per successful transaction for domestic cards”, read 5 Oct 2026. 7¢ is the x402 average on the previous slide.</Source>
+    </Frame>
+  );
+}
+
+function TierSlide() {
+  const loop = [6.5, 3.6, 1.8, 0.7];
+  return (
+    <Frame pad={96}>
+      <Kicker>What Tessera does</Kicker>
+      <Big size={84} max="19ch" color={white}>
+        Escrow that knows <em>who it is dealing with.</em>
+      </Big>
+      <div style={{ display: 'grid', gap: 16, marginTop: 52 }}>
+        {[0, 1, 2, 3].map((t) => (
+          <Rise key={t} delay={0.4 + t * 0.12}>
+            <div style={{ display: 'grid', gridTemplateColumns: '230px 1fr 270px', alignItems: 'center', gap: 28, padding: '20px 26px', border: '1px solid #272b21', borderRadius: 18, background: '#10120e' }}>
+              <span style={{ fontSize: 22, color: white }}><TierBadge tier={t} dark /></span>
+              <div style={{ position: 'relative', height: 22 }}>
+                <div style={{ position: 'absolute', left: 0, right: 0, top: 10, height: 2, background: '#272b21' }} />
+                <motion.div style={{ position: 'absolute', top: 2, width: 18, height: 18, borderRadius: 18, background: TIER_DARK[t] }} animate={{ left: ['0%', 'calc(100% - 18px)'] }} transition={{ duration: loop[t], ease: t === 3 ? EASE : 'linear', repeat: Infinity, repeatDelay: 0.6 }} />
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <span className="display" style={{ fontSize: 44, color: white }}>{duration(P.holdSecs[t]!)}</span>
+                <span className="mono" style={{ fontSize: 14, color: '#8b8a7c' }}> hold</span>
+              </div>
+            </div>
+          </Rise>
+        ))}
+      </div>
+      <Source>Mainnet target holds. On devnet the same four tiers hold for 2 min, 45 s, 10 s and 0.</Source>
+    </Frame>
+  );
+}
+
+export const PITCH: Slide[] = [
+  {
+    id: 'title',
+    seconds: 7,
+    say: 'This is Tessera. The credit layer for agent commerce.',
+    render: () => (
+      <Frame center>
+        <motion.div initial={{ scale: 0.6, opacity: 0, rotate: -20 }} animate={{ scale: 1, opacity: 1, rotate: 0 }} transition={{ duration: 1.2, ease: EASE }}>
+          <Logo size={120} invert />
+        </motion.div>
+        <Big size={150} delay={0.4} color={white}>Tessera</Big>
+        <Body delay={0.9} size={38} max="30ch">The credit layer for agent commerce.</Body>
+      </Frame>
+    ),
+  },
+  {
+    id: 'hook',
+    seconds: 13,
+    say: 'AI agents now pay each other. In the last twenty-four hours, x402 carried one hundred and eighteen thousand payments. The average was seven cents.',
+    render: () => (
+      <Frame>
+        <Kicker>It is already happening</Kicker>
+        <Big size={96} max="16ch" color={white}>AI agents now <em>pay each other.</em></Big>
+        <div style={{ display: 'flex', gap: 96, marginTop: 84 }}>
+          <Rise delay={0.6}>
+            <div className="display" style={{ fontSize: 150, color: mint, lineHeight: 1 }}><Counter value={118341} /></div>
+            <div style={{ fontSize: 26, marginTop: 14 }}>x402 payments in 24 hours</div>
+          </Rise>
+          <Rise delay={0.9}>
+            <div className="display" style={{ fontSize: 150, color: white, lineHeight: 1 }}>7¢</div>
+            <div style={{ fontSize: 26, marginTop: 14 }}>average payment ($8,010 in total)</div>
+          </Rise>
+        </div>
+        <Source>x402scan.com, facilitators, 24 hours to 5 Oct 2026: 118,341 transactions, $8.01K volume. 85,832 of them through Coinbase's facilitator.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'final',
+    seconds: 13,
+    say: 'An x402 payment is final in about a second. There is no chargeback. So before an agent pays a stranger, it has one question. Will I get what I paid for?',
+    render: () => (
+      <Frame>
+        <Kicker>The gap</Kicker>
+        <Big size={104} max="15ch" color={white}>Paid in a second. <em>Final forever.</em></Big>
+        <Body delay={0.7} size={40} max="27ch">Before an agent pays a stranger, it has one question: will I get what I paid for?</Body>
+        <Source>Median facilitator settlement on devnet in this project: {((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s ({snapshot.measured.viaFacilitator} payments). An x402 `exact` payment is a signed token transfer; there is no chargeback.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'cards',
+    seconds: 15,
+    say: "Card networks answer that question months later. Visa's rule for fighting friendly fraud needs purchase history at least one hundred and twenty days old. Agents do not have one hundred and twenty days. And a new wallet costs nothing, so stars and reviews can be faked for free.",
+    surface: 'paper',
+    render: () => (
+      <Frame>
+        <Kicker color="#878371">How the old world answers it</Kicker>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, marginTop: 40 }}>
+          <Rise delay={0.2}>
+            <div className="display" style={{ fontSize: 190, lineHeight: 0.95 }}>120<span style={{ fontSize: 80 }}> days</span></div>
+            <div style={{ fontSize: 30, marginTop: 22, lineHeight: 1.35, maxWidth: '20ch' }}>the youngest purchase history Visa accepts as evidence in a fraud dispute</div>
+          </Rise>
+          <Rise delay={0.6}>
+            <div className="display" style={{ fontSize: 190, lineHeight: 0.95 }}>0.05<span style={{ fontSize: 80 }}> SOL</span></div>
+            <div style={{ fontSize: 30, marginTop: 22, lineHeight: 1.35, maxWidth: '20ch' }}>what ten thousand fake reviews cost in network fees</div>
+          </Rise>
+        </div>
+        <Source dark={false}>Visa Compelling Evidence 3.0: two prior undisputed transactions, 120 to 365 days old (Checkout.com, 30 Oct 2025). Solana base fee: 5,000 lamports per signature.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'tiers',
+    seconds: 14,
+    say: 'Tessera puts every x402 payment into escrow on Solana, and lets an on-chain credit score decide how long the money waits. A stranger waits three days. An agent with a record settles instantly.',
+    render: () => <TierSlide />,
+  },
+  {
+    id: 'how',
+    seconds: 15,
+    say: 'It needs no new payment standard. The 402 response simply names an escrow account as the address to pay. The buyer checks that account on-chain, pays through a public x402 facilitator, and never holds SOL.',
+    render: () => (
+      <Frame>
+        <Kicker>No new standard</Kicker>
+        <Big size={88} max="18ch" color={white}>One field changes: <em>where payTo points.</em></Big>
+        <Rise delay={0.6} style={{ marginTop: 54 }}>
+          <pre className="mono" style={{ fontSize: 27, lineHeight: 1.7, margin: 0, padding: '34px 40px', borderRadius: 22, background: '#10120e', border: '1px solid #272b21', color: '#c9c6b6' }}>
+{`HTTP/1.1 402 Payment Required
+{
+  "scheme":  "exact",
+  "network": "solana:EtWTRABZ…",     // devnet
+  "amount":  "200000",
+  "payTo":   `}<span style={{ color: mint }}>"JE6F5J7i…WdUW"</span>{`     `}<span style={{ color: '#5d5c52' }}>{'// an escrow account, not the merchant'}</span>{`
+}`}
+          </pre>
+        </Rise>
+        <div style={{ display: 'flex', gap: 44, marginTop: 44, fontSize: 25 }}>
+          {['A2A to ask', 'x402 to pay', 'a facilitator settles', 'a Solana program holds'].map((t, k) => (
+            <Rise key={t} delay={0.9 + k * 0.12}>
+              <span style={{ color: white }}>{t}</span>
+            </Rise>
+          ))}
+        </div>
+        <Source>A real order from this project on devnet. The x402 `exact` scheme derives the token account from payTo, so an escrow account is a valid payTo.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'score',
+    seconds: 15,
+    say: 'The score is how much we know, times whether it is good. History, time, and how many real counterparties. Multiplied by ratings and behaviour. Every input is public, so anyone can recompute it.',
+    surface: 'paper',
+    render: () => (
+      <Frame>
+        <Kicker color="#878371">The score</Kicker>
+        <Big size={92} max="17ch">How much is known, <em>times</em> whether it is good.</Big>
+        <Rise delay={0.6} style={{ marginTop: 56 }}>
+          <div className="display" style={{ fontSize: 66, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 22 }}>
+            <span>score</span>
+            <span style={{ color: '#878371' }}>=</span>
+            <span style={{ padding: '6px 26px', borderRadius: 18, background: '#14130f', color: '#fbf8ef' }}>Evidence</span>
+            <span style={{ color: '#878371' }}>×</span>
+            <span style={{ padding: '6px 26px', borderRadius: 18, border: '2px solid #14130f' }}>Rating</span>
+            <span style={{ color: '#878371' }}>×</span>
+            <span style={{ padding: '6px 26px', borderRadius: 18, border: '2px solid #14130f' }}>Behaviour</span>
+          </div>
+        </Rise>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28, marginTop: 54 }}>
+          {[
+            ['History', 'settled volume, weighted by who the counterparty was'],
+            ['Tenure', 'time, counted only while actually trading'],
+            ['Diversity', 'distinct counterparties, weighted by their tier'],
+          ].map(([h, b], k) => (
+            <Rise key={h} delay={0.9 + k * 0.12}>
+              <div style={{ padding: 26, borderRadius: 20, border: '1px solid #ded7c2', background: '#fff' }}>
+                <div className="display" style={{ fontSize: 44 }}>{h}</div>
+                <div style={{ fontSize: 23, marginTop: 8, lineHeight: 1.35, color: '#4b483e' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+        <Source dark={false}>Integer arithmetic over public accounts. The program, the SDK and the website run the same code and get the same number.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'ring',
+    seconds: 18,
+    say: 'We assumed people would cheat. A ring of your own wallets earns ten cents on the dollar, and stalls. Time cannot be bought in a burst. And a trusted merchant can only take instantly what it has already paid in fees. So an exit scam nets twenty-five dollars, at any size.',
+    render: () => <RingSlide />,
+  },
+  {
+    id: 'live',
+    seconds: 16,
+    say: 'This is live on devnet today. Agents find each other over A2A, pay over x402, and earn their tier on-chain. The honest merchants earned Trusted. The wash-trading ring, on its own island, did not.',
+    render: () => <LiveSlide />,
+  },
+  {
+    id: 'cost',
+    seconds: 13,
+    say: 'This could not run on cards. Moving seven cents through a card processor costs thirty cents. Through Tessera it costs a fraction of a cent, and the buyer pays no network fee at all.',
+    render: () => <CostSlide />,
+  },
+  {
+    id: 'business',
+    seconds: 15,
+    say: 'The business is one percent of settled volume. A seller adds one function. A buyer adds one check. And the score is a product too: one of our demo agents already sells credit reports, for thirty cents each.',
+    surface: 'paper',
+    render: () => (
+      <Frame>
+        <Kicker color="#878371">The business</Kicker>
+        <Big size={92} max="17ch">1% of what settles. <em>Nothing on what does not.</em></Big>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28, marginTop: 60 }}>
+          {[
+            ['For sellers', 'One function, quote(), opens the escrow behind an existing x402 endpoint or A2A agent.'],
+            ['For buyers', 'One check, verifyOrderForPayment(), before signing. No SOL, no account, no sign-up.'],
+            ['The score itself', 'Any wallet can be scored by anyone. A demo agent already sells credit reports for 30¢.'],
+          ].map(([h, b], k) => (
+            <Rise key={h} delay={0.5 + k * 0.15}>
+              <div style={{ padding: 30, borderRadius: 22, border: '1px solid #ded7c2', background: '#fff', height: '100%' }}>
+                <div className="display" style={{ fontSize: 46 }}>{h}</div>
+                <div style={{ fontSize: 24, marginTop: 12, lineHeight: 1.4, color: '#4b483e' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+        <Source dark={false}>Today: devnet only, no revenue, no outside users. The fee is charged by the program on the amount released to the merchant.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'team',
+    seconds: 12,
+    say: "I'm Edison Liu. I study electronic and computer engineering at the ZJU-UIUC Institute, and I spend my spare time on Web3 and security research. I built Tessera for this hackathon, and I want to keep building it.",
+    render: () => (
+      <Frame>
+        <Kicker>Who is building it</Kicker>
+        <Big size={120} color={white}>Edison Liu</Big>
+        <Body delay={0.6} size={34} max="38ch">
+          Electronic and Computer Engineering, ZJU-UIUC Institute. Builds working systems end to end, from embedded hardware to on-chain programs, with AI coding agents as the build engine.
+        </Body>
+        <div className="mono" style={{ display: 'flex', gap: 40, marginTop: 56, fontSize: 22, color: '#8b8a7c' }}>
+          <Rise delay={0.9}><span>github.com/edison9733</span></Rise>
+          <Rise delay={1.0}><span>edison9733.xyz</span></Rise>
+        </div>
+      </Frame>
+    ),
+  },
+  {
+    id: 'close',
+    seconds: 9,
+    say: 'Micropayments were the easy part. Every payment matters. This is Tessera.',
+    render: () => (
+      <Frame center>
+        <Big size={70} max="20ch" color="#8b8a7c">Micropayments were the easy part.</Big>
+        <Big size={150} delay={0.8} max="12ch" color={white}>Every payment <em style={{ color: mint }}>matters.</em></Big>
+        <Rise delay={1.6} style={{ marginTop: 56, display: 'flex', alignItems: 'center', gap: 16 }}>
+          <Logo size={40} invert />
+          <span className="mono" style={{ fontSize: 22 }}>github.com/edison9733/agentic_commerce</span>
+        </Rise>
+      </Frame>
+    ),
+  },
+];
+
+export const PitchDeck = () => <Deck slides={PITCH} title="Tessera pitch" />;
