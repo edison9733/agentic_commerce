@@ -312,7 +312,12 @@ async function season(): Promise<void> {
   }
   if (freed) console.log(`[crank] closed ${freed} unrated instant order(s); their amounts no longer count against the merchants' limits`);
 }
-setInterval(() => void season().catch((e) => console.warn(`[crank] season: ${(e as Error).message.slice(0, 120)}`)), 90_000);
+setInterval(() => {
+  void season().catch((e) => console.warn(`[crank] season: ${(e as Error).message.slice(0, 120)}`));
+  void sweepQuotes()
+    .then((n) => n && console.log(`[crank] cancelled ${n} unpaid quote(s) past their payment window`))
+    .catch((e) => console.warn(`[crank] sweep: ${(e as Error).message.slice(0, 120)}`));
+}, 90_000);
 
 let cranking = false;
 setInterval(async () => {
@@ -342,6 +347,38 @@ for (const m of merchants.values()) {
 }
 
 /**
+ * Quotes nobody paid. The live crank cancels the ones this process issued; this
+ * sweep reads the chain instead, so a quote from before a restart, or one that
+ * was still inside its payment window when we restarted, is cancelled too and
+ * its rent comes back.
+ */
+async function sweepQuotes(known?: Awaited<ReturnType<typeof fetchAllOrders>>): Promise<number> {
+  const orders = known ?? (await fetchAllOrders(ops.rpc as never));
+  const cfg = await getConfig(ops);
+  const now = await chainNow(ops);
+  const tok = tokenHelpers(ops, cfg.mint);
+  let cancelled = 0;
+  for (const { address: order, data: o } of orders) {
+    if (o.state !== OrderState.AwaitingPayment || o.payer !== ops.identity.address) continue;
+    if (now < o.createdAt + BigInt(cfg.params.unpaidSecs) + 15n) continue;
+    const paidIn = await vaultBalance(ops, await tok.ata(order));
+    await send(ops, [
+      await getCancelUnpaidInstructionAsync({
+        order,
+        mint: o.mint,
+        payer: ops.identity.address,
+        authority: ops.identity,
+        // anything that did reach the vault goes back to the buyer
+        ...(paidIn > 0n ? { buyerToken: await tok.ata(o.buyer) } : {}),
+      }),
+    ])
+      .then(() => (cancelled += 1))
+      .catch(() => undefined);
+  }
+  return cancelled;
+}
+
+/**
  * Pick up where a previous run left off. The chain is the only state that
  * matters: any order of ours that is still open gets cranked, and one we were
  * paid for but can no longer fulfil is refunded.
@@ -367,28 +404,7 @@ async function recover(): Promise<void> {
       }
     }
   }
-  // Quotes nobody paid, left behind by a restart: give their rent back.
-  const cfg = await getConfig(ops);
-  const now = await chainNow(ops);
-  const tok = tokenHelpers(ops, cfg.mint);
-  let cancelled = 0;
-  for (const { address: order, data: o } of orders) {
-    if (o.state !== OrderState.AwaitingPayment || o.payer !== ops.identity.address) continue;
-    if (now < o.createdAt + BigInt(cfg.params.unpaidSecs)) continue;
-    const paidIn = await vaultBalance(ops, await tok.ata(order));
-    await send(ops, [
-      await getCancelUnpaidInstructionAsync({
-        order,
-        mint: o.mint,
-        payer: ops.identity.address,
-        authority: ops.identity,
-        // anything that did reach the vault goes back to the buyer
-        ...(paidIn > 0n ? { buyerToken: await tok.ata(o.buyer) } : {}),
-      }),
-    ])
-      .then(() => (cancelled += 1))
-      .catch(() => undefined);
-  }
+  const cancelled = await sweepQuotes(orders);
   if (held || refunded || cancelled) {
     console.log(`  recovered ${held} open order(s); refunded ${refunded} paid order(s) lost in a restart; cancelled ${cancelled} unpaid quote(s)`);
   }
