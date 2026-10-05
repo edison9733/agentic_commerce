@@ -313,8 +313,9 @@ The site is static and reads the chain directly, so any static host works:
 npm run build:web     # output in apps/web/dist
 ```
 
-A GitHub Pages workflow is in `.github/workflows/pages.yml`. It only runs when started by hand, and
-Pages has to be switched on for the repository first (Settings → Pages → Source: GitHub Actions).
+A ready GitHub Pages workflow is in [`docs/deploy/github-pages.yml`](deploy/github-pages.yml). It is
+not active: the session that wrote it could not add workflows to the repository. The three steps to
+switch it on are at the top of that file.
 
 Everything except the Market page works with no backend. The Market page needs `npm run agents`
 reachable at the URL in `VITE_AGENTS_URL`, and the role keys in `.keys/`, which are not in the repo.
