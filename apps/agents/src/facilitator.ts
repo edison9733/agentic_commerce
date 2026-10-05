@@ -14,11 +14,32 @@ type Known = { url: string; client: HTTPFacilitatorClient; feePayer: string };
 
 let known: Promise<Known[]> | undefined;
 
+/**
+ * Coinbase's CDP facilitator, the most used one. It needs an API key, which
+ * only the operator can create, so it is used when `CDP_API_KEY_ID` and
+ * `CDP_API_KEY_SECRET` are set and skipped otherwise. This path has not been
+ * exercised with a real key: see the README.
+ */
+async function cdp(): Promise<{ url: string; client: HTTPFacilitatorClient } | null> {
+  const id = process.env.CDP_API_KEY_ID;
+  const secret = process.env.CDP_API_KEY_SECRET;
+  if (!id || !secret) return null;
+  try {
+    const { createFacilitatorConfig } = await import('@coinbase/x402');
+    const cfg = createFacilitatorConfig(id, secret);
+    return { url: cfg.url ?? 'https://api.cdp.coinbase.com', client: new HTTPFacilitatorClient(cfg) };
+  } catch (e) {
+    console.warn(`[x402] CDP keys are set but @coinbase/x402 could not be loaded (${(e as Error).message.slice(0, 80)}). Run: npm i @coinbase/x402 -w @tessera/agents`);
+    return null;
+  }
+}
+
 async function probe(): Promise<Known[]> {
   const out: Known[] = [];
-  for (const url of config.facilitators) {
+  const first = await cdp();
+  const candidates = [...(first ? [first] : []), ...config.facilitators.map((url) => ({ url, client: new HTTPFacilitatorClient({ url }) }))];
+  for (const { url, client } of candidates) {
     try {
-      const client = new HTTPFacilitatorClient({ url });
       const supported = await client.getSupported();
       const kind = supported.kinds.find(
         (k) => k.x402Version === 2 && k.scheme === 'exact' && k.network === config.network,

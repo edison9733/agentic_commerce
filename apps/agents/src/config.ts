@@ -12,8 +12,9 @@ export const config = {
    * x402 facilitators, in order of preference. The first is the x402
    * project's public testnet facilitator (no API key); the second is a
    * fallback so one operator being down cannot stop payments. Coinbase's
-   * CDP facilitator, the most used on mainnet, also serves Solana devnet but
-   * needs a CDP API key and its auth headers.
+   * CDP facilitator, the most used one, needs an API key: set
+   * CDP_API_KEY_ID and CDP_API_KEY_SECRET and it is tried first
+   * (see facilitator.ts).
    */
   facilitators: list(process.env.FACILITATOR_URLS, [
     'https://x402.org/facilitator',
