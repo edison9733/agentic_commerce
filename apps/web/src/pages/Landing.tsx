@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import { useRef, useState } from 'react';
 import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS } from '@tessera/sdk';
+import registry from '../../../../deployments/registry.json';
 import snapshot from '../../../../deployments/snapshot.json';
 import { AttackLab } from '../components/AttackLab';
 import { Feed } from '../components/Feed';
@@ -329,7 +330,7 @@ function Score() {
     <section className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
       <div className="wrap">
         <div className="grid gap-10 lg:grid-cols-[1fr_1.35fr] lg:items-start">
-          <Reveal>
+          <Reveal className="min-w-0">
             <div className="eyebrow" style={{ color: '#878371' }}>The score</div>
             <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
               How much is known, <em>times</em> whether it is good.
@@ -351,7 +352,7 @@ Evidence = 0.45 History
               Read the whole formula
             </Link>
           </Reveal>
-          <Reveal delay={0.1}>
+          <Reveal delay={0.1} className="min-w-0">
             <Playground />
           </Reveal>
         </div>
@@ -376,6 +377,122 @@ function Attacks() {
         <Reveal delay={0.1} className="mt-12">
           <AttackLab />
         </Reveal>
+      </div>
+    </section>
+  );
+}
+
+const SNIPPETS: { id: string; label: string; file: string; code: string }[] = [
+  {
+    id: 'sell',
+    label: 'Sell',
+    file: 'apps/agents/src/server.ts',
+    code: `// A seller answers with an ordinary 402. One call opens the escrow.
+const quote = await merchant.quote({ buyer, sku, input, resourceUrl });
+
+res.setHeader('PAYMENT-REQUIRED', encodePaymentRequiredHeader(quote.required));
+res.status(402).json({ error: 'payment required' });
+
+// quote.required.accepts[0].payTo is the order account,
+// so an unmodified x402 client pays straight into its vault.`,
+  },
+  {
+    id: 'buy',
+    label: 'Buy',
+    file: 'packages/sdk/src/verify.ts',
+    code: `// A buyer reads the chain before it signs. One call, or it refuses.
+const { order, vault } = await verifyOrderForPayment(rpc, {
+  orderId, payTo, mint, amount,
+  buyer: me, merchant,
+});
+
+// Throws unless payTo is this order's escrow, opened for this buyer,
+// this merchant and this amount. Then pay with any x402 client.`,
+  },
+  {
+    id: 'score',
+    label: 'Read a score',
+    file: 'packages/sdk/src/score.ts',
+    code: `// Anyone can score any wallet from two public accounts.
+const agent  = await fetchAgent(rpc, await agentPdaOf(wallet));
+const config = await fetchConfig(rpc, await configPda());
+
+const result = score.evaluate(agent.data, config.data.params, now);
+// result.score is 0 to 1000, result.tier is 0 (New) to 3 (Trusted)
+
+// The same integer arithmetic runs in the program. This site
+// shows both numbers side by side on every credit file.`,
+  },
+];
+
+function Developers() {
+  const [tab, setTab] = useState('sell');
+  const snippet = SNIPPETS.find((x) => x.id === tab)!;
+  const registered = Object.keys(registry.agents).length;
+  const mirrored = Object.keys(registry.feedback).length;
+  const layers: [string, string, string, boolean][] = [
+    ['Payment', 'x402', 'The exact scheme, unchanged. Two public facilitators.', false],
+    ['Credit', 'Tessera', 'Whether the money waits, and for how long.', true],
+    ['Identity', 'Solana Agent Registry', `ERC-8004 on Solana. ${registered} merchants registered on devnet, ${mirrored} reviews mirrored with proof of payment.`, false],
+  ];
+  return (
+    <section className="night gridded py-24 md:py-32">
+      <div className="wrap">
+        <Reveal>
+          <div className="eyebrow" style={{ color: '#8b8a7c' }}>For developers</div>
+          <h2 className="display mt-4 max-w-[19ch] text-[clamp(2.4rem,5.6vw,4.6rem)]" style={{ color: '#f1eee2' }}>
+            One call to sell. <em>One check to buy.</em>
+          </h2>
+          <p className="mt-6 max-w-[44rem] text-[1.05rem] leading-relaxed">
+            No new payment scheme and no custom client. The seller opens an escrow and names it as the address to pay. The buyer checks that address on-chain before it signs.
+          </p>
+        </Reveal>
+        <Reveal delay={0.1} className="mt-12">
+          <div className="card-night overflow-hidden">
+            <div className="flex flex-wrap items-center gap-2 px-5 pt-5" role="tablist" aria-label="Code sample">
+              {SNIPPETS.map((x) => (
+                <button key={x.id} role="tab" aria-selected={tab === x.id} onClick={() => setTab(x.id)} className="relative rounded-full px-4 py-2 text-[0.9rem]" style={{ color: tab === x.id ? '#0a0b09' : '#c9c6b6', cursor: 'pointer' }}>
+                  {tab === x.id && <motion.span layoutId="dev-pill" style={{ position: 'absolute', inset: 0, borderRadius: 999, background: '#b9f8da' }} transition={{ duration: 0.45, ease: EASE }} />}
+                  <span style={{ position: 'relative' }}>{x.label}</span>
+                </button>
+              ))}
+              <a className="mono link ml-auto text-[0.72rem]" style={{ color: '#8b8a7c' }} href={`${REPO}/blob/main/${snippet.file}`} target="_blank" rel="noreferrer">
+                {snippet.file} ↗
+              </a>
+            </div>
+            <AnimatePresence mode="wait">
+              <motion.pre
+                key={tab}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.35, ease: EASE }}
+                className="mono m-0 overflow-x-auto p-5 text-[0.82rem] leading-[1.85] md:p-7 md:text-[0.9rem]"
+                style={{ color: '#e9e6d8' }}
+              >
+                {snippet.code.split('\n').map((line, i) => (
+                  <span key={i} style={{ display: 'block', color: line.trimStart().startsWith('//') ? '#7d7c6f' : undefined }}>
+                    {line || ' '}
+                  </span>
+                ))}
+              </motion.pre>
+            </AnimatePresence>
+          </div>
+        </Reveal>
+        <div className="mt-6 grid gap-4 md:grid-cols-3">
+          {layers.map(([tag, name, what, ours], i) => (
+            <Reveal key={tag} delay={0.08 * i}>
+              <div className="h-full rounded-2xl p-5" style={{ border: `1px solid ${ours ? '#4fd19a' : '#22261d'}`, background: ours ? '#121a14' : '#10120e' }}>
+                <div className="eyebrow" style={{ color: ours ? '#b9f8da' : '#8b8a7c' }}>{tag}</div>
+                <div className="display mt-2 text-[1.7rem]" style={{ color: ours ? '#b9f8da' : '#f1eee2' }}>{name}</div>
+                <p className="mt-2 text-[0.9rem] leading-relaxed" style={{ color: '#c9c6b6' }}>{what}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <p className="mono mt-5 text-[0.74rem]" style={{ color: '#5d5c52' }}>
+          How the registry bridge works, and what it does not do: <a className="link" href={`${REPO}/blob/main/docs/ERC-8004.md`} target="_blank" rel="noreferrer">docs/ERC-8004.md</a>
+        </p>
       </div>
     </section>
   );
@@ -485,6 +602,7 @@ export function Landing() {
       <Problem />
       <HowItWorks />
       <Lanes />
+      <Developers />
       <Score />
       <Attacks />
       <Proof />

@@ -441,7 +441,9 @@ export function Market() {
         {down && (
           <div className="card mt-6 p-7">
             <div className="text-[1.05rem] font-medium">The merchant agents are not reachable at {AGENTS_URL}.</div>
-            <p className="mt-2 text-[0.95rem]" style={{ color: '#4b483e' }}>The rest of the site reads the chain directly and works without them. To buy something, start them:</p>
+            <p className="mt-2 text-[0.95rem]" style={{ color: '#4b483e' }}>
+              The rest of the site reads the chain directly and works without them. The merchant agents hold keys, so they run from the repository, not from this page. The whole checkout is in the <a className="link" href="https://github.com/edison9733/agentic_commerce#readme" target="_blank" rel="noreferrer">technical demo video</a>. To buy something yourself, start them:
+            </p>
             <pre className="mono mt-3 rounded-xl p-4 text-[0.84rem]" style={{ background: '#14130f', color: '#e9e6d8' }}>npm run agents</pre>
           </div>
         )}

@@ -12,7 +12,7 @@ function Term({ name, math, children }: { name: string; math: string; children: 
   return (
     <div className="grid gap-3 py-6 md:grid-cols-[11rem_1fr]" style={{ borderTop: '1px solid #ded7c2' }}>
       <div className="display text-[1.8rem] leading-none">{name}</div>
-      <div>
+      <div className="min-w-0">
         <pre className="mono overflow-x-auto rounded-xl px-4 py-3 text-[0.8rem]" style={{ background: '#f4efe0', margin: 0 }}>{math}</pre>
         <p className="mt-3 text-[0.98rem] leading-relaxed" style={{ color: '#4b483e' }}>{children}</p>
       </div>
@@ -179,10 +179,10 @@ hold     = max( hold[merchant tier], hold[buyer tier] )`}
             </p>
             <ul className="mt-6 grid gap-2" style={{ listStyle: 'none', padding: 0 }}>
               {GUARANTEES.map(([g, where]) => (
-                <li key={g} className="card grid items-center gap-4 px-5 py-3.5 text-[0.95rem]" style={{ gridTemplateColumns: '1.4rem 1fr auto' }}>
+                <li key={g} className="card grid items-center gap-x-4 gap-y-1 px-5 py-3.5 text-[0.95rem]" style={{ gridTemplateColumns: '1.4rem minmax(0, 1fr)' }}>
                   <span style={{ color: '#126b4a' }} aria-hidden>✓</span>
                   <span>{g}</span>
-                  <span className="mono text-[0.7rem]" style={{ color: '#878371' }}>{where}</span>
+                  <span className="mono text-[0.7rem]" style={{ color: '#878371', gridColumn: 2, overflowWrap: 'anywhere' }}>{where}</span>
                 </li>
               ))}
             </ul>
