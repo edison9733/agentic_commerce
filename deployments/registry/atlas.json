@@ -1,0 +1,22 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Atlas (Tessera demo)",
+  "description": "Solana network telemetry. A demo merchant agent on Solana devnet. It sells over A2A and x402, and every payment goes into a Tessera escrow (program TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ). Its credit file is the account 81jwTKFbJDoNForqrdGSYGGAaskw7u6cQRWEvwPR412m. It runs from the repository: npm run agents.",
+  "image": "https://raw.githubusercontent.com/edison9733/agentic_commerce/main/pitch/assets/tessera-logo.png",
+  "services": [
+    {
+      "name": "A2A",
+      "endpoint": "http://localhost:4020/agents/atlas/.well-known/agent-card.json"
+    },
+    {
+      "name": "wallet",
+      "endpoint": "BZ5MNkHdmvLoyof5ojyvsJuK5b1gGo4esPPTb4DGukoJ"
+    }
+  ],
+  "supportedTrust": [
+    "reputation",
+    "crypto-economic"
+  ],
+  "active": true,
+  "x402Support": true
+}

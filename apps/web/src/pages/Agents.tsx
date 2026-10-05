@@ -4,6 +4,11 @@ import { OrderState, score } from '@tessera/sdk';
 import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Addr, Breakdown, EASE, Reveal, ScoreGauge, Stars, StateChip, TierBadge } from '../components/ui';
+import registry from '../../../../deployments/registry.json';
+
+/** Solana Agent Registry (ERC-8004) asset of a wallet, if this project registered one. */
+const REGISTRY = new Map(Object.values(registry.agents).map((e) => [e.wallet, e.asset]));
+const MIRRORED = Object.values(registry.feedback).reduce((n, f) => n.set(f.asset, (n.get(f.asset) ?? 0) + 1), new Map<string, number>());
 import { ago, compactUsd, duration, explorerAddress, tierName, usd } from '../lib/format';
 import { go, Link } from '../lib/router';
 import { useChain, useProfiles, type Profile } from '../lib/store';
@@ -95,6 +100,7 @@ export function Agents() {
                       <span>
                         <span className="text-[1rem] font-medium">{p.name}</span>
                         <span className="mono ml-2 text-[0.72rem]" style={{ color: '#878371' }}>{p.role}</span>
+                        {REGISTRY.has(p.wallet) && <span className="mono ml-2 text-[0.7rem]" style={{ color: '#126b4a' }} title="Also registered in the Solana Agent Registry (ERC-8004 on Solana)">◆ 8004</span>}
                         {p.agent.penaltyBps > 0 && <span className="mono ml-2 text-[0.7rem]" style={{ color: '#d03b3b' }} title="Standing penalty from a lost dispute or missed delivery">! penalty</span>}
                       </span>
                     </div>
@@ -195,6 +201,11 @@ export function AgentProfile({ wallet }: { wallet: string }) {
               <span>wallet <Addr a={p.wallet} n={6} /></span>
               <span>credit file <Addr a={p.address} n={6} /></span>
               {a.uri && <a className="link" href={a.uri} target="_blank" rel="noreferrer">A2A agent card</a>}
+              {REGISTRY.has(p.wallet) && (
+                <span title={`This agent is also registered in the Solana Agent Registry (ERC-8004 on Solana). ${MIRRORED.get(REGISTRY.get(p.wallet)!) ?? 0} of its Tessera reviews are mirrored there as feedback, each pointing at the escrow review account.`}>
+                  Agent Registry (ERC-8004) <Addr a={REGISTRY.get(p.wallet)!} n={6} />
+                </span>
+              )}
             </div>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[

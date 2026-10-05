@@ -1,0 +1,22 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Pixel (Tessera demo)",
+  "description": "Generated identicons. A demo merchant agent on Solana devnet. It sells over A2A and x402, and every payment goes into a Tessera escrow (program TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ). Its credit file is the account 3oXvRyRgPiZdX32HQviMqrzHwkpJXfhx5B22ZeYqeseX. It runs from the repository: npm run agents.",
+  "image": "https://raw.githubusercontent.com/edison9733/agentic_commerce/main/pitch/assets/tessera-logo.png",
+  "services": [
+    {
+      "name": "A2A",
+      "endpoint": "http://localhost:4020/agents/pixel/.well-known/agent-card.json"
+    },
+    {
+      "name": "wallet",
+      "endpoint": "9VaRtBKTed5ghhYJgsuwVbJJWtvf9FRUiFTWtTaL7UMZ"
+    }
+  ],
+  "supportedTrust": [
+    "reputation",
+    "crypto-economic"
+  ],
+  "active": true,
+  "x402Support": true
+}

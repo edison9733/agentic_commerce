@@ -1,0 +1,22 @@
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004#registration-v1",
+  "name": "Vera (Tessera demo)",
+  "description": "Tessera credit reports. A demo merchant agent on Solana devnet. It sells over A2A and x402, and every payment goes into a Tessera escrow (program TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ). Its credit file is the account 9Npu94VGfMSY6kDxtQWDcxP83raeQBGa7W7AWWtoK9xe. It runs from the repository: npm run agents.",
+  "image": "https://raw.githubusercontent.com/edison9733/agentic_commerce/main/pitch/assets/tessera-logo.png",
+  "services": [
+    {
+      "name": "A2A",
+      "endpoint": "http://localhost:4020/agents/vera/.well-known/agent-card.json"
+    },
+    {
+      "name": "wallet",
+      "endpoint": "7BVf6Kjou5SKZpsetCmPkD744R4tTEv6TXd2ppEprqjG"
+    }
+  ],
+  "supportedTrust": [
+    "reputation",
+    "crypto-economic"
+  ],
+  "active": true,
+  "x402Support": true
+}
