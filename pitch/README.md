@@ -1,11 +1,12 @@
 # Pitch and demo
 
-The two decks are pages of the website, so they can show the live network and drive the real site.
+The three decks are pages of the website, so they can show the live network and drive the real site.
 
 | | Deck | Rendered video | Script |
 |---|---|---|---|
 | Pitch (the why) | `http://localhost:5173/#/deck/pitch` | `out/tessera-pitch.mp4` | `out/pitch-script.md` |
 | Technical demo (the how) | `http://localhost:5173/#/deck/demo` | `out/tessera-demo.mp4` | `out/demo-script.md` |
+| Weekly update (one minute) | `http://localhost:5173/#/deck/update` | `out/tessera-update.mp4` | `out/update-script.md` |
 
 Also in `out/`: every slide as a PNG (`pitch-slides/`, `demo-slides/`) and each deck as a PDF.
 In `assets/`: the logo (SVG and 1024 px PNG) and a cover image.
@@ -26,6 +27,7 @@ npm run web                      # terminal 1
 npm run agents                   # terminal 2
 node pitch/render.mjs pitch      # narrated video, about 3 minutes to render
 node pitch/render.mjs demo
+node pitch/render.mjs update     # the one-minute weekly update
 node pitch/stills.mjs            # slide PNGs, PDFs, logo PNG, cover image
 ```
 
@@ -42,8 +44,12 @@ RPC rate-limits, and the live slides need it.
 Edit the `say` text of a slide in `apps/web/src/deck/pitch.tsx` or `demo.tsx` and render again. The
 scripts in `out/` are generated; editing them changes nothing.
 
-Both videos have to stay at or under three minutes for the Colosseum submission. The renderer prints
-the total and warns if it is over.
+The pitch and the demo have to stay at or under three minutes for the Colosseum submission, and the
+weekly update under one. The renderer prints the total and warns if it is over. The narration is also
+kept short enough to read aloud at a normal pace: 418 words for the pitch, 395 for the demo.
+
+After a render, look at the checkout slide of the demo video before using it. That slide performs a
+real purchase; if the agents server or the faucet was down, the video will show the failure.
 
 ## A note on the voice
 

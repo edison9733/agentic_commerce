@@ -1,6 +1,6 @@
 /**
  * Still images for the submission: the logo as PNG, a cover image of the
- * site, every slide of both decks, and each deck as a PDF.
+ * site, every slide of the three decks, and each deck as a PDF.
  *
  *   npm run web     (the site must be running)
  *   node pitch/stills.mjs
@@ -41,7 +41,7 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true });
 }
 
 // decks
-for (const name of ['pitch', 'demo']) {
+for (const name of ['pitch', 'demo', 'update']) {
   const source = readFileSync(resolve(here, `../apps/web/src/deck/${name}.tsx`), 'utf8');
   const count = (source.match(/\n    id: '/g) ?? []).length;
   const dir = join(out, `${name}-slides`);

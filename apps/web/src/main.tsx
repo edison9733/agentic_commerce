@@ -4,6 +4,7 @@ import { ClientProvider } from '@solana/react';
 import { client } from './lib/client';
 import { DemoDeck } from './deck/demo';
 import { PitchDeck } from './deck/pitch';
+import { UpdateDeck } from './deck/update';
 import { RouterProvider, useMatch, usePath } from './lib/router';
 import { AgentProfile, Agents } from './pages/Agents';
 import { Formula } from './pages/Formula';
@@ -17,6 +18,7 @@ function Routes() {
   const profile = useMatch('/agents/:wallet');
   if (path.startsWith('/deck/pitch')) return <PitchDeck />;
   if (path.startsWith('/deck/demo')) return <DemoDeck />;
+  if (path.startsWith('/deck/update')) return <UpdateDeck />;
   if (profile) return <AgentProfile wallet={profile.wallet!} />;
   if (path.startsWith('/network')) return <Network />;
   if (path.startsWith('/agents')) return <Agents />;

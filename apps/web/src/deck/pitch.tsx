@@ -6,6 +6,7 @@ import { Graph } from '../components/Graph';
 import { Counter, EASE, Logo, TierBadge } from '../components/ui';
 import { compactUsd, duration, SERIES, TIER_DARK } from '../lib/format';
 import { useChain, useProfiles } from '../lib/store';
+import registry from '../../../../deployments/registry.json';
 import snapshot from '../../../../deployments/snapshot.json';
 import { Big, Body, Deck, Frame, Kicker, Rise, Source, type Slide } from './Deck';
 
@@ -88,27 +89,94 @@ function RingSlide() {
   );
 }
 
-function CostSlide() {
+function EfficiencySlide() {
   const payment = 0.07;
+  const card = payment * 0.029 + 0.3;
+  const label = (t: string) => <div className="mono" style={{ fontSize: 16, color: '#8b8a7c', marginBottom: 22, letterSpacing: '0.08em' }}>{t}</div>;
   return (
-    <Frame pad={96}>
-      <Kicker>Why this could not run on cards</Kicker>
-      <Big size={84} max="18ch" color={white}>
-        What it costs to move <em>seven cents.</em>
+    <Frame pad={88}>
+      <Kicker>Cheaper, and final sooner</Kicker>
+      <Big size={78} max="20ch" color={white}>
+        What it takes to move <em>seven cents.</em>
       </Big>
-      <Rise delay={0.5} style={{ marginTop: 56, maxWidth: 1180 }}>
-        <Bars
-          format={(v) => `$${v.toFixed(4)}`}
-          rows={[
-            { label: 'Card processor, list price (2.9% + 30¢)', value: payment * 0.029 + 0.3, note: `${Math.round(((payment * 0.029 + 0.3) / payment) * 100)}% of the payment`, color: SERIES[1] },
-            { label: 'Tessera escrow (1% protocol fee)', value: payment * 0.01, note: '1% of the payment', color: SERIES[0] },
-          ]}
-        />
-      </Rise>
-      <Body delay={0.9} size={28} max="46ch">
-        And the buyer pays no network fee: the x402 facilitator does. On devnet, a buyer agent's SOL balance was identical before and after its purchase.
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, marginTop: 52 }}>
+        <Rise delay={0.4}>
+          {label('WHAT THE PAYMENT COSTS')}
+          <div style={{ zoom: 1.55 }}>
+            <Bars
+              format={(v) => `$${v.toFixed(4)}`}
+              rows={[
+                { label: 'Card processor (2.9% + 30¢)', value: card, note: `${Math.round((card / payment) * 100)}%`, color: SERIES[1] },
+                { label: 'Tessera escrow (1%)', value: payment * 0.01, note: '1%', color: SERIES[0] },
+              ]}
+            />
+          </div>
+        </Rise>
+        <Rise delay={0.75}>
+          {label('HOW LONG IT STAYS OPEN TO DISPUTE')}
+          <div style={{ zoom: 1.55 }}>
+            <Bars
+              format={(v) => (v === 0 ? 'none' : `${v} days`)}
+              rows={[
+                { label: 'Card chargeback window', value: 120, color: SERIES[1] },
+                { label: 'Tessera, a new wallet', value: P.holdSecs[0]! / 86_400, color: SERIES[0] },
+                { label: 'Tessera, two Trusted agents', value: 0, note: 'settles with delivery', color: SERIES[0] },
+              ]}
+            />
+          </div>
+        </Rise>
+      </div>
+      <Body delay={1.0} size={26} max="60ch">
+        The buyer pays no network fee: the x402 facilitator does. On devnet, a buyer agent's SOL balance was identical before and after its purchase.
       </Body>
-      <Source>Card price: stripe.com/pricing, “2.9% + 30¢ per successful transaction for domestic cards”, read 5 Oct 2026. 7¢ is the x402 average on the previous slide.</Source>
+      <Source>Card price: stripe.com/pricing (5 Oct 2026). Chargeback window: Stripe, “Chargeback time limits in the UK”. Tessera holds: mainnet targets.</Source>
+    </Frame>
+  );
+}
+
+function LayerSlide() {
+  const rows = [
+    { tag: 'IDENTITY', name: 'Solana Agent Registry', sub: 'ERC-8004 on Solana', what: 'Who the agent is, and what others say about it.', ours: false },
+    { tag: 'CREDIT', name: 'Tessera', sub: 'escrow and an on-chain score', what: 'Whether the money waits, and for how long.', ours: true },
+    { tag: 'PAYMENT', name: 'x402', sub: 'the exact scheme, unchanged', what: 'How the money moves.', ours: false },
+  ];
+  const mirrored = Object.keys(registry.feedback).length;
+  const registered = Object.keys(registry.agents).length;
+  return (
+    <Frame pad={88}>
+      <Kicker>Where it fits</Kicker>
+      <Big size={76} max="27ch" color={white}>
+        Solana has the identity and the payment. <em>This is the credit.</em>
+      </Big>
+      <div style={{ display: 'grid', gap: 14, marginTop: 44 }}>
+        {rows.map((r, k) => (
+          <Rise key={r.tag} delay={0.4 + k * 0.14}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '150px 1fr 1.05fr',
+                alignItems: 'center',
+                gap: 28,
+                padding: '22px 30px',
+                borderRadius: 18,
+                border: `1px solid ${r.ours ? mint : '#272b21'}`,
+                background: r.ours ? '#121a14' : '#10120e',
+              }}
+            >
+              <span className="mono" style={{ fontSize: 15, color: r.ours ? mint : '#8b8a7c', letterSpacing: '0.1em' }}>{r.tag}</span>
+              <span>
+                <span className="display" style={{ fontSize: 42, color: r.ours ? mint : white }}>{r.name}</span>
+                <span className="mono" style={{ fontSize: 15, color: '#8b8a7c', marginLeft: 16 }}>{r.sub}</span>
+              </span>
+              <span style={{ fontSize: 24, color: r.ours ? white : '#c9c6b6' }}>{r.what}</span>
+            </div>
+          </Rise>
+        ))}
+      </div>
+      <Body delay={1.0} size={26} max="62ch">
+        Our {registered} merchant agents are in the Agent Registry on devnet. Each of the {mirrored} reviews Tessera has mirrored there points at the escrow account that proves the purchase.
+      </Body>
+      <Source>solana.com/agent-registry. Assets and mirrored reviews: deployments/registry.json. ERC-8004: “Payments are orthogonal to this protocol and not covered here.”</Source>
     </Frame>
   );
 }
@@ -146,7 +214,7 @@ function TierSlide() {
 export const PITCH: Slide[] = [
   {
     id: 'title',
-    seconds: 7,
+    seconds: 6,
     say: 'This is Tessera. The credit layer for agent commerce.',
     render: () => (
       <Frame center>
@@ -160,71 +228,71 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'hook',
-    seconds: 13,
-    say: 'AI agents now pay each other. In the last twenty-four hours, x402 carried one hundred and eighteen thousand payments. The average was seven cents.',
+    seconds: 11,
+    say: 'AI agents now pay each other. x402 has carried about two hundred million payments. On one recent day, the average was seven cents.',
     render: () => (
       <Frame>
         <Kicker>It is already happening</Kicker>
         <Big size={96} max="16ch" color={white}>AI agents now <em>pay each other.</em></Big>
         <div style={{ display: 'flex', gap: 96, marginTop: 84 }}>
           <Rise delay={0.6}>
-            <div className="display" style={{ fontSize: 150, color: mint, lineHeight: 1 }}><Counter value={118341} /></div>
-            <div style={{ fontSize: 26, marginTop: 14 }}>x402 payments in 24 hours</div>
+            <div className="display" style={{ fontSize: 150, color: mint, lineHeight: 1 }}>≈<Counter value={200} />M</div>
+            <div style={{ fontSize: 26, marginTop: 14 }}>x402 payments so far</div>
           </Rise>
           <Rise delay={0.9}>
             <div className="display" style={{ fontSize: 150, color: white, lineHeight: 1 }}>7¢</div>
-            <div style={{ fontSize: 26, marginTop: 14 }}>average payment ($8,010 in total)</div>
+            <div style={{ fontSize: 26, marginTop: 14 }}>average payment on one recent day</div>
           </Rise>
         </div>
-        <Source>x402scan.com, facilitators, 24 hours to 5 Oct 2026: 118,341 transactions, $8.01K volume. 85,832 of them through Coinbase's facilitator.</Source>
+        <Source>Solana Foundation, 5 Aug 2026: “roughly 200 million transactions … Most transactions are under 50 cents.” x402scan.com, 24 h to 5 Oct 2026: 118,341 payments, $8.01K.</Source>
       </Frame>
     ),
   },
   {
     id: 'final',
     seconds: 13,
-    say: 'An x402 payment is final in about a second. There is no chargeback. So before an agent pays a stranger, it has one question. Will I get what I paid for?',
+    say: 'We think the reason is simple. An x402 payment is final in a second, and there is no chargeback. Seven cents can afford to be wrong. Seven hundred dollars cannot.',
     render: () => (
       <Frame>
-        <Kicker>The gap</Kicker>
+        <Kicker>Why the payments stay small</Kicker>
         <Big size={104} max="15ch" color={white}>Paid in a second. <em>Final forever.</em></Big>
-        <Body delay={0.7} size={40} max="27ch">Before an agent pays a stranger, it has one question: will I get what I paid for?</Body>
-        <Source>Median facilitator settlement on devnet in this project: {((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s ({snapshot.measured.viaFacilitator} payments). An x402 `exact` payment is a signed token transfer; there is no chargeback.</Source>
+        <Body delay={0.7} size={40} max="27ch">Seven cents can afford to be wrong. Seven hundred dollars cannot.</Body>
+        <Source>Our reading, not a measured cause. An x402 `exact` payment is a signed token transfer with no chargeback. Median facilitator settlement on devnet here: {((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s ({snapshot.measured.viaFacilitator} payments).</Source>
       </Frame>
     ),
   },
   {
     id: 'cards',
-    seconds: 15,
-    say: "Card networks answer that question months later. Visa's rule for fighting friendly fraud needs purchase history at least one hundred and twenty days old. Agents do not have one hundred and twenty days. And a new wallet costs nothing, so stars and reviews can be faked for free.",
+    seconds: 14,
+    say: 'Cards solve this with months of history. Visa wants purchases a hundred and twenty days old. On-chain, a review costs a tenth of a cent and needs no purchase. Stars are nearly free to fake.',
     surface: 'paper',
     render: () => (
       <Frame>
-        <Kicker color="#878371">How the old world answers it</Kicker>
+        <Kicker color="#878371">How trust is built today</Kicker>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 72, marginTop: 40 }}>
           <Rise delay={0.2}>
             <div className="display" style={{ fontSize: 190, lineHeight: 0.95 }}>120<span style={{ fontSize: 80 }}> days</span></div>
             <div style={{ fontSize: 30, marginTop: 22, lineHeight: 1.35, maxWidth: '20ch' }}>the youngest purchase history Visa accepts as evidence in a fraud dispute</div>
           </Rise>
           <Rise delay={0.6}>
-            <div className="display" style={{ fontSize: 190, lineHeight: 0.95 }}>0.05<span style={{ fontSize: 80 }}> SOL</span></div>
-            <div style={{ fontSize: 30, marginTop: 22, lineHeight: 1.35, maxWidth: '20ch' }}>what ten thousand fake reviews cost in network fees</div>
+            <div className="display" style={{ fontSize: 190, lineHeight: 0.95 }}>$0.001</div>
+            <div style={{ fontSize: 30, marginTop: 22, lineHeight: 1.35, maxWidth: '20ch' }}>what one on-chain review costs. No purchase needed.</div>
           </Rise>
         </div>
-        <Source dark={false}>Visa Compelling Evidence 3.0: two prior undisputed transactions, 120 to 365 days old (Checkout.com, 30 Oct 2025). Solana base fee: 5,000 lamports per signature.</Source>
+        <Source dark={false}>Visa Compelling Evidence 3.0: two prior transactions, 120 to 365 days old (Checkout.com, 30 Oct 2025). Review price: solana.com/agent-registry.</Source>
       </Frame>
     ),
   },
   {
     id: 'tiers',
-    seconds: 14,
+    seconds: 13,
     say: 'Tessera puts every x402 payment into escrow on Solana, and lets an on-chain credit score decide how long the money waits. A stranger waits three days. An agent with a record settles instantly.',
     render: () => <TierSlide />,
   },
   {
     id: 'how',
-    seconds: 15,
-    say: 'It needs no new payment standard. The 402 response simply names an escrow account as the address to pay. The buyer checks that account on-chain, pays through a public x402 facilitator, and never holds SOL.',
+    seconds: 13,
+    say: 'It needs no new standard. The 402 response names an escrow account as the address to pay. The buyer checks it on-chain, pays through a public x402 facilitator, and never holds SOL.',
     render: () => (
       <Frame>
         <Kicker>No new standard</Kicker>
@@ -253,8 +321,8 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'score',
-    seconds: 15,
-    say: 'The score is how much we know, times whether it is good. History, time, and how many real counterparties. Multiplied by ratings and behaviour. Every input is public, so anyone can recompute it.',
+    seconds: 13,
+    say: 'The score is how much we know, times whether it is good. Settled volume, time, and real counterparties. Multiplied by ratings and behaviour. Every input is public, so anyone can recompute it.',
     surface: 'paper',
     render: () => (
       <Frame>
@@ -291,53 +359,71 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'ring',
-    seconds: 18,
-    say: 'We assumed people would cheat. A ring of your own wallets earns ten cents on the dollar, and stalls. Time cannot be bought in a burst. And a trusted merchant can only take instantly what it has already paid in fees. So an exit scam nets twenty-five dollars, at any size.',
+    seconds: 15,
+    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns thousands in fees first. And an exit scam nets twenty-five dollars, at any size.',
     render: () => <RingSlide />,
   },
   {
     id: 'live',
-    seconds: 16,
-    say: 'This is live on devnet today. Agents find each other over A2A, pay over x402, and earn their tier on-chain. The honest merchants earned Trusted. The wash-trading ring, on its own island, did not.',
+    seconds: 14,
+    say: 'This is live on devnet. Agents find each other over A2A, pay over x402, and earn their tier on-chain. The honest merchants reached Trusted. The wash-trading ring did not.',
     render: () => <LiveSlide />,
   },
   {
     id: 'cost',
-    seconds: 13,
-    say: 'This could not run on cards. Moving seven cents through a card processor costs thirty cents. Through Tessera it costs a fraction of a cent, and the buyer pays no network fee at all.',
-    render: () => <CostSlide />,
+    seconds: 15,
+    say: 'It is also cheaper, and final sooner. Moving seven cents on a card costs thirty cents, and stays open to dispute for a hundred and twenty days. Here it costs a fraction of a cent, and a new wallet waits three days.',
+    render: () => <EfficiencySlide />,
   },
   {
-    id: 'business',
-    seconds: 15,
-    say: 'The business is one percent of settled volume. A seller adds one function. A buyer adds one check. And the score is a product too: one of our demo agents already sells credit reports, for thirty cents each.',
+    id: 'layers',
+    seconds: 14,
+    say: 'Solana already has x402 for payment, and an agent registry for identity. Tessera is the layer between them. Our agents are in that registry on devnet today, and every review we send it carries proof of payment.',
+    render: () => <LayerSlide />,
+  },
+  {
+    id: 'market',
+    seconds: 14,
+    say: 'McKinsey estimates that agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles through escrow. A seller adds one function. A buyer adds one check.',
     surface: 'paper',
     render: () => (
-      <Frame>
-        <Kicker color="#878371">The business</Kicker>
-        <Big size={92} max="17ch">1% of what settles. <em>Nothing on what does not.</em></Big>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 28, marginTop: 60 }}>
+      <Frame pad={88}>
+        <Kicker color="#878371">The market, and the business</Kicker>
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 64, marginTop: 30 }}>
+          <Rise delay={0.2}>
+            <div className="display" style={{ fontSize: 168, lineHeight: 0.95 }}>$3–5<span style={{ fontSize: 76 }}> trillion</span></div>
+            <div style={{ fontSize: 27, marginTop: 18, lineHeight: 1.35, maxWidth: '25ch' }}>of commerce that AI agents could orchestrate by 2030, on McKinsey's estimate</div>
+          </Rise>
+          <Rise delay={0.5}>
+            <div className="display" style={{ fontSize: 168, lineHeight: 0.95 }}>1<span style={{ fontSize: 76 }}>%</span></div>
+            <div style={{ fontSize: 27, marginTop: 18, lineHeight: 1.35, maxWidth: '22ch' }}>of what settles through escrow. Nothing on what does not.</div>
+          </Rise>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 24, marginTop: 44 }}>
           {[
             ['For sellers', 'One function, quote(), opens the escrow behind an existing x402 endpoint or A2A agent.'],
             ['For buyers', 'One check, verifyOrderForPayment(), before signing. No SOL, no account, no sign-up.'],
             ['The score itself', 'Any wallet can be scored by anyone. A demo agent already sells credit reports for 30¢.'],
           ].map(([h, b], k) => (
-            <Rise key={h} delay={0.5 + k * 0.15}>
-              <div style={{ padding: 30, borderRadius: 22, border: '1px solid #ded7c2', background: '#fff', height: '100%' }}>
-                <div className="display" style={{ fontSize: 46 }}>{h}</div>
-                <div style={{ fontSize: 24, marginTop: 12, lineHeight: 1.4, color: '#4b483e' }}>{b}</div>
+            <Rise key={h} delay={0.8 + k * 0.12}>
+              <div style={{ padding: '22px 26px', borderRadius: 20, border: '1px solid #ded7c2', background: '#fff', height: '100%' }}>
+                <div className="display" style={{ fontSize: 36 }}>{h}</div>
+                <div style={{ fontSize: 21, marginTop: 8, lineHeight: 1.4, color: '#4b483e' }}>{b}</div>
               </div>
             </Rise>
           ))}
         </div>
-        <Source dark={false}>Today: devnet only, no revenue, no outside users. The fee is charged by the program on the amount released to the merchant.</Source>
+        <Rise delay={1.3} style={{ marginTop: 30 }}>
+          <span className="mono" style={{ fontSize: 19, color: '#4b483e' }}>Illustration, not a forecast: 1% of the low estimate through escrow, at a 1% fee, is $300 million a year.</span>
+        </Rise>
+        <Source dark={false}>McKinsey, “The agentic commerce opportunity”: $3 trillion to $5 trillion globally by 2030. Tessera today: devnet only, no revenue, no outside users.</Source>
       </Frame>
     ),
   },
   {
     id: 'team',
-    seconds: 12,
-    say: "I'm Edison Liu. I study electronic and computer engineering at the ZJU-UIUC Institute, and I spend my spare time on Web3 and security research. I built Tessera for this hackathon, and I want to keep building it.",
+    seconds: 13,
+    say: "I'm Edison Liu. I study electronic and computer engineering at the ZJU-UIUC Institute, and I spend my spare time on Web3 and security research. I built Tessera for this hackathon, and I intend to keep building it.",
     render: () => (
       <Frame>
         <Kicker>Who is building it</Kicker>
@@ -354,7 +440,7 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'close',
-    seconds: 9,
+    seconds: 8,
     say: 'Micropayments were the easy part. Every payment matters. This is Tessera.',
     render: () => (
       <Frame center>

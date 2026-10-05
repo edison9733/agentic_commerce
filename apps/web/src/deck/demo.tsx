@@ -135,7 +135,7 @@ export const DEMO: Slide[] = [
   {
     id: 'title',
     seconds: 6,
-    say: 'This is how Tessera works, in three minutes.',
+    say: 'This is how Tessera works, in under three minutes.',
     render: () => (
       <Frame center>
         <Logo size={84} invert />
@@ -147,7 +147,7 @@ export const DEMO: Slide[] = [
   {
     id: 'accounts',
     seconds: 21,
-    say: 'One Anchor program, five kinds of account. Config holds every rule. Each wallet has an Agent account: its credit file. Each buyer and merchant pair has a Pair account: their history. Each purchase is an Order account, which owns the vault the money sits in. And each rating is a Review account, stored on-chain in full.',
+    say: 'One Anchor program, five kinds of account. Config holds the rules. Each wallet has an Agent account, its credit file. Each buyer and merchant pair has a Pair account. Each purchase is an Order, which owns the vault. Each rating is a Review, stored on-chain in full.',
     render: () => (
       <Frame pad={72}>
         <Kicker>The program · TessSeP5…1CQ · Anchor 1.1 · 17 instructions</Kicker>
@@ -171,7 +171,7 @@ export const DEMO: Slide[] = [
   {
     id: 'trick',
     seconds: 19,
-    say: "The x402 exact scheme on Solana only allows a plain token transfer, so there is nowhere to put an escrow instruction. But it derives the destination from pay-to. So the merchant quotes the order account as pay-to, and the money lands in the vault. The program never takes anyone's word that it was paid. It reads the vault balance.",
+    say: 'The x402 exact scheme on Solana allows only a plain token transfer, so an escrow instruction has nowhere to go. But the destination is derived from pay-to. So the merchant quotes the order account as pay-to, and the money lands in the vault. The program reads the vault balance. It trusts nobody’s word.',
     render: () => (
       <Frame pad={84}>
         <Kicker>The one design decision everything rests on</Kicker>
@@ -200,7 +200,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
     id: 'network',
     seconds: 24,
     surface: 'paper',
-    say: 'This is the network, read from devnet in the browser. No indexer, no database. Squares are merchant agents, circles are buyers. A coin in the middle of a line is money in escrow, with its hold running down. Bright nodes are Trusted: their payments go straight through. The small cluster on its own is a wash-trading ring.',
+    say: 'This is the network, read from devnet in the browser. No indexer, no database. Squares are merchants, circles are buyers. A coin on a line is money in escrow, with its hold running down. Bright nodes are Trusted. The small cluster on its own is a wash-trading ring.',
     render: () => (
       <>
         <Live route="/network" />
@@ -211,7 +211,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   {
     id: 'terminal',
     seconds: 24,
-    say: 'Here is one agent buying from another. It reads the merchant’s A2A card, gets a 402, checks the escrow on-chain, and pays through the facilitator. The merchant delivers and commits a hash; the buyer checks it. Two unknown wallets, so the money was held for two minutes. And the buyer’s SOL balance never moved.',
+    say: 'Here one agent buys from another. It reads the merchant’s A2A card, gets a 402, checks the escrow on-chain, and pays through the facilitator. The merchant delivers and commits a hash, and the buyer checks it. Two unknown wallets, so the money was held. The buyer’s SOL balance never moved.',
     render: () => (
       <Frame pad={84}>
         <Kicker>Agent to agent, over A2A and x402 · captured from devnet</Kicker>
@@ -229,7 +229,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   {
     id: 'score',
     seconds: 19,
-    say: 'The score is integer arithmetic over those accounts. The same function exists in Rust in the program and in TypeScript in the SDK. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and fifty-six checks, including every attack we could think of, sent as a real transaction.',
+    say: 'The score is integer arithmetic over those accounts, written once in Rust and once in TypeScript. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and fifty-six checks, attacks included.',
     render: () => (
       <Frame pad={84}>
         <Kicker>One formula, three places: program, SDK, browser</Kicker>
@@ -266,7 +266,7 @@ let evidence = (450 * history + 300 * tenure
     id: 'checkout',
     seconds: 36,
     surface: 'paper',
-    say: 'A person can buy from the same agents with a wallet. Watch the steps. The merchant opens the escrow. The browser checks it on-chain before paying. The payment goes into the vault. The merchant delivers, and the hash of what arrived matches the one on-chain. This buyer is new, so the money is held, and it can dispute until the hold ends. Here it confirms receipt, and the merchant is paid.',
+    say: 'A person can buy from the same agents with a wallet. The merchant opens the escrow. The browser checks it on-chain before paying. The payment goes into the vault. The merchant delivers, and the hash of what arrived matches the one on-chain. This buyer is new, so the money is held. Here it confirms receipt, and the merchant is paid.',
     render: () => (
       <>
         <Live route="/market" run={buyTour} />
@@ -278,7 +278,7 @@ let evidence = (450 * history + 300 * tenure
     id: 'profile',
     seconds: 16,
     surface: 'paper',
-    say: 'Every wallet has a credit file anyone can read: the score and what it is made of, the instant limit, and every review, with the weight it carried. The page recomputes the score in the browser from the account.',
+    say: 'Every wallet has a credit file anyone can read: the score and what it is made of, the instant limit, and every review with the weight it carried. This merchant is also in Solana’s Agent Registry, where its reviews are mirrored with proof of payment.',
     render: () => (
       <>
         <ProfileScene />
@@ -289,7 +289,7 @@ let evidence = (450 * history + 300 * tenure
   {
     id: 'stack',
     seconds: 14,
-    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two with two facilitators, and A2A with the x402 extension. It is on devnet, with time compressed, one arbiter key, and no audit. Those are the next things to fix.',
+    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two with two facilitators, A2A with the x402 extension, and the Solana Agent Registry. It is on devnet, with time compressed, one arbiter key, and no audit. Those come next.',
     render: () => (
       <Frame pad={84}>
         <Kicker>Stack, and what is not done</Kicker>
@@ -300,6 +300,7 @@ let evidence = (450 * history + 300 * tenure
               ['Clients', '@solana/kit 8 · Codama-generated'],
               ['Payments', 'x402 v2 `exact` · two facilitators quoted per order'],
               ['Agents', 'A2A JSON-RPC · a2a-x402 extension v0.2'],
+              ['Identity', 'Solana Agent Registry (ERC-8004) · reviews mirrored'],
               ['Website', 'React · Motion · reads the chain directly'],
             ].map(([k, v], i) => (
               <Rise key={k} delay={0.3 + i * 0.12}>
