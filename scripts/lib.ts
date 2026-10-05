@@ -337,4 +337,5 @@ export const log = {
   ok: (m: string) => console.log(`   ok  ${m}`),
   info: (m: string) => console.log(`       ${m}`),
   warn: (m: string) => console.log(`   !!  ${m}`),
+  fail: (m: string) => console.log(` FAIL  ${m}`),
 };
