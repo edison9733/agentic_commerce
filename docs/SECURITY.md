@@ -77,11 +77,39 @@ Status: ✅ enforced and tested · 🟡 mitigated, residual risk stated · ⭕ o
 
 | # | Attack | Status | Defence |
 |---|---|---|---|
-| D1 | Rent-drain: flooding a merchant with quotes it pays rent for. | 🟡 | At most 3 unpaid orders per buyer wallet; rent returns after the payment window. Per-IP limits are not built. |
+| D1 | Rent-drain: flooding a merchant with quotes it pays rent for. | 🟡 | At most 3 unpaid orders per buyer wallet; the server cancels unpaid quotes after the payment window, including ones from before a restart, and the rent returns. Per-IP limits are not built. |
 | D2 | Prompt injection through a service's output tells a buyer agent to pay someone. | 🟡 | The payment path is code, not prompt: it pays only an on-chain-verified escrow, for the advertised price, once. A budget per day and per merchant is not built. |
 | D3 | A stolen merchant-server key. | 🟡 | It fronts rent and cranks permissionless steps. It cannot move escrow or act as a party. |
 | D4 | A restart loses orders in flight. | ✅ | On start the server rebuilds its work list from the chain and refunds anything it was paid for but can no longer deliver. |
 | D5 | A lying RPC fakes the reads verification depends on. | ⭕ | Use a trusted RPC or cross-check two. |
+
+## What "sybil-resistant" means here, and what it does not
+
+Tessera does not claim to be sybil-proof. Cheng and Friedman showed in 2005 ("Sybilproof reputation
+mechanisms", ACM SIGCOMM P2PECON workshop) that no reputation function that treats every node the same
+way can be. Tessera's score is such a function: it has no trusted seed and no notion of "my" view of
+the graph. An attacker with enough wallets, money and time can reach any tier.
+
+What the design does instead:
+
+1. **It puts a price on the attack.** A fake record costs protocol fees that never come back and time
+   that cannot be compressed. The numbers are in [SCORING.md](SCORING.md#what-faking-it-costs).
+2. **It bounds the prize.** A faked Trusted merchant can take without a hold only what it already paid
+   in fees, plus a small base (C5). Everything else still sits in escrow, where a buyer can dispute it.
+3. **It keeps the damage local.** A penalty lands on the wallet that earned it, and a pair that had a
+   dispute never gets pair trust back.
+
+The ERC-8004 authors make the same admission about their Reputation Registry ("Sybil attacks are
+possible, inflating the reputation of fake agents"). How Tessera plugs into that registry on Solana is
+in [ERC-8004.md](ERC-8004.md).
+
+## E. The Agent Registry bridge
+
+| # | Attack | Status | Defence |
+|---|---|---|---|
+| E1 | Someone posts registry feedback that claims to be a Tessera review. | ✅ | A mirrored entry names a Tessera review account. A reader checks that the account exists, is owned by the program, and matches the reviewer, the subject and the rating. The program only creates it for a party to a settled order. `npm run registry -- --verify` does this check for every mirrored entry. |
+| E2 | A merchant points its registry identity at someone else's credit file. | ✅ | The link is two-way. The registry asset's agent wallet must be the wallet whose credit file it names; setting that wallet needs its signature. |
+| E3 | The registry, its indexer or the script is wrong or offline. | ✅ | Nothing in the score or the escrow reads the registry. The bridge is one-way and optional. |
 
 ## Still open before any real money
 

@@ -19,6 +19,9 @@
  *   npm run registry                  register and link (safe to run again)
  *   npm run registry -- --mirror 3    also mirror 3 reviews per merchant
  *   npm run registry -- --dry         print the registration files, send nothing
+ *   npm run registry -- --verify      send nothing; read every mirrored entry back from
+ *                                     the registry and check it against the Tessera
+ *                                     review account it points at
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
@@ -27,6 +30,7 @@ import { getTransferSolInstruction } from '@solana-program/system';
 import { Keypair, PublicKey } from '@solana/web3.js';
 import { buildRegistrationFileJson, DEVNET_AGENT_REGISTRY_PROGRAM_ID, ServiceType, SolanaSDK, TrustModel } from '8004-solana';
 import { agentPdaOf, fetchAllOrders, fetchAllReviews, fromUnits, TESSERA_PROGRAM_ADDRESS } from '@tessera/sdk';
+import { fetchEncodedAccount } from '@solana/kit';
 import { agentCardUrl, BUYERS, keyPath, MERCHANTS } from './cast.js';
 import { clientForSigner, DEVNET, explorerAddress, loadKeypair, log, REPO_ROOT, sleep } from './lib.js';
 
@@ -38,6 +42,7 @@ const option = (name: string, fallback: number) => {
 };
 const DRY = flag('dry');
 const MIRROR = option('mirror', 0);
+const VERIFY = flag('verify');
 
 const REPO_RAW = process.env.REGISTRY_URI_BASE ?? 'https://raw.githubusercontent.com/edison9733/agentic_commerce/main';
 const RPC_URL = process.env.RPC_URL ?? DEVNET.rpcUrl;
@@ -108,6 +113,45 @@ function registrationFile(id: string, title: string, wallet: string, tesseraAcco
 
 log.step('Solana Agent Registry (devnet)');
 log.info(`registry program ${state.registryProgram}`);
+
+if (VERIFY) {
+  // What a reader should do before believing a mirrored review: find the
+  // Tessera review account it names, and check the two records agree.
+  const reader = new SolanaSDK({ cluster: 'devnet', rpcUrl: RPC_URL });
+  const reviews = new Map((await fetchAllReviews(deployer.rpc as never)).map((r) => [r.address as string, r.data]));
+  let good = 0;
+  let bad = 0;
+  for (const [id, e] of Object.entries(state.agents)) {
+    const inRegistry = (await attempt('readAllFeedback', () => reader.readAllFeedback(new PublicKey(e.asset)))) as unknown as {
+      client: { toString(): string };
+      score: number | null;
+      feedbackUri?: string;
+      tag1?: string;
+    }[];
+    for (const [reviewAddress, f] of Object.entries(state.feedback).filter(([, f]) => f.agent === id)) {
+      const entry = inRegistry.find((x) => x.feedbackUri?.includes(reviewAddress));
+      const review = reviews.get(reviewAddress);
+      const account = await fetchEncodedAccount(deployer.rpc, reviewAddress as Address);
+      const problems = [
+        !entry && 'not found in the registry',
+        entry && String(entry.client) !== f.client && 'registry entry was signed by another wallet',
+        entry && entry.score !== f.rating * 20 && 'registry score differs',
+        !review && 'no Tessera review account at that address',
+        account.exists && account.programAddress !== TESSERA_PROGRAM_ADDRESS && 'account is not owned by the Tessera program',
+        review && review.reviewer !== f.client && 'Tessera reviewer differs',
+        review && review.subject !== e.wallet && 'Tessera review is about another wallet',
+        review && review.rating !== f.rating && 'Tessera rating differs',
+        review && review.weight === 0n && 'the reviewed order did not settle in the merchant\'s favour',
+      ].filter(Boolean);
+      if (problems.length) {
+        bad += 1;
+        log.fail(`${id} ${reviewAddress}: ${problems.join('; ')}`);
+      } else good += 1;
+    }
+  }
+  log.info(`${good} mirrored review(s) match their Tessera review account; ${bad} do not`);
+  process.exit(bad ? 1 : 0);
+}
 
 for (const m of MERCHANTS) {
   const kp = web3Keypair(keyPath(m.id));
