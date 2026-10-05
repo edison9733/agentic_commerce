@@ -187,27 +187,59 @@ app.post('/api/orders/:order/fulfil', async (req, res) => {
 // ------------------------------------------------------------ demo faucet
 // Devnet only: a little SOL and test USDC so a visitor (or the site's
 // built-in test wallet) can try a purchase without hunting for a faucet.
+const DRIP_USDC = 800_000n;
 const dripped = new Set<string>();
+const dripping = new Set<string>();
 const drips: number[] = [];
+
+/**
+ * The faucet hands out test USDC, and visitors spend it at the merchants this
+ * server runs. So when the faucet runs low, the richest honest merchant's
+ * takings go back into it and the demo keeps itself going. Devnet only: on a
+ * real deployment a merchant's revenue is its own.
+ */
+async function refillFaucet(tok: ReturnType<typeof tokenHelpers>): Promise<void> {
+  if ((await tok.balance(ops.identity.address)) >= DRIP_USDC) return;
+  let best: { m: MerchantAgent; have: bigint } | undefined;
+  for (const m of merchants.values()) {
+    if (m.behaviour !== 'honest') continue;
+    const have = await tok.balance(m.wallet).catch(() => 0n);
+    if (!best || have > best.have) best = { m, have };
+  }
+  const spare = best ? best.have - 200_000n : 0n;
+  if (!best || spare < DRIP_USDC) {
+    throw new Error('the demo faucet is out of test USDC. Get some for Solana devnet at faucet.circle.com, or run npm run swarm so the agents trade again');
+  }
+  const amount = spare < 4_000_000n ? spare : 4_000_000n;
+  await send(best.m.signer, [await tok.transferIx(best.m.signer, await tok.ata(ops.identity.address), amount)]);
+  console.log(`[faucet] refilled with ${fromUnits(amount)} USDC from ${best.m.id}'s takings`);
+}
+
 app.post('/api/faucet', async (req, res) => {
+  let to: ReturnType<typeof address> | undefined;
   try {
-    const to = address(String(req.body?.wallet));
+    to = address(String(req.body?.wallet));
     const hour = Date.now() - 3_600_000;
     while (drips.length && drips[0]! < hour) drips.shift();
-    if (dripped.has(to)) return void res.status(429).json({ error: 'this wallet was already funded' });
+    if (dripped.has(to) || dripping.has(to)) return void res.status(429).json({ error: 'this wallet was already funded' });
     if (drips.length >= 20) return void res.status(429).json({ error: 'the demo faucet is resting; try again in an hour or use faucet.circle.com' });
+    dripping.add(to);
     const cfg = await getConfig(ops);
     const tok = tokenHelpers(ops, cfg.mint);
-    dripped.add(to);
-    drips.push(Date.now());
+    await refillFaucet(tok);
     const signature = await send(ops, [
       getTransferSolInstruction({ source: ops.identity, destination: to, amount: lamports(20_000_000n) }),
       await tok.ensureAtaIx(to),
-      await tok.transferIx(ops, await tok.ata(to), 800_000n),
+      await tok.transferIx(ops, await tok.ata(to), DRIP_USDC),
     ]);
-    res.json({ sol: '0.02', usdc: '0.80', signature });
+    // only a wallet that was actually funded is remembered, so a failed attempt can be retried
+    dripped.add(to);
+    drips.push(Date.now());
+    res.json({ sol: '0.02', usdc: fromUnits(DRIP_USDC), signature });
   } catch (e) {
     res.status(400).json({ error: (e as Error).message.slice(0, 200) });
+  } finally {
+    if (to) dripping.delete(to);
   }
 });
 
