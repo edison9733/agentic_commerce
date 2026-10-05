@@ -19,6 +19,18 @@ Evidence = 0.45 History + 0.30 Tenure + 0.25 Diversity
 Evidence says how much is known about a wallet. Rating and Behaviour say whether what is known is
 good. They multiply, so a long history cannot paper over bad reviews or a lost dispute.
 
+The four things a credit score for agents should look at, and where each one is:
+
+| Input | Where it is in the score | Why it is shaped that way |
+|---|---|---|
+| How much money moved | **History**: settled volume, weighted by the counterparty's tier, capped per counterparty | Volume alone is free to fake by trading with yourself |
+| How many transactions, over what period | **Tenure** and the tier gates count *active periods*: periods with at least one settled order | A raw count rewards splitting one order into a hundred. Fifty orders in one period count as one active period; one order in each of fifty periods counts as fifty |
+| How long the agent has existed | **Tenure**: age in periods, but never more than three times the active periods | An old wallet that never traded has shown nothing |
+| How it behaved | **Rating** (stars from counterparties, weighted by settled volume) and **Behaviour** (a penalty for each lost dispute or missed delivery, which only time removes) | Both multiply the rest, so no amount of history hides them |
+
+The order count and the total volume are still stored on every credit file and shown on the site. They
+are facts about a wallet, not inputs to its tier.
+
 ### History
 
 ```

@@ -10,16 +10,22 @@ credit score decides how long the money waits. Strangers wait. Agents with a rec
 | Program (devnet) | [`TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ`](https://explorer.solana.com/address/TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ?cluster=devnet) |
 | Config account | [`DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2`](https://explorer.solana.com/address/DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2?cluster=devnet) |
 | Settles in | devnet USDC (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`), 1% protocol fee |
+| Agent Registry | The four merchant agents are registered in the [Solana Agent Registry](https://solana.com/agent-registry) (ERC-8004) on devnet. See [docs/ERC-8004.md](docs/ERC-8004.md). |
 | Status | Devnet only. Unaudited. The traffic on devnet is this project's own agents. See [what is real](#what-is-real-and-what-is-not). |
 
 Built for the Colosseum Crypto World's Fair hackathon (Solana track), October 2026.
+
+**In a hurry?** Watch the pitch (`pitch/out/tessera-pitch.mp4`, under three minutes) and the technical
+demo (`pitch/out/tessera-demo.mp4`). The slides are in `pitch/out/` as PDFs. Everything the submission
+form asks for is in [docs/SUBMISSION.md](docs/SUBMISSION.md). To see it live, run `npm install` and
+`npm run web`: the site reads devnet directly and needs no keys.
 
 ---
 
 ## The problem
 
 An x402 payment is a signed token transfer. Once a facilitator settles it, it is final: there is no
-chargeback and nobody to call. Card networks answer "did I get what I paid for?" months later — Visa's
+chargeback and nobody to call. Card networks answer "did I get what I paid for?" months later. Visa's
 Compelling Evidence 3.0 settles a fraud dispute with purchase history that is 120 to 365 days old
 ([Checkout.com](https://www.checkout.com/blog/visa-compelling-evidence-3-0)). Agents do not have 120
 days, and on-chain a new wallet costs nothing, so a reputation that new wallets can mint is worth nothing.
@@ -49,6 +55,11 @@ what is known about the two parties. That function is a credit score.**
    [a2a-x402 extension](https://github.com/google-agentic-commerce/a2a-x402) and plain HTTP 402. Buyer
    agents check the escrow on-chain before paying, pay through a facilitator (so they need no SOL), check
    the delivery against the hash the merchant committed, and rate the merchant.
+5. **It sits between two things Solana already has.** x402 moves the money. The
+   [Solana Agent Registry](https://solana.com/agent-registry) (ERC-8004 on Solana) says who an agent is.
+   Tessera decides whether the money waits. The merchant agents are registered in that registry on
+   devnet, each registry identity points at its Tessera credit file, and Tessera reviews are mirrored
+   there as feedback that carries proof of payment. See [docs/ERC-8004.md](docs/ERC-8004.md).
 
 ## The score
 
@@ -73,6 +84,8 @@ number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 |---|---|---|
 | `npm run test:local` | **256 / 256** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
 | `npm run test:formula` | **16 / 16** | The guarantees stated in the docs and on the site, as tests. |
+| `npm run test:wallet` | **pass** | The website's checkout with a browser wallet, on devnet. A Wallet Standard wallet is injected into headless Chrome; the site lists it, connects, and the wallet signs each step: fund, pay into escrow, check the delivery hash, release, review. The order and the review are then read back from the chain. It is not a test of a particular wallet extension. |
+| `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry is read back from the registry and matched against the Tessera review account it points at. |
 
 Measured on devnet over a public RPC on 4 October 2026 (UTC); raw data in [`deployments/measurements.jsonl`](deployments/measurements.jsonl):
 
@@ -136,7 +149,12 @@ npm run setup:devnet         # config, keys, funding, profiles (idempotent)
 npm run agents               # merchant agents: A2A + x402 + crank + arbiter, on :4020
 npm run swarm                # buyer agents trade for 45 periods; three attacks join later
 npm run web                  # the site, on :5173
+npm run registry -- --mirror 3   # register merchants in the Solana Agent Registry, mirror 3 reviews each
 ```
+
+The agents server quotes two public x402 facilitators (x402.org and PayAI). Coinbase's CDP facilitator
+is the most used one and needs an API key: set `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` and it is
+tried first. That path loads and falls back cleanly, but it has not been run with a real key.
 
 One purchase by one agent:
 
@@ -157,8 +175,9 @@ apps/agents/          Merchant agents (A2A + x402), buyer agent, swarm, crank, a
 apps/web/             React + Motion site: live network, credit files, market, decks
 scripts/              Devnet bootstrap and the local-validator test suite
 pitch/                Video renderer; scripts are generated from the decks
-docs/                 Scoring, security model, architecture, A2A extension, submission pack
-deployments/          Public addresses and measured timings
+docs/                 Scoring, security model, architecture, A2A extension, ERC-8004 and the
+                      Agent Registry, submission pack
+deployments/          Public addresses, measured timings, Agent Registry assets and files
 ```
 
 ## What is real and what is not
@@ -183,8 +202,9 @@ Not real yet:
 - [x402](https://x402.org) and [A2A](https://a2a-protocol.org) carry the payment and the conversation,
   unchanged.
 - [ERC-8004, Trustless Agents](https://eips.ethereum.org/EIPS/eip-8004) proposes identity, reputation
-  and validation registries for agents. Tessera is not an implementation of it; the agent account, the
-  review accounts and the delivery hash play the corresponding roles on Solana.
+  and validation registries for agents, and says "payments are orthogonal to this protocol". The
+  [Solana Agent Registry](https://solana.com/agent-registry) is that standard on Solana. Tessera is the
+  payment side, and is bridged to the registry on devnet: [docs/ERC-8004.md](docs/ERC-8004.md).
 - [Visa Compelling Evidence 3.0](https://www.checkout.com/blog/visa-compelling-evidence-3-0): earlier
   undisputed purchases are evidence a later one is legitimate. The pair account is that evidence, kept
   by the program.
