@@ -9,6 +9,13 @@ The three decks are pages of the website, so they can show the live network and 
 | Weekly update (one minute) | `http://localhost:5173/#/deck/update` | `out/tessera-update.mp4` | `out/update-script.md` |
 
 Also in `out/`: every slide as a PNG (`pitch-slides/`, `demo-slides/`) and each deck as a PDF.
+
+Two PowerPoint decks in a looser, meme-heavy style, with speaker notes on every slide:
+
+| File | What it covers |
+|---|---|
+| `out/tessera-zk-sybil.pptx` | How zk proofs and nullifiers (Semaphore) would close the open sybil holes C2 and C12 in [SECURITY.md](../docs/SECURITY.md). A design, not built. |
+| `out/tessera-buyer-seller-guide.pptx` | Step by step from `git clone` to a live purchase on devnet, as the seller and as the buyer (browser and x402 agent), and where to watch each transaction. |
 In `assets/`: the logo (SVG and 1024 px PNG) and a cover image.
 
 ## Presenting
