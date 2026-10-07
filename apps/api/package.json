@@ -1,0 +1,27 @@
+{
+  "name": "@tessera/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The Tessera HTTP API: credit checks and unsigned escrow transactions for agent payments. The MCP server and the CLI call it.",
+  "exports": {
+    "./contract": "./src/contract.ts"
+  },
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@solana-program/compute-budget": "^0.19.0",
+    "@solana-program/token": "^0.17.0",
+    "@solana/kit": "^8.3.0",
+    "@tessera/sdk": "*",
+    "cors": "^2.8.5",
+    "express": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

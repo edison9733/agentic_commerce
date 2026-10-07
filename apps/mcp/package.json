@@ -1,0 +1,21 @@
+{
+  "name": "@tessera/mcp",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Tessera as MCP tools over Streamable HTTP. Every tool calls the Tessera HTTP API.",
+  "scripts": {
+    "start": "tsx src/server.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "@tessera/api": "*",
+    "express": "^5.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

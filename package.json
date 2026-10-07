@@ -21,13 +21,17 @@
     "swarm": "npm run swarm -w @tessera/agents",
     "web": "npm run dev -w @tessera/web",
     "build:web": "npm run build -w @tessera/web",
-    "typecheck": "tsc -p packages/sdk/tsconfig.json --noEmit && tsc -p apps/agents/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "typecheck": "tsc -p packages/sdk/tsconfig.json --noEmit && tsc -p apps/agents/tsconfig.json --noEmit && tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/mcp/tsconfig.json --noEmit && tsc -p apps/cli/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
     "snapshot": "tsx scripts/snapshot.ts",
     "buy": "npm run buy -w @tessera/agents --",
     "video": "node pitch/render.mjs",
     "registry": "tsx scripts/registry.ts",
     "test:wallet": "tsx scripts/e2e-wallet.ts",
-    "test:agents": "tsx scripts/smoke-agents.ts"
+    "test:agents": "tsx scripts/smoke-agents.ts",
+    "api": "npm run start -w @tessera/api",
+    "mcp": "npm run start -w @tessera/mcp",
+    "tessera": "tsx apps/cli/src/cli.ts",
+    "test:doors": "tsx scripts/test-doors.ts"
   },
   "devDependencies": {
     "@solana-program/compute-budget": "^0.19.0",

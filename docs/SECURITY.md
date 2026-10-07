@@ -120,6 +120,8 @@ already co-sign new orders, which the old program accepts as well.
 | D6 | A watcher collects a delivery from the website's endpoint that another wallet paid for. The real buyer gets nothing and then loses the dispute, because the delivery matched its hash. | ✅ | Only the requester of the quote holds its claim, and the endpoint requires it. |
 | D7 | Someone pays over plain HTTP 402 for an order quoted to another wallet. | ✅ | The signer of the x402 payment must be the order's buyer. |
 | D8 | The arbiter's evidence is lost in a restart, so every later dispute goes to the buyer. | ✅ | Each delivery is written to `.data/deliveries.jsonl` before its hash goes on-chain and is read back on start. With no record the arbiter splits evenly. |
+| D10 | A compromised or lying Tessera API hands an agent a transaction that pays someone else. | 🟡 | The API is non-custodial: it holds no keys and cannot move money by itself, but an agent signs what it is given. The CLI refuses anything but the Tessera, SPL Token, associated-token and compute-budget programs, and any token transfer except into the escrow vault it derives itself (tested against a fake API in `npm run test:doors`). SKILL.md tells agents to check `signers`, `transfers` and `simulation`. Other clients must do the same. |
+| D11 | Flooding the API with requests that simulate transactions. | 🟡 | Per-client limits per minute: 120 reads, 30 builds, 20 submits. Set `TRUST_PROXY` behind a proxy. |
 | D9 | Draining the demo faucet with invented wallets. | 🟡 | Once per wallet, 3 per client per hour, 20 per hour in total. Devnet only; a real deployment has no faucet. |
 
 ## What "sybil-resistant" means here, and what it does not
