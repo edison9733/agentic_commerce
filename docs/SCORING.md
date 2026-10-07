@@ -37,7 +37,9 @@ are facts about a wallet, not inputs to its tier.
 History = min(1, √(credit ÷ credit_full))
 ```
 
-`credit` grows when an order is **released**. Each side earns
+`credit` grows when an order is **released**: the buyer's at once, the merchant's when the buyer
+reviews that order. A merchant opens and funds the escrow, so it could name any wallet as its buyer
+and pay itself; only the buyer's own signature shows the buyer took part. Each side earns
 
 ```
 min( volume × w ,  pair_cap × w  −  credit already earned from this counterparty )
@@ -50,8 +52,9 @@ where `w` is the tier weight of the *other* party when the order was opened:
 | Weight `w` | 10% | 40% | 80% | 100% |
 
 So trading with wallets nobody knows proves little, one counterparty can never grant more than the pair
-cap, and a refund or a disputed order earns nothing. The square root means the first dollars of proven
-volume matter most.
+cap, a refund or a disputed order earns nothing, and a buyer who never spoke for an order lends the
+merchant nothing. The square root means the first dollars of proven volume matter most. Diversity
+points and the merchant's active period follow the same rule.
 
 ### Tenure
 
@@ -80,8 +83,10 @@ Rating = clamp((stars − 1.5) ÷ 3, 0, 1)
 ```
 
 A review's weight `wᵢ` is the volume that settled on the reviewed order, times the reviewer's tier
-weight, capped per pair. A review of a refunded order weighs 0. With no reviews a wallet sits at 3
-stars, which is a Rating of 0.5; it takes 4.5 stars for a Rating of 1.
+weight, capped per pair. A review of a refunded order weighs 0. A merchant's review of a released
+order weighs 0 until the buyer has reviewed it too, and the side that lost a dispute gets no weight
+on it (it already had its say before the arbiter). With no reviews a wallet sits at 3 stars, which
+is a Rating of 0.5; it takes 4.5 stars for a Rating of 1.
 
 ### Behaviour
 
@@ -160,6 +165,8 @@ ones marked on-chain are also sent to the real program in [`scripts/test-local.t
 8. A refund or a lost dispute earns no credit; a review of a refund weighs nothing. *(on-chain)*
 9. Three wallets trading only with each other for a year never reach Trusted.
 10. Instant settlement can net an exit scam at most the base allowance. *(on-chain)*
+11. A merchant cannot borrow the tier of a buyer who never took part, or review-bomb it. *(on-chain)*
+12. The side that lost a dispute cannot answer with a weighted review. *(on-chain)*
 
 ## What faking it costs
 

@@ -24,6 +24,12 @@ export const config = {
   webOrigins: list(process.env.WEB_ORIGINS, ['http://localhost:5173', 'http://127.0.0.1:5173']),
   /** Each open order costs rent until it settles, so cap what one wallet can leave unpaid. */
   maxUnpaidPerBuyer: Number(process.env.MAX_UNPAID_PER_BUYER ?? 3),
+  /** ...and what all of a merchant's open quotes together may cost. */
+  maxOpenQuotes: Number(process.env.MAX_OPEN_QUOTES ?? 40),
+  /** Requests one client may make per minute that open an order on-chain. */
+  quotesPerMinute: Number(process.env.QUOTES_PER_MINUTE ?? 20),
+  /** Set when the server sits behind a proxy or tunnel, so limits see the real client (express `trust proxy`). */
+  trustProxy: process.env.TRUST_PROXY ?? '',
   crankEveryMs: Number(process.env.CRANK_MS ?? 4000),
 };
 

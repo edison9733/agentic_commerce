@@ -229,7 +229,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   {
     id: 'score',
     seconds: 19,
-    say: 'The score is integer arithmetic over those accounts, written once in Rust and once in TypeScript. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and fifty-six checks, attacks included.',
+    say: 'The score is integer arithmetic over those accounts, written once in Rust and once in TypeScript. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and ninety-four checks, attacks included.',
     render: () => (
       <Frame pad={84}>
         <Kicker>One formula, three places: program, SDK, browser</Kicker>
@@ -249,11 +249,11 @@ let evidence = (450 * history + 300 * tenure
           </Rise>
           <div style={{ display: 'grid', gap: 26 }}>
             <Rise delay={0.7}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>256<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 256</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>294<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 294</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>checks against the real program, each account compared with a reference model</div>
             </Rise>
             <Rise delay={1.0}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>16<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 16</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>18<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 18</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>formula tests: every guarantee we state is one</div>
             </Rise>
           </div>

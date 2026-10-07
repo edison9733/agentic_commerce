@@ -5,7 +5,7 @@
  * paid. A merchant only ever asks the program to look at the vault
  * (`confirm_funded`), and the program decides.
  */
-import { isSolanaError, type Address, type Instruction } from '@solana/kit';
+import { isSolanaError, type Address, type Instruction, type TransactionSigner } from '@solana/kit';
 import { fetchMaybeToken } from '@solana-program/token';
 import {
   agentPdaOf,
@@ -128,17 +128,18 @@ export type OpenedOrder = { id: Uint8Array; order: Address; vault: Address; data
 /**
  * Open an escrow for `buyer`. `payer` fronts the rent, so a buyer holding
  * only USDC can still buy; missing credit files are created in the same
- * transaction.
+ * transaction. The merchant co-signs: the program refuses an order in a
+ * merchant's name that the merchant did not agree to.
  */
 export async function openOrder(
   payer: Actor,
-  p: { buyer: Address; merchant: Address; amount: bigint; requestHash: Uint8Array; minHoldSecs?: number },
+  p: { buyer: Address; merchant: TransactionSigner; amount: bigint; requestHash: Uint8Array; minHoldSecs?: number },
 ): Promise<OpenedOrder> {
   const config = await getConfig(payer);
   const id = newOrderId();
   const { order, vault } = await orderAddresses(id, config.mint);
   const ixs: Instruction[] = [];
-  for (const wallet of [p.buyer, p.merchant]) {
+  for (const wallet of [p.buyer, p.merchant.address]) {
     if (hasProfile.has(wallet)) continue;
     if (await readAgent(payer, wallet)) hasProfile.add(wallet);
     else ixs.push(await getEnsureAgentInstructionAsync({ wallet, payer: payer.identity }));
@@ -193,6 +194,18 @@ async function settleInput(actor: Actor, order: Address, o: Order) {
 }
 
 /**
+ * Settling pays into the buyer's, the merchant's and the treasury's token
+ * accounts, so each has to exist. A party could close its own to stall a
+ * release or a refund; recreating it first costs the sender a little rent and
+ * takes that lever away.
+ */
+async function payeeAccounts(actor: Actor, o: Order): Promise<Instruction[]> {
+  const config = await getConfig(actor);
+  const tok = tokenHelpers(actor, o.mint);
+  return Promise.all([o.buyer, o.merchant, config.treasury].map((owner) => tok.ensureAtaIx(owner)));
+}
+
+/**
  * Assert delivery. If the tiers call for no hold and the merchant is inside
  * its instant limit, take the money in the same transaction.
  */
@@ -207,6 +220,7 @@ export async function deliver(
   if (o.holdSecs === 0) {
     const [me, config] = await Promise.all([readAgent(merchant, merchant.identity.address), getConfig(merchant)]);
     if (me && me.instantExposure + o.amount <= score.instantLimit(me, config.params)) {
+      ixs.unshift(...(await payeeAccounts(merchant, o)));
       ixs.push(getReleaseInstruction(await settleInput(merchant, order, o)));
       instant = true;
     }
@@ -220,14 +234,14 @@ export async function deliver(
 
 /** Crank a release. Permissionless once the hold has elapsed; the buyer may do it earlier. */
 export async function release(actor: Actor, order: Address, o: Order): Promise<string> {
-  return send(actor, [getReleaseInstruction(await settleInput(actor, order, o))], async () => {
+  return send(actor, [...(await payeeAccounts(actor, o)), getReleaseInstruction(await settleInput(actor, order, o))], async () => {
     const now = await readOrder(actor, order);
     return now !== null && now.state === OrderState.Released;
   });
 }
 
 export async function refund(actor: Actor, order: Address, o: Order): Promise<string> {
-  return send(actor, [getRefundInstruction(await settleInput(actor, order, o))], async () => {
+  return send(actor, [...(await payeeAccounts(actor, o)), getRefundInstruction(await settleInput(actor, order, o))], async () => {
     const now = await readOrder(actor, order);
     return now !== null && now.state === OrderState.Refunded;
   });
@@ -253,7 +267,7 @@ export async function openDispute(buyer: Actor, order: Address, o: Order, disput
 export async function resolveDispute(arbiter: Actor, order: Address, o: Order, merchantBps: number): Promise<string> {
   return send(
     arbiter,
-    [getResolveDisputeInstruction({ ...(await settleInput(arbiter, order, o)), merchantBps })],
+    [...(await payeeAccounts(arbiter, o)), getResolveDisputeInstruction({ ...(await settleInput(arbiter, order, o)), merchantBps })],
     async () => (await readOrder(arbiter, order))?.state === OrderState.Resolved,
   );
 }

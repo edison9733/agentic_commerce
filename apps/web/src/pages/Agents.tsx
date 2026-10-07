@@ -285,7 +285,7 @@ export function AgentProfile({ wallet }: { wallet: string }) {
               {mine.got.length === 0 && <li className="mono py-6 text-[0.84rem]" style={{ color: '#878371' }}>No reviews yet. An unreviewed wallet is treated as 3 stars.</li>}
             </ul>
             <p className="mt-3 text-[0.78rem] leading-relaxed" style={{ color: '#878371' }}>
-              A review's weight is the volume that settled on that order, scaled by the reviewer's own tier and capped per pair. A review of a refunded order weighs nothing.
+              A review's weight is the volume that settled on that order, scaled by the reviewer's own tier and capped per pair. A review of a refunded order weighs nothing, a merchant's review counts once the buyer has reviewed the same order, and the side that lost a dispute gets no weight.
             </p>
           </div>
 

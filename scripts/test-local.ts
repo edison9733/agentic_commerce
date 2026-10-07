@@ -16,7 +16,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { lamports, type Address } from '@solana/kit';
+import { AccountRole, createNoopSigner, lamports, type Address, type TransactionSigner } from '@solana/kit';
 import { getCreateAccountInstruction } from '@solana-program/system';
 import {
   getInitializeMint2Instruction,
@@ -393,7 +393,7 @@ try {
     eq(`${name} profile`, [d.name, d.kind, d.wallet], [name, 2, c.identity.address]);
   }
 
-  const openIx = async (buyer: Address, merchant: Address, id: Uint8Array, amount: bigint, minHoldSecs = 0) =>
+  const openIx = async (buyer: Address, merchant: TransactionSigner, id: Uint8Array, amount: bigint, minHoldSecs = 0) =>
     getOpenOrderInstructionAsync({
       mint,
       buyer,
@@ -409,7 +409,7 @@ try {
     const id = newOrderId();
     const { order, vault } = await orderAddresses(id, mint);
     await server.sendTransaction([
-      await openIx(buyer.identity.address, merchant.identity.address, id, amount, minHoldSecs),
+      await openIx(buyer.identity.address, merchant.identity, id, amount, minHoldSecs),
     ]);
     const d = (await fetchOrder(rpc, order)).data;
     const m = model.openOrder(
@@ -557,11 +557,21 @@ try {
   // --------------------------------------------- 1. the hold is enforced
   log.step('1. Two unknown wallets: the money waits');
   await expectFail('buyer and merchant are the same wallet', 'ConstraintDuplicateMutableAccount', async () =>
-    server.sendTransaction([await openIx(b1.identity.address, b1.identity.address, newOrderId(), USDC)]),
+    server.sendTransaction([await openIx(b1.identity.address, b1.identity, newOrderId(), USDC)]),
   );
   await expectFail('order below the minimum', 'AmountTooSmall', async () =>
-    server.sendTransaction([await openIx(b1.identity.address, m1.identity.address, newOrderId(), 10n)]),
+    server.sendTransaction([await openIx(b1.identity.address, m1.identity, newOrderId(), 10n)]),
   );
+  // Without the merchant's signature anyone could open orders in its name,
+  // fund them and let them expire: each missed delivery costs it score.
+  await expectFail('a stranger opens an order in a merchant\'s name', 'AccountNotSigner', async () => {
+    const ix = await openIx(b1.identity.address, createNoopSigner(m1.identity.address), newOrderId(), USDC);
+    const unsigned = {
+      ...ix,
+      accounts: ix.accounts.map((a) => (a.address === m1.identity.address ? { address: a.address, role: AccountRole.READONLY } : a)),
+    };
+    return server.sendTransaction([unsigned]);
+  });
   const o1 = await open(b1, m1, USDC);
   eq('New buyer + New merchant get the longest hold', o1.m.holdSecs, PARAMS.holdSecs[0]);
 
@@ -598,7 +608,7 @@ try {
     stranger.sendTransaction([await releaseIx(o1, stranger)]),
   );
   eq('1% fee went to the treasury', o1.m.paidFee, USDC / 100n);
-  eq('a New counterparty counts for 10%', agentOf(m1).credit, USDC / 10n);
+  eq('released, but the merchant has no credit until the buyer speaks for the order', agentOf(m1).credit, 0n);
   await expectFail('releasing the same order twice', 'AccountNotInitialized', async () =>
     stranger.sendTransaction([await releaseIx(o1, stranger)]),
   );
@@ -606,6 +616,7 @@ try {
   // ------------------------------------------------------- 2. reviews
   log.step('2. Two-sided reviews, weighted by what settled');
   await review(o1, b1, 5, 'Fast and correct.');
+  eq('the buyer reviewed: a New counterparty counts for 10%', agentOf(m1).credit, USDC / 10n);
   await review(o1, m1, 4, 'Paid on time.');
   await expectFail('the same party reviews an order twice', 'already in use', () => review(o1, b1, 1, 'again'));
   await expectFail('a stranger reviews an order it was not part of', 'NotAParty', async () =>
@@ -700,6 +711,7 @@ try {
     arbiter.sendTransaction([await resolveIx(o5, arbiter, 3000)]),
   );
   eq('the merchant lost the dispute', agentOf(m1).asMerchant.disputesLost, 1);
+  eq('a merchant that lost a dispute gets no weighted say on it', await review(o5, m1, 1, 'Unfair.'), 0n);
 
   // Friendly fraud: the buyer got the goods and disputes anyway.
   const o6 = await open(b2, m1, USDC);
@@ -713,6 +725,19 @@ try {
     arbiter.sendTransaction([await resolveIx(o6, arbiter, 10_000)]),
   );
   eq('a false dispute costs the buyer score', [agentOf(b2).asBuyer.disputesLost, agentOf(b2).penaltyBps > scoreBefore], [1, true]);
+  eq('the buyer who lost cannot hit back with a weighted one-star review', await review(o6, b2, 1, 'Scam merchant.'), 0n);
+  eq('the merchant that won is heard', (await review(o6, m1, 1, 'Disputed a delivery that matched its hash.')) > 0n, true);
+
+  // An arbiter that never answers. Settled at the end of the run.
+  const stuck = await open(b2, m1, USDC / 4n);
+  await pay(stuck);
+  await confirm(stuck);
+  await deliver(stuck);
+  await b2.sendTransaction([await disputeIx(stuck, b2)]);
+  model.dispute(agentOf(b2), agentOf(m1), pairOf(b2, m1));
+  await expectFail('a stranger settles a dispute while the arbiter still has time', 'Unauthorized', async () =>
+    stranger.sendTransaction([await resolveIx(stuck, stranger, 5000)]),
+  );
 
   const o7 = await open(b1, m1, USDC / 4n);
   await pay(o7);
@@ -881,6 +906,7 @@ try {
     await settleAndCheck(`wash trade ${i + 1}`, o, { kind: 'release' }, async () =>
       sock.sendTransaction([await releaseIx(o, sock)]),
     );
+    await review(o, sock, 5, 'Great seller.');
   }
   eq(
     '$15 of wash trades through one sock puppet can never earn more than the $1 pair cap',
@@ -890,8 +916,25 @@ try {
   log.info(`ring merchant: credit ${agentOf(ring).credit} from 15000000 of volume, fees burned ${agentOf(ring).feesPaid}`);
   eq('and burned 1% in fees', agentOf(ring).feesPaid, 150_000n);
 
+  // ------------------------------- 12. orders a buyer never agreed to
+  log.step('12. A merchant names a Trusted buyer who never agreed, and pays itself');
+  await server.sendTransaction([
+    getMintToInstruction({ mint, token: await tok.ata(ring.identity.address), mintAuthority: server.identity, amount: 10n * USDC }),
+  ]);
+  const ringCredit = agentOf(ring).credit;
+  const forged = await open(b3, ring, USDC);
+  await ring.sendTransaction([await tok.transferIx(ring, forged.vault, USDC)]);
+  await confirm(forged);
+  await deliver(forged);
+  await waitHold(forged);
+  await settleAndCheck('order the buyer never placed', forged, { kind: 'release' }, async () =>
+    stranger.sendTransaction([await releaseIx(forged, stranger)]),
+  );
+  eq('the merchant borrows nothing from a Trusted buyer who never spoke for the order', agentOf(ring).credit, ringCredit);
+  eq('and its one-star review of that buyer weighs nothing', await review(forged, ring, 1, 'Terrible buyer.'), 0n);
+
   // ------------------------------------------------ 12. windows close
-  log.step('12. Windows close, rent comes back');
+  log.step('13. Windows close, rent comes back');
   await expectFail('closing an order before its review window ends', 'TooEarly', async () =>
     stranger.sendTransaction([await closeIx(again)]),
   );
@@ -932,6 +975,18 @@ try {
   model.closeOrder(scam.m, agentOf(m2));
   await checkAgent('complaint period over', m2);
   eq('the lock ends with the complaint period', agentOf(m2).instantExposure, 0n);
+
+  // -------------------------------- 14. a silent arbiter
+  log.step('14. An arbiter that never answers cannot lock the money forever');
+  await waitForChainTime(server, stuck.m.releaseAt + BigInt(PARAMS.complaintSecs) + 1n);
+  await expectFail('after the complaint period anyone may only split it evenly', 'InvalidParams', async () =>
+    stranger.sendTransaction([await resolveIx(stuck, stranger, 10_000)]),
+  );
+  const lostBefore = [agentOf(b2).asBuyer.disputesLost, agentOf(m1).asMerchant.disputesLost];
+  await settleAndCheck('dispute the arbiter never answered', stuck, { kind: 'resolve', merchantBps: 5000 }, async () =>
+    stranger.sendTransaction([await resolveIx(stuck, stranger, 5000)]),
+  );
+  eq('an even split penalises nobody', [agentOf(b2).asBuyer.disputesLost, agentOf(m1).asMerchant.disputesLost], lostBefore);
 
   const cfg = (await fetchConfig(rpc, config)).data;
   log.info(`program counters: ${cfg.ordersOpened} opened, ${cfg.ordersSettled} settled, volume ${cfg.volumeSettled}, fees ${cfg.feesCollected}`);

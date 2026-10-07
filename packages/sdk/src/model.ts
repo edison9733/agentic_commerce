@@ -71,6 +71,9 @@ export type ModelOrder = {
   seasoned: boolean;
   complained: boolean;
   releaseAt: bigint;
+  /** How it settled, once it has. */
+  outcome: Outcome['kind'] | null;
+  buyerReviewed: boolean;
   paidMerchant: bigint;
   paidFee: bigint;
   refunded: bigint;
@@ -184,6 +187,8 @@ export function openOrder(
     seasoned: false,
     complained: false,
     releaseAt: 0n,
+    outcome: null,
+    buyerReviewed: false,
     paidMerchant: 0n,
     paidFee: 0n,
     refunded: 0n,
@@ -231,6 +236,7 @@ export function settle(
   order.paidMerchant = gross - fee;
   order.paidFee = fee;
   order.refunded = order.amount - gross + excess;
+  order.outcome = outcome.kind;
 
   const m = merchant;
   const b = buyer;
@@ -245,14 +251,8 @@ export function settle(
     }
     m.feesPaid += fee;
 
-    const pctForMerchant = TIER_WEIGHT[order.buyerTier]!;
+    // The merchant's evidence waits for the buyer's review (see `review`).
     const pctForBuyer = TIER_WEIGHT[order.merchantTier]!;
-    {
-      const room = satSub(weighted(p.pairCap, pctForMerchant), pair.creditToMerchant);
-      const earned = minB(weighted(gross, pctForMerchant), room);
-      m.credit += earned;
-      pair.creditToMerchant += earned;
-    }
     {
       const room = satSub(weighted(p.pairCap, pctForBuyer), pair.creditToBuyer);
       const earned = minB(weighted(gross, pctForBuyer), room);
@@ -270,11 +270,6 @@ export function settle(
     pair.lastSettledAt = now;
 
     if (pair.volume >= p.pairCap / 10n) {
-      const pm = Number(pctForMerchant);
-      if (pm > pair.pointsToMerchant) {
-        m.counterpartyPoints += pm - pair.pointsToMerchant;
-        pair.pointsToMerchant = pm;
-      }
       const pb = Number(pctForBuyer);
       if (pb > pair.pointsToBuyer) {
         b.counterpartyPoints += pb - pair.pointsToBuyer;
@@ -282,7 +277,6 @@ export function settle(
       }
     }
 
-    touchActivity(m, p, now);
     touchActivity(b, p, now);
   } else if (outcome.kind === 'refund') {
     m.asMerchant.refunds += 1;
@@ -338,16 +332,48 @@ export function review(
   }
   subject.instantExposure = satSub(subject.instantExposure, freed);
   const settled = order.paidMerchant + order.paidFee;
+  // A merchant's review counts once the buyer has spoken for the order; the
+  // side that lost a dispute gets no weighted say.
+  const counts =
+    order.outcome === 'release'
+      ? reviewerIsBuyer || order.buyerReviewed
+      : order.outcome === 'resolve'
+        ? reviewerIsBuyer
+          ? settled * 2n <= order.amount
+          : settled * 2n >= order.amount
+        : true;
+  if (reviewerIsBuyer) order.buyerReviewed = true;
   const q = TIER_WEIGHT[evaluate(reviewer, p, now).tier]!;
   const spent = reviewerIsBuyer ? pair.ratedByBuyer : pair.ratedByMerchant;
-  const weight = minB(weighted(settled, q), satSub(weighted(p.pairCap, q), spent));
+  const weight = counts ? minB(weighted(settled, q), satSub(weighted(p.pairCap, q), spent)) : 0n;
   if (reviewerIsBuyer) pair.ratedByBuyer += weight;
   else pair.ratedByMerchant += weight;
   subject.ratingSum += weight * BigInt(rating);
   subject.ratingWeight += weight;
   subject.reviewsReceived += 1;
+  if (reviewerIsBuyer && order.outcome === 'release') grantMerchantEvidence(order, subject, pair, p, settled, now);
   refresh(subject, p, now);
   return weight;
+}
+
+/**
+ * What a released order earns the merchant, granted at the buyer's review:
+ * money moves without the buyer, reputation does not.
+ */
+function grantMerchantEvidence(order: ModelOrder, m: ModelAgent, pair: ModelPair, p: Params, gross: bigint, now: bigint): void {
+  const pct = TIER_WEIGHT[order.buyerTier]!;
+  const room = satSub(weighted(p.pairCap, pct), pair.creditToMerchant);
+  const earned = minB(weighted(gross, pct), room);
+  m.credit += earned;
+  pair.creditToMerchant += earned;
+  if (pair.volume >= p.pairCap / 10n) {
+    const pm = Number(pct);
+    if (pm > pair.pointsToMerchant) {
+      m.counterpartyPoints += pm - pair.pointsToMerchant;
+      pair.pointsToMerchant = pm;
+    }
+  }
+  touchActivity(m, p, now);
 }
 
 /** `close_order`: an instant order nobody objected to stops counting. */

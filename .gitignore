@@ -27,3 +27,6 @@ dist/
 # Rendered media is rebuilt from source (see pitch/README.md)
 pitch/out/*.webm
 pitch/out/frames/
+
+# The merchant server's delivery records (the arbiter's evidence)
+.data/

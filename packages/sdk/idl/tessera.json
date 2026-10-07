@@ -855,10 +855,12 @@
     {
       "name": "open_order",
       "docs": [
-        "Open an escrow and price its risk. The buyer does not sign: a merchant",
-        "agent opens the order when it quotes a 402, so the buyer needs no SOL.",
-        "A buyer's client must read this account back and check every field",
-        "before paying.",
+        "Open an escrow and price its risk. The merchant signs: an order in its",
+        "name that it never quoted could otherwise be funded and left to expire,",
+        "and the missed delivery would cost it score. The buyer does not sign:",
+        "a merchant agent opens the order when it quotes a 402, so the buyer",
+        "needs no SOL. A buyer's client must read this account back and check",
+        "every field before paying.",
         "",
         "`min_hold_secs` lets a buyer ask for more protection than the tiers",
         "call for. It can lengthen the hold, never shorten it."
@@ -1016,7 +1018,11 @@
           "name": "buyer"
         },
         {
-          "name": "merchant"
+          "name": "merchant",
+          "docs": [
+            "The merchant agrees to every order opened in its name."
+          ],
+          "signer": true
         },
         {
           "name": "buyer_agent",
@@ -1751,7 +1757,11 @@
       "name": "resolve_dispute",
       "docs": [
         "The arbiter recorded when the order was opened splits the vault.",
-        "Whoever gets less than half lost, and losing costs score."
+        "Whoever gets less than half lost, and losing costs score.",
+        "",
+        "An arbiter that never answers must not lock the money forever: once",
+        "the complaint period has passed since the hold would have ended,",
+        "anyone may split the vault evenly. An even split penalises nobody."
       ],
       "discriminator": [
         231,

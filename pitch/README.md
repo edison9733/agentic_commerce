@@ -16,7 +16,12 @@ Two PowerPoint decks in a looser, meme-heavy style, with speaker notes on every 
 |---|---|
 | `out/tessera-zk-sybil.pptx` | How zk proofs and nullifiers (Semaphore) would close the open sybil holes C2 and C12 in [SECURITY.md](../docs/SECURITY.md). A design, not built. |
 | `out/tessera-buyer-seller-guide.pptx` | Step by step from `git clone` to a live purchase on devnet, as the seller and as the buyer (browser and x402 agent), and where to watch each transaction. |
+
 In `assets/`: the logo (SVG and 1024 px PNG) and a cover image.
+
+The pitch gained a slide on 7 October (slide 9, `zk`: proof of personhood as the next step). Its PNG
+and the PDFs in `out/` include it, but the rendered videos and the generated scripts in `out/` predate
+it: render again on a Mac, or record your own voice from the deck as `docs/SUBMISSION.md` suggests.
 
 ## Presenting
 
@@ -53,7 +58,7 @@ scripts in `out/` are generated; editing them changes nothing.
 
 The pitch and the demo have to stay at or under three minutes for the Colosseum submission, and the
 weekly update under one. The renderer prints the total and warns if it is over. The narration is also
-kept short enough to read aloud at a normal pace: 418 words for the pitch, 395 for the demo.
+kept short enough to read aloud at a normal pace: 422 words for the pitch, 395 for the demo.
 
 After a render, look at the checkout slide of the demo video before using it. That slide performs a
 real purchase; if the agents server or the faucet was down, the video will show the failure.

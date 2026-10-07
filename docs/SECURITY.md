@@ -3,11 +3,38 @@
 What can go wrong, what stops it, and the test that proves it. Then what is still open.
 
 Tests: `npm run test:local` runs the real program on a local validator and sends each on-chain attack
-below as a real transaction that must be rejected (256 checks). `npm run test:formula` checks the
-economic claims (16 tests). "Model" means the claim is checked by simulation through the reference
+below as a real transaction that must be rejected (294 checks). `npm run test:formula` checks the
+economic claims (18 tests). "Model" means the claim is checked by simulation through the reference
 model, which the local suite proves equal to the program.
 
 Status: ✅ enforced and tested · 🟡 mitigated, residual risk stated · ⭕ open.
+
+## Audit of 7 October 2026
+
+A pass over every instruction, the merchant server, the buyer agent and the website checkout, looking
+for ways a buyer or a merchant could take money, take a delivery, or bend a score. What it found and
+what was done:
+
+| # | Finding | Severity | Fix | Test |
+|---|---|---|---|---|
+| B13 | Anyone could open an order in a merchant's name without its signature, fund it, and let it expire. Each missed delivery cost the merchant a 10% penalty and its Trusted tier, at almost no cost to the attacker. | Critical | `open_order` requires the merchant's signature. | local: "a stranger opens an order in a merchant's name" → `AccountNotSigner` |
+| C16 | A merchant could name any Trusted wallet as the buyer and fund the order itself. It earned credit and Diversity at that wallet's full tier weight for 1% in fees, without the wallet ever taking part. | High | A released order becomes evidence for the merchant only when the buyer reviews it. | local: step 12; formula |
+| C17 | The same forged orders let a merchant review-bomb any buyer with fully weighted one-star reviews. | High | A merchant's review of a released order weighs 0 until the buyer has reviewed it. | local: step 12; formula |
+| D6 | The website's delivery endpoint took only the order address, which is public. Someone watching the chain could collect a delivery another wallet paid for; the real buyer got nothing and would then lose the dispute, because the delivery matched its hash. | High | The quote hands its requester a secret claim; the endpoint requires it. | server |
+| D8 | The demo arbiter's evidence lived in memory. After a restart every dispute went to the buyer. | High | Deliveries are written to disk before the hash goes on-chain. With no record, the arbiter splits evenly and penalises nobody. | server |
+| D1 | The per-wallet quote cap was bypassed by inventing wallet addresses. Each quote fronts rent, so a script could drain the server's SOL. | Medium | A per-client rate limit on everything that opens an order or uses the faucet, and a cap on each merchant's open quotes. | server |
+| D7 | Over plain HTTP 402, anyone could pay for an order quoted to another wallet and receive what that wallet asked for. | Medium | The payment must be signed by the order's buyer. | server |
+| C18 | A buyer that lost a dispute could answer it with a fully weighted one-star review of the merchant. | Medium | The side that lost a dispute gets no weight on it. | local: step 5; formula |
+| B14 | A dispute the arbiter never resolved locked the money forever. | Medium | After the complaint period, anyone may split the vault evenly. Nobody is penalised. | local: step 14 |
+| B15 | A party could close its own token account to stall a release or a refund. | Low | Anyone can recreate it; the agents' settle transactions now always do. | — |
+
+**The deployed devnet program predates these fixes.** They are in the source and pass the local suite.
+To carry them to devnet the upgrade authority redeploys: stop `npm run agents` and `npm run swarm`,
+wait out one review window (10 minutes on devnet) so no order released under the old rules is still
+reviewable, then run `anchor build` and
+`solana program deploy target/deploy/tessera.so --program-id TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ --url devnet`.
+No account layout changed, so every existing account keeps working. The agents in this repository
+already co-sign new orders, which the old program accepts as well.
 
 ## Principles
 
@@ -35,6 +62,8 @@ Status: ✅ enforced and tested · 🟡 mitigated, residual risk stated · ⭕ o
 | A6 | Someone claims an order was paid when it was not. | ✅ | `confirm_funded` only reads the vault balance. | local: "confirming an order nobody paid" → `VaultUnderfunded` |
 | A7 | Overpayment is kept by the merchant. | ✅ | The merchant is owed at most the price; any excess returns to the buyer on every outcome. | local: "an overpayment comes back with the refund" |
 | A8 | Paying into an order that was already cancelled. | ✅ | The vault account is closed on cancel, so the transfer fails. | by construction |
+| A9 | Someone watching the chain calls the website's delivery endpoint for an order another wallet paid for (D6). | ✅ | The endpoint requires the claim handed to whoever requested the quote. | server |
+| A10 | Someone pays over HTTP 402 for an order quoted to another wallet, to receive what it asked for (D7). | ✅ | The x402 payment must be signed by the order's buyer. | server |
 
 ## B. Escrow logic
 
@@ -52,6 +81,9 @@ Status: ✅ enforced and tested · 🟡 mitigated, residual risk stated · ⭕ o
 | B10 | The same wallet is buyer and merchant, to review itself. | ✅ | Rejected (two mutable aliases of one credit file). | local |
 | B11 | Abandoned quotes lock the rent payer's SOL. | ✅ | Either party may cancel any time; the rent payer after the payment window. Settled orders close after the review window. | local |
 | B12 | Substituting a token account, mint, vault or credit file the attacker controls. | ✅ | Order, agents and pair by seeds; vault as the order's associated token account; payout accounts by owner and mint. | by construction |
+| B13 | A stranger opens orders in an honest merchant's name, funds them and lets them expire, so every missed delivery penalises the merchant. | ✅ | `open_order` requires the merchant's signature. | local: `AccountNotSigner` |
+| B14 | The arbiter never answers, and the money stays locked. | ✅ | Once the complaint period has passed since the hold would have ended, anyone may split the vault evenly. An even split penalises nobody. | local: before the deadline `Unauthorized`, any other split `InvalidParams` |
+| B15 | A party closes its own token account to stall a release or a refund. | 🟡 | Anyone may recreate an associated token account; the agents' settle transactions do so first. The program still requires the account. | — |
 
 ## C. Reputation, sybils and farming
 
@@ -65,23 +97,30 @@ Status: ✅ enforced and tested · 🟡 mitigated, residual risk stated · ⭕ o
 | C6 | **Friendly fraud**: the buyer got the goods and disputes anyway. | ✅ | The merchant committed a delivery hash on-chain before the dispute; the pair's history is on record for the arbiter. Losing costs the buyer 25%, removes Trusted, and ends pair trust for good. | local: "arbiter: buyer was wrong"; devnet |
 | C7 | **Fake praise** from wallets that bought nothing. | ✅ | Only a party to a settled order can review it, once; weight is the volume that settled. | local: `NotAParty`, `already in use` |
 | C8 | **Buy-and-refund** to mint reviews for free. | ✅ | A review of a refunded order weighs 0. | local; formula |
-| C9 | **Review bombing** a competitor with bots. | ✅ | Priced like fake praise: a 1-star counts only after a real, settled purchase, weighted by that volume and the reviewer's tier, capped per pair. | formula |
+| C9 | **Review bombing** a competitor with bots. | ✅ | Priced like fake praise: a 1-star counts only after a real, settled purchase, weighted by that volume and the reviewer's tier, capped per pair. A merchant's review counts only once the buyer has reviewed the same order (C17). | formula |
 | C10 | **One whale customer** makes a merchant look established. | ✅ | The pair cap again: $50,000 from one Trusted buyer earns exactly the $500 cap. | formula |
 | C11 | **Dust**: thousands of tiny orders to fake Diversity. | ✅ | A counterparty counts only once the pair has moved a tenth of the pair cap. | local (model equality) |
 | C12 | **Whitewashing**: abandon a penalised wallet for a fresh one. | 🟡 | A fresh wallet starts at 0 with the longest hold and no instant limit. Linking wallets to one operator needs attestations (open). | — |
 | C13 | **Retaliation and reciprocity** in two-sided reviews. | ⭕ | Reviews are public as they land. Commit–reveal would fix it; not built. | — |
 | C14 | **A lazy victim** never rates an instant order it was cheated on. | 🟡 | The amount frees after the review window. Buyer agents built with the SDK rate automatically when a delivery fails its hash check. | — |
 | C15 | A site or API shows a fake score. | ✅ | The score is recomputable from public accounts; the website does so in the browser and shows both numbers. | site |
+| C16 | **Borrowed reputation**: a merchant names a Trusted wallet as the buyer and funds the order itself. The buyer never signs `open_order`, and anyone can fund a vault. | ✅ | The buyer's credit is granted at release; the merchant's credit, Diversity and active period only when the buyer reviews the order. Money moves without the buyer; reputation does not. | local: step 12; formula |
+| C17 | **Review bombing through forged orders**: the same merchant rates that buyer one star. | ✅ | A merchant's review of a released order weighs 0 until the buyer has reviewed it. | local: step 12; formula |
+| C18 | **Retaliation by the loser of a dispute**: it rates the other side one star, with the full weight of the order. | ✅ | The side that received less than half of the price in a dispute gets no weight on its review. | local: step 5; formula |
 
 ## D. Agents and servers
 
 | # | Attack | Status | Defence |
 |---|---|---|---|
-| D1 | Rent-drain: flooding a merchant with quotes it pays rent for. | 🟡 | At most 3 unpaid orders per buyer wallet; the server cancels unpaid quotes after the payment window, including ones from before a restart, and the rent returns. Per-IP limits are not built. |
+| D1 | Rent-drain: flooding a merchant with quotes it pays rent for. | 🟡 | At most 3 unpaid orders per buyer wallet and 40 per merchant, and 20 order-opening requests per client per minute. The server cancels unpaid quotes after the payment window, including ones from before a restart, and the order rent returns. Residual: each invented buyer address still leaves a credit file and a pair account whose rent does not come back. Behind a tunnel or proxy set `TRUST_PROXY` so the limit sees real clients. |
 | D2 | Prompt injection through a service's output tells a buyer agent to pay someone. | 🟡 | The payment path is code, not prompt: it pays only an on-chain-verified escrow, for the advertised price, once. A budget per day and per merchant is not built. |
 | D3 | A stolen merchant-server key. | 🟡 | It fronts rent and cranks permissionless steps. It cannot move escrow or act as a party. |
 | D4 | A restart loses orders in flight. | ✅ | On start the server rebuilds its work list from the chain and refunds anything it was paid for but can no longer deliver. |
 | D5 | A lying RPC fakes the reads verification depends on. | ⭕ | Use a trusted RPC or cross-check two. |
+| D6 | A watcher collects a delivery from the website's endpoint that another wallet paid for. The real buyer gets nothing and then loses the dispute, because the delivery matched its hash. | ✅ | Only the requester of the quote holds its claim, and the endpoint requires it. |
+| D7 | Someone pays over plain HTTP 402 for an order quoted to another wallet. | ✅ | The signer of the x402 payment must be the order's buyer. |
+| D8 | The arbiter's evidence is lost in a restart, so every later dispute goes to the buyer. | ✅ | Each delivery is written to `.data/deliveries.jsonl` before its hash goes on-chain and is read back on start. With no record the arbiter splits evenly. |
+| D9 | Draining the demo faucet with invented wallets. | 🟡 | Once per wallet, 3 per client per hour, 20 per hour in total. Devnet only; a real deployment has no faucet. |
 
 ## What "sybil-resistant" means here, and what it does not
 
@@ -116,7 +155,17 @@ in [ERC-8004.md](ERC-8004.md).
 - The **upgrade authority** is one key. Whoever holds it can replace the program and drain every vault.
   It needs a multisig with a timelock, and after an audit, possibly no authority at all.
 - The **arbiter** is one key and, in the demo, a bot that checks a hash. It needs a real process:
-  a multisig or juror set, a response deadline, and a fallback if it goes silent.
+  a multisig or juror set and a response deadline. The fallback if it goes silent exists (B14), but
+  an even split is a blunt answer.
+- **Live parameters reach open orders.** The fee, arbiter and hold are snapshotted per order, but the
+  delivery, review and complaint windows, the instant base and the hold past the instant limit are
+  read from the config when used, so a config change can move them for orders already open.
+- **Order ids can be reused** once an order account is closed. Reviews are keyed by the order's
+  address, so a reused id cannot be reviewed again. Merchants pick random ids, so this only bites a
+  merchant that reuses its own.
+- **Unsolicited orders still touch a buyer's file.** A merchant can still open and fund an order in
+  any buyer's name. The buyer gains credit and an active period from it, and its order count rises,
+  but nobody gains anything from the buyer (C16, C17).
 - **No audit.** The test suite is thorough for a hackathon and is not a substitute.
 - **Commit–reveal reviews** (C13), **operator attestations** against whitewashing and large rings
   (C2, C12), and **agent spend budgets** (D2).

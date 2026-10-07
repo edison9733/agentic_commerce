@@ -502,8 +502,8 @@ function Proof() {
   const { config } = useChain();
   const { profiles } = useProfiles();
   const rows: [string, string][] = [
-    ['256 / 256', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
-    ['16 / 16', 'formula tests pass: every guarantee on this page is a test'],
+    ['294 / 294', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
+    ['18 / 18', 'formula tests pass: every guarantee on this page is a test'],
     ['0 SOL', 'spent by the buyer on a purchase paid through the x402 facilitator on devnet (balance identical before and after)'],
     [`${((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s`, `median time for the x402 facilitator to settle a payment into escrow on devnet (${snapshot.measured.viaFacilitator} payments measured)`],
   ];

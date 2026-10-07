@@ -149,7 +149,9 @@ function Checkout({ item, payer, onClose, onBalance }: { item: Item; payer: NonN
     let at = 0;
     try {
       const body = { merchant: item.merchant, sku: item.sku, input, buyer: payer.address, minHoldSecs: extraHold ? 60 : 0 };
-      const { terms: t } = await api<{ terms: Terms }>('/api/orders', body);
+      // The claim proves this browser asked for the quote: the order address is
+      // public, and only the claim collects the delivery.
+      const { terms: t, claim } = await api<{ terms: Terms; claim: string }>('/api/orders', body);
       setTerms(t);
       mark(0, { state: 'done', detail: <>order <a className="link mono" href={explorerAddress(t.order)} target="_blank" rel="noreferrer">{short(t.order, 6)}</a> · hold {duration(t.holdSecs)} (merchant {t.merchantTier}, you {t.buyerTier}{t.pairTrusted ? ', history on record' : ''})</> });
 
@@ -186,7 +188,7 @@ function Checkout({ item, payer, onClose, onBalance }: { item: Item; payer: NonN
 
       at = 3;
       mark(3, { state: 'doing' });
-      const f = await api<{ deliverable: unknown; deliveryHash: string; instant: boolean; releaseAt: number }>(`/api/orders/${t.order}/fulfil`, {});
+      const f = await api<{ deliverable: unknown; deliveryHash: string; instant: boolean; releaseAt: number }>(`/api/orders/${t.order}/fulfil`, { claim });
       const o = await reload(t.order);
       const matches = o !== null && bytesEqual(await hashJson(f.deliverable), o.deliveryHash);
       setDeliverable(f.deliverable);
