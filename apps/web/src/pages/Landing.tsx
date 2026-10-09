@@ -330,33 +330,25 @@ function Score() {
   return (
     <section className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
       <div className="wrap">
-        <div className="grid gap-10 lg:grid-cols-[1fr_1.35fr] lg:items-start">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
           <Reveal className="min-w-0">
             <div className="eyebrow" style={{ color: '#878371' }}>The score</div>
             <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
               How much is known, <em>times</em> whether it is good.
             </h2>
-            <pre className="mono mt-8 overflow-x-auto rounded-2xl p-5 text-[0.82rem] leading-[1.9]" style={{ background: '#14130f', color: '#e9e6d8' }}>
-{`score    = 1000 × Evidence × Rating × Behaviour
-
-Evidence = 0.45 History
-         + 0.30 Tenure
-         + 0.25 Diversity`}
-            </pre>
-            <p className="mt-6 text-[1.02rem] leading-relaxed" style={{ color: '#4b483e' }}>
-              Evidence says how much is known about a wallet. Rating and Behaviour say whether what is known is good. They multiply, so a long history cannot paper over bad reviews or a lost dispute.
+          </Reveal>
+          <Reveal delay={0.1} className="min-w-0">
+            <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
+              Every wallet gets a score from 0 to 1000. The higher it is, the sooner it gets paid. It counts how much the wallet has really sold, to how many real buyers, for how long, and how those buyers rated it. Faking any of that costs real money.
             </p>
-            <p className="mt-4 text-[1.02rem] leading-relaxed" style={{ color: '#4b483e' }}>
-              Every input is a field in a public account and every step is integer arithmetic. This page runs the same code the program does, so the number on the right is the number the chain would store.
-            </p>
-            <Link to="/formula" className="btn btn-ghost mt-7">
+            <Link to="/formula" className="btn btn-ghost mt-6">
               Read the whole formula
             </Link>
           </Reveal>
-          <Reveal delay={0.1} className="min-w-0">
-            <Playground />
-          </Reveal>
         </div>
+        <Reveal delay={0.15} className="mt-12 min-w-0">
+          <Playground />
+        </Reveal>
       </div>
     </section>
   );
