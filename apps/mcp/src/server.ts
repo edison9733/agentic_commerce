@@ -193,8 +193,14 @@ export function buildServer(): McpServer {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const host = process.env.HOST ?? '127.0.0.1';
   const port = Number(process.env.PORT ?? 4040);
-  // Bound to localhost by default, with DNS-rebinding protection on.
-  const app = createMcpExpressApp({ host, ...(process.env.ALLOWED_HOSTS ? { allowedHosts: process.env.ALLOWED_HOSTS.split(',') } : {}) });
+  // Bound to localhost by default, with DNS-rebinding protection on. Served to
+  // others, only the host names in ALLOWED_HOSTS are answered (no ports); on
+  // Railway the service's own domain and its health checker are added.
+  const allowedHosts = [
+    ...(process.env.ALLOWED_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean),
+    ...(process.env.RAILWAY_PUBLIC_DOMAIN ? [process.env.RAILWAY_PUBLIC_DOMAIN, 'healthcheck.railway.app'] : []),
+  ];
+  const app = createMcpExpressApp({ host, ...(allowedHosts.length ? { allowedHosts } : {}) });
 
   // Stateless: a fresh server and transport per request, so nothing is shared between callers.
   app.post('/mcp', async (req, res) => {

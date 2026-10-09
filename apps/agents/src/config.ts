@@ -6,7 +6,7 @@ const list = (v: string | undefined, fallback: string[]) =>
 export const config = {
   port: Number(process.env.PORT ?? 4020),
   /** Public base URL: what agent cards and x402 resources name. */
-  publicUrl: process.env.AGENT_HOST ?? 'http://localhost:4020',
+  publicUrl: process.env.AGENT_HOST ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:4020'),
   network: SOLANA_DEVNET,
   /**
    * x402 facilitators, in order of preference. The first is the x402

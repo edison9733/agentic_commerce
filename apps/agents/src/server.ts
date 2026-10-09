@@ -64,7 +64,8 @@ for (const e of loadEvidence()) {
 }
 
 const app = express();
-if (config.trustProxy) app.set('trust proxy', config.trustProxy);
+// A number is a hop count (1 behind one proxy, as on Railway); anything else, addresses or names.
+if (config.trustProxy) app.set('trust proxy', /^\d+$/.test(config.trustProxy) ? Number(config.trustProxy) : config.trustProxy);
 app.use(cors({ origin: config.webOrigins, exposedHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'] }));
 app.use(express.json({ limit: '64kb' }));
 
@@ -103,6 +104,11 @@ const merchantOf = (req: Request, res: Response): MerchantAgent | null => {
   if (!m) res.status(404).json({ error: 'unknown agent' });
   return m ?? null;
 };
+
+// For a host's health check: answers at once, with no network calls.
+app.get('/healthz', (_req, res) => {
+  res.json({ ok: true });
+});
 
 app.get('/health', async (_req, res) => {
   res.json({ ok: true, network: config.network, facilitators: (await facilitators()).map((f) => f.url) });

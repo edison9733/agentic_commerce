@@ -87,9 +87,11 @@ ${tools}
 
 const json = (v: unknown) => JSON.stringify(v, (_, x) => (typeof x === 'bigint' ? x.toString() : x));
 
-export function createApp(publicUrl = process.env.TESSERA_API_URL ?? 'http://localhost:4030') {
+export function createApp(publicUrl = process.env.TESSERA_API_URL ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:4030')) {
   const app = express();
-  if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);
+  // A number is a hop count (1 behind one proxy, as on Railway); anything else, addresses or names.
+  const tp = process.env.TRUST_PROXY;
+  if (tp) app.set('trust proxy', /^\d+$/.test(tp) ? Number(tp) : tp);
   app.disable('x-powered-by');
   // Nothing here uses cookies or sessions, so any origin may call it.
   app.use(cors());

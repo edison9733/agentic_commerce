@@ -1,5 +1,5 @@
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS } from '@tessera/sdk';
 import registry from '../../../../deployments/registry.json';
 import snapshot from '../../../../deployments/snapshot.json';
@@ -10,7 +10,7 @@ import { Nav } from '../components/Nav';
 import { Playground } from '../components/Playground';
 import { Counter, EASE, Logo, Reveal, TierBadge, Words } from '../components/ui';
 import { compactUsd, duration, explorerAddress, TIER_DARK, tierName } from '../lib/format';
-import { Link } from '../lib/router';
+import { Link, usePath } from '../lib/router';
 import { useChain, useProfiles } from '../lib/store';
 import { recordedAt, session } from '../lib/findDemo';
 
@@ -443,6 +443,12 @@ const result = score.evaluate(agent.data, config.data.params, now);
 
 function Developers() {
   const [tab, setTab] = useState('find');
+  const path = usePath();
+  const ref = useRef<HTMLElement>(null);
+  // #/developers opens the home page on this section.
+  useEffect(() => {
+    if (path === '/developers') ref.current?.scrollIntoView({ block: 'start' });
+  }, [path]);
   const snippet = SNIPPETS.find((x) => x.id === tab)!;
   const registered = Object.keys(registry.agents).length;
   const mirrored = Object.keys(registry.feedback).length;
@@ -452,7 +458,7 @@ function Developers() {
     ['Identity', 'Solana Agent Registry', `ERC-8004 on Solana. ${registered} merchants registered on devnet, ${mirrored} reviews mirrored with proof of payment.`, false],
   ];
   return (
-    <section className="night gridded py-24 md:py-32">
+    <section ref={ref} id="developers" className="night gridded py-24 md:py-32" style={{ scrollMarginTop: 68 }}>
       <div className="wrap">
         <Reveal>
           <div className="eyebrow" style={{ color: '#8b8a7c' }}>For developers</div>

@@ -189,6 +189,11 @@ npm run buy -w @tessera/agents -- --buyer scout --merchant atlas --mode x402
 The site reads the chain directly, so `npm run web` alone shows the live network. Only the Market page
 needs `npm run agents`.
 
+### Hosting the API and the agents
+
+[docs/RAILWAY.md](docs/RAILWAY.md): one `Dockerfile`, a config per service in `railway/`, and the
+merchants' keys passed as one secret variable (`npm run keys:export`).
+
 ### Putting the site on Vercel
 
 The site is static files (`npm run build -w @tessera/web` writes `apps/web/dist`). In Vercel, import the
