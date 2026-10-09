@@ -20,6 +20,9 @@ demo (`pitch/out/tessera-demo.mp4`). The slides are in `pitch/out/` as PDFs. Eve
 form asks for is in [docs/SUBMISSION.md](docs/SUBMISSION.md). To see it live, run `npm install` and
 `npm run web`: the site reads devnet directly and needs no keys.
 
+**Want to try it as a buyer and a merchant?** [docs/TRY-IT.md](docs/TRY-IT.md) walks through a whole
+trade with two wallets of your own, step by step, including a refund when a merchant never delivers.
+
 ---
 
 ## The problem
