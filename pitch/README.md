@@ -29,7 +29,7 @@ In `assets/`: the logo (SVG and 1024 px PNG) and a cover image.
 The pitch gained two slides after the videos were rendered: on 7 October slide 10, `zk` (proof of
 personhood as the next step), and on 9 October slide 8, `find` (reviews as search for agents: one call
 to `find_merchants`); on 9 October the demo gained slide 6, `find`, and its stack slide lists the
-four ways in for agents. Both find slides show a real recording: `npm run demo:find` runs twelve
+four ways in for agents. Also on 9 October, both decks gained a `rewards` slide (pitch slide 9, demo slide 7): the review-reward airdrop, from `npm run demo:rewards`, which records real purchases, reviews, a merchant that then fails and the payout to `deployments/rewards-demo.json`. Both find slides show a real recording: `npm run demo:find` runs twelve
 purchases between agents on a local validator with the real program, then asks `find_merchants`, and
 writes `deployments/find-demo.json`, which the slides and the site's developer section read. The slide PNGs and
 the PDFs in `out/` include these, but the rendered videos and the generated scripts in `out/` predate
@@ -45,8 +45,8 @@ slide performs a real purchase on devnet with the site's built-in test wallet, s
 be running.
 
 Those slides need devnet when they are captured, so two of the demo stills in `out/` come from
-elsewhere. `demo-slides/08.png` (checkout) is a frame of the devnet purchase recorded in
-`tessera-demo.mp4`. `demo-slides/09.png` (profile) is the real profile page, read from a local
+elsewhere. `demo-slides/09.png` (checkout) is a frame of the devnet purchase recorded in
+`tessera-demo.mp4`. `demo-slides/10.png` (profile) is the real profile page, read from a local
 validator holding the `npm run demo:find` merchants. When presented live, both slides read devnet.
 
 ## Rendering

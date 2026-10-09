@@ -45,7 +45,8 @@ Rule: before any paid tool call or x402 payment, call check_payment with the mer
 - decision "instant": the payment settles on delivery with no dispute window.
 - status "unknown_merchant" means nobody has settled an order with that wallet: treat it as a stranger.
 Transactions come back unsigned. Check "signers", "transfers" and "simulation" before your wallet signs; then send it yourself or with submit_transaction.
-After delivery, call report_outcome. If the merchant missed its deadline, call reclaim_after_timeout.`;
+After delivery, call report_outcome. If the merchant missed its deadline, call reclaim_after_timeout.
+Reviews are paid: a share of the fee, the same for 1 or 5 stars, more if the rating proves accurate and nothing for praising a wallet that then fails. Rate what you actually got.`;
 
 type Args = Record<string, unknown>;
 

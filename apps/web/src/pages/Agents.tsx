@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
-import { OrderState, score } from '@tessera/sdk';
+import { OrderState, rewards, score } from '@tessera/sdk';
 import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Addr, Breakdown, EASE, Reveal, ScoreGauge, Stars, StateChip, TierBadge } from '../components/ui';
@@ -152,7 +152,7 @@ function RoleStats({ title, s }: { title: string; s: Profile['agent']['asBuyer']
 }
 
 export function AgentProfile({ wallet }: { wallet: string }) {
-  const { reviews, pairs, orders } = useChain();
+  const { reviews, pairs, orders, config } = useChain();
   const { byWallet, params } = useProfiles();
   const p = byWallet.get(wallet);
   const name = (w: string) => byWallet.get(w)?.name ?? `${w.slice(0, 4)}…${w.slice(-4)}`;
@@ -275,7 +275,8 @@ export function AgentProfile({ wallet }: { wallet: string }) {
                     <Stars value={r.data.rating} />
                     <Link to={`/agents/${r.data.reviewer}`} className="link text-[0.9rem] font-medium">{name(r.data.reviewer)}</Link>
                     <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>
-                      {r.data.reviewerIsBuyer ? 'bought from them' : 'sold to them'} · weight {usd(r.data.weight, 4)} · {ago(Number(r.data.createdAt))}
+                      {r.data.reviewerIsBuyer ? 'bought from them' : 'sold to them'} · weight {usd(r.data.weight, 4)}
+                      {config && r.data.weight > 0n ? ` · earns ${usd(rewards.baseReward(r.data.weight, config.feeBps, rewards.DEVNET_REWARD_PARAMS), 4)} at 1×` : ''} · {ago(Number(r.data.createdAt))}
                     </span>
                   </div>
                   <div className="text-[0.95rem]" style={{ color: '#4b483e' }}>{r.data.text || <em style={{ color: '#878371' }}>no text</em>}</div>
@@ -285,7 +286,7 @@ export function AgentProfile({ wallet }: { wallet: string }) {
               {mine.got.length === 0 && <li className="mono py-6 text-[0.84rem]" style={{ color: '#878371' }}>No reviews yet. An unreviewed wallet is treated as 3 stars.</li>}
             </ul>
             <p className="mt-3 text-[0.78rem] leading-relaxed" style={{ color: '#878371' }}>
-              A review's weight is the volume that settled on that order, scaled by the reviewer's own tier and capped per pair. A review of a refunded order weighs nothing, a merchant's review counts once the buyer has reviewed the same order, and the side that lost a dispute gets no weight.
+              A review's weight is the volume that settled on that order, scaled by the reviewer's own tier and capped per pair. A review of a refunded order weighs nothing, a merchant's review counts once the buyer has reviewed the same order, and the side that lost a dispute gets no weight. Each review earns a share of the fee in the <Link to="/formula" className="link">review-reward airdrop</Link>: the same for any stars, then scaled by whether it proved right.
             </p>
           </div>
 

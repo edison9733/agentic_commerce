@@ -6,6 +6,7 @@ import { Graph } from '../components/Graph';
 import { Counter, EASE, Logo, TierBadge } from '../components/ui';
 import { compactUsd, duration, SERIES, TIER_DARK } from '../lib/format';
 import { ranked, recordedAt, reproduce } from '../lib/findDemo';
+import * as payout from '../lib/rewardsDemo';
 import { useChain, useProfiles } from '../lib/store';
 import registry from '../../../../deployments/registry.json';
 import snapshot from '../../../../deployments/snapshot.json';
@@ -146,6 +147,61 @@ function FindSlide() {
         </div>
       </div>
       <Source>Recorded {recordedAt}: twelve purchases between real agents on a local validator running the real program, then one call. Reproduce: {reproduce}</Source>
+    </Frame>
+  );
+}
+
+function RewardsSlide() {
+  const glib = payout.rows.filter((r) => r.subject === 'glib');
+  return (
+    <Frame pad={84}>
+      <Kicker>Reviews that pay</Kicker>
+      <Big size={78} max="22ch" color={white}>
+        Paid to review. <em>Paid more for being right.</em>
+      </Big>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 52, marginTop: 36, alignItems: 'start' }}>
+        <Rise delay={0.4}>
+          <div className="mono" style={{ fontSize: 19, color: '#c9c6b6', marginBottom: 12 }}>Three buyers reviewed Glib. Then Glib took an order and never delivered.</div>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {glib.map((r, k) => {
+              const good = r.label === 'early_warning';
+              return (
+                <Rise key={r.reviewer} delay={0.7 + k * 0.16}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 150px', alignItems: 'center', gap: 16, padding: '14px 22px', borderRadius: 16, border: `1px solid ${good ? mint : '#272b21'}`, background: good ? '#121a14' : '#10120e' }}>
+                    <div>
+                      <span className="display" style={{ fontSize: 32, color: white }}>{payout.cap(r.reviewer)}</span>
+                      <span style={{ fontSize: 24, color: '#e2b04a', marginLeft: 12 }}>{'★'.repeat(r.rating)}</span>
+                      <span style={{ fontSize: 24, color: '#3a3f33' }}>{'★'.repeat(5 - r.rating)}</span>
+                      <div className="mono" style={{ fontSize: 16, color: good ? mint : '#ec835a', marginTop: 2 }}>{payout.LABELS[r.label]!.x} · {payout.LABELS[r.label]!.short}</div>
+                    </div>
+                    <div className="display" style={{ textAlign: 'right', fontSize: 40, color: good ? mint : '#8b8a7c' }}>${r.reward}</div>
+                  </div>
+                </Rise>
+              );
+            })}
+          </div>
+          <Rise delay={1.3}>
+            <div className="mono" style={{ fontSize: 17, marginTop: 14, color: '#c9c6b6' }}>
+              Paid on chain: <span style={{ color: mint }}>{payout.fees.paidToReviewers} USDC of {payout.fees.collected} USDC in fees</span>, to {payout.rows.filter((r) => Number(r.reward) > 0).length} reviews
+            </div>
+          </Rise>
+        </Rise>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {[
+            ['Same pay for 1★ or 5★', 'A quarter of the fee rate on the money behind the review. Stars never change it.'],
+            ['Judged on what happened next', 'An honest warning is paid 1.5×. Praising a wallet that then failed is paid nothing.'],
+            ['Faking it loses money', 'At most 75% of an order’s fee comes back, so farming with your own wallets never pays.'],
+          ].map(([h, b], k) => (
+            <Rise key={h} delay={0.9 + k * 0.15}>
+              <div style={{ padding: '18px 24px', borderRadius: 18, border: '1px solid #272b21', background: '#10120e' }}>
+                <div className="display" style={{ fontSize: 32, color: white }}>{h}</div>
+                <div style={{ fontSize: 21, marginTop: 6, lineHeight: 1.35, color: '#c9c6b6' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+      </div>
+      <Source>Recorded {payout.recordedAt}: real purchases, reviews, a missed delivery and the airdrop payout, on a local validator running the real program. Reproduce: {payout.reproduce}</Source>
     </Frame>
   );
 }
@@ -431,8 +487,8 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'score',
-    seconds: 13,
-    say: 'The score is how much we know, times whether it is good. Settled volume, time, and real counterparties. Multiplied by ratings and behaviour. Every input is public, so anyone can recompute it.',
+    seconds: 12,
+    say: 'The score is how much we know, times whether it is good: settled volume, time and real counterparties, multiplied by ratings and behaviour. Every input is public.',
     surface: 'paper',
     render: () => (
       <Frame>
@@ -469,14 +525,20 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'find',
-    seconds: 10,
-    say: 'One call tells an agent who to buy from: ranked by reviews that each cost a real sale, with the price and the seconds to settle.',
+    seconds: 9,
+    say: 'One call tells an agent who to buy from: ranked by reviews that each cost a real sale, with price and seconds to settle.',
     render: () => <FindSlide />,
   },
   {
+    id: 'rewards',
+    seconds: 8,
+    say: 'And reviews are paid: the same for one star or five, more if they prove right, nothing for praising a scam.',
+    render: () => <RewardsSlide />,
+  },
+  {
     id: 'ring',
-    seconds: 15,
-    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns thousands in fees first. And an exit scam nets twenty-five dollars, at any size.',
+    seconds: 13,
+    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns thousands in fees first. An exit scam nets twenty-five dollars, at any size.',
     render: () => <RingSlide />,
   },
   {
@@ -487,26 +549,26 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'live',
-    seconds: 12,
-    say: 'This is live on devnet. Agents find each other, pay over x402, and earn their tier on-chain. The honest merchants reached Trusted. The wash-trading ring did not.',
+    seconds: 11,
+    say: 'This is live on devnet. Agents find each other, pay over x402, and earn their tier on-chain. Honest merchants reached Trusted; the wash-trading ring did not.',
     render: () => <LiveSlide />,
   },
   {
     id: 'cost',
-    seconds: 10,
-    say: 'It is also cheaper. Seven cents on a card costs thirty cents, disputable for four months. Here it costs a fraction of a cent.',
+    seconds: 9,
+    say: 'It is also cheaper. Seven cents on a card costs thirty cents, disputable for four months. Here, a fraction of a cent.',
     render: () => <EfficiencySlide />,
   },
   {
     id: 'layers',
-    seconds: 10,
-    say: 'Solana has x402 for payment and a registry for identity. Tessera is the layer between them, and every review we send that registry carries proof of payment.',
+    seconds: 9,
+    say: 'Solana has x402 for payment and a registry for identity. Tessera sits between them, and every review we send it carries proof of payment.',
     render: () => <LayerSlide />,
   },
   {
     id: 'market',
-    seconds: 13,
-    say: 'McKinsey estimates agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles. A seller adds one function. A buyer adds one check.',
+    seconds: 12,
+    say: 'McKinsey estimates agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles. Sellers add one function; buyers, one check.',
     surface: 'paper',
     render: () => (
       <Frame pad={88}>

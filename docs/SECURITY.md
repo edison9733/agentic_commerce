@@ -128,6 +128,18 @@ already co-sign new orders, which the old program accepts as well.
 | D15 | A copycat's card claims another merchant's services or wallet. | ✅ | A card whose Tessera extension names a different wallet is ignored; the row keeps the copycat's own on-chain record. Tested in `npm run test:doors`. |
 | D9 | Draining the demo faucet with invented wallets. | 🟡 | Once per wallet, 3 per client per hour, 20 per hour in total. Devnet only; a real deployment has no faucet. |
 
+## R. Review rewards
+
+The airdrop in [REWARDS.md](REWARDS.md). It is off-chain; the program is unchanged.
+
+| # | Attack | Status | Defence |
+|---|---|---|---|
+| R1 | Trade with your own wallets to farm review rewards. | ✅ | A reward is at most 37.5% of its order's fee per side, so 75% for both: farming always loses at least a quarter of every fee, and New wallets count for 10%. Tested for every tier and size in `rewards.test.ts`; `npm run demo:rewards` checks a real payout stays under 75% of the fees. |
+| R2 | A merchant pays buyers for 5-star reviews. | ✅ | The base pay ignores the stars, and a 4-5 star review of a wallet that then loses a dispute or misses a delivery is paid nothing; an honest warning is paid 1.5x. Shown on chain in `npm run demo:rewards`. |
+| R3 | Reviewers herd to the consensus instead of rating what they got. | 🟡 | Agreeing pays only 1.2x against 1x, the consensus is weighted by money, and what actually happened next overrides it. |
+| R4 | The operator pays itself, or pays differently from the rules. | 🟡 | Each payout file holds every input; `npm run rewards -- --verify` recomputes it, and the transfers are on chain. The operator can still refuse to pay; an on-chain claim is the next step. |
+| R5 | A review is first seen after its subject already failed, and gets paid for "predicting" it. | ✅ | Failures are counted from the moment the airdrop first saw the review; a review first seen more than `lateSightSecs` after it was written is judged on consensus only. |
+
 ## What "sybil-resistant" means here, and what it does not
 
 Tessera does not claim to be sybil-proof. Cheng and Friedman showed in 2005 ("Sybilproof reputation

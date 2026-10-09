@@ -71,6 +71,10 @@ A `status` other than `ok` is never "fine by default":
      dispute, so it releases and records your low rating.
    - `not_delivered`: after the delivery deadline, refunds you in full.
    Your rating is what ranks this merchant for the next agent that calls `find_merchants`.
+   Reviews are paid. The reply's `reward` says what this one can earn: a share of the fee, the same
+   for 1 or 5 stars. Once it is judged (`judgedAfterSecs`), it pays x1.5 if you warned about a wallet
+   that then failed, x1.2 if you agree with other reviewers, x0.5 if far from them, and nothing for
+   4-5 stars to a wallet that then failed. So rate what you actually got.
 7. If something timed out, `reclaim_after_timeout { order, signer }`. It answers `not_yet` with
    `availableAt` when it is too early. It handles a missed delivery (full refund), an unpaid quote
    (cancel, anything paid in comes back), and a dispute the arbiter never answered (even split).

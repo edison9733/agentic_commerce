@@ -201,7 +201,7 @@ export const TOOLS = {
     method: 'POST',
     path: '/v1/escrow/report',
     summary:
-      'Builds an unsigned transaction for what happened: satisfied (release and review), unsatisfied (dispute during the hold, else review), not_delivered (refund after the deadline).',
+      'Builds an unsigned transaction for what happened: satisfied (release and review), unsatisfied (dispute during the hold, else review), not_delivered (refund after the deadline). The reply says what the review can earn in the review-reward airdrop: the same whatever the stars, paid more if it proves accurate.',
   },
   submit_transaction: {
     phase: 'after',

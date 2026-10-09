@@ -8,6 +8,7 @@ import { Feed } from '../components/Feed';
 import { Graph } from '../components/Graph';
 import { Nav } from '../components/Nav';
 import { Playground } from '../components/Playground';
+import { ReviewRewards } from '../components/ReviewRewards';
 import { Counter, EASE, Logo, Reveal, TierBadge, Words } from '../components/ui';
 import { compactUsd, duration, explorerAddress, TIER_DARK, tierName } from '../lib/format';
 import { Link, usePath } from '../lib/router';
@@ -354,6 +355,31 @@ function Score() {
   );
 }
 
+function Rewards() {
+  return (
+    <section id="rewards" className="py-24 md:py-32">
+      <div className="wrap">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+          <Reveal className="min-w-0">
+            <div className="eyebrow" style={{ color: '#878371' }}>Reviews that pay</div>
+            <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
+              Paid to review. <em>Paid more for being right.</em>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1} className="min-w-0">
+            <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
+              A share of every fee goes back to the buyers and merchants who review. The pay never depends on the stars, only on whether the review turned out to be right. An airdrop pays it from the treasury, and anyone can recompute every payout from the chain.
+            </p>
+          </Reveal>
+        </div>
+        <Reveal delay={0.15} className="mt-12 min-w-0">
+          <ReviewRewards />
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 function Attacks() {
   return (
     <section className="night gridded py-24 md:py-32">
@@ -517,7 +543,7 @@ function Proof() {
   const { profiles } = useProfiles();
   const rows: [string, string][] = [
     ['294 / 294', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
-    ['18 / 18', 'formula tests pass: every guarantee on this page is a test'],
+    ['27 / 27', 'formula and reward tests pass: every guarantee on this page is a test'],
     ['79 / 79', 'checks pass across the four ways in for agents (HTTP API, MCP, skill, CLI), from finding a merchant to a refund'],
     ['0 SOL', 'spent by the buyer on a purchase paid through the x402 facilitator on devnet (balance identical before and after)'],
     [`${((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s`, `median time for the x402 facilitator to settle a payment into escrow on devnet (${snapshot.measured.viaFacilitator} payments measured)`],
@@ -619,6 +645,7 @@ export function Landing() {
       <Lanes />
       <Developers />
       <Score />
+      <Rewards />
       <Attacks />
       <Proof />
       <Close />

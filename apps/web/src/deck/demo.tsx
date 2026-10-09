@@ -6,6 +6,7 @@ import { EASE, Logo } from '../components/ui';
 import { loadBurner } from '../lib/burner';
 import { AGENTS_URL, readRpc } from '../lib/client';
 import { recordedAt, reproduce, session } from '../lib/findDemo';
+import * as payout from '../lib/rewardsDemo';
 import { useProfiles } from '../lib/store';
 import { Big, Body, Deck, Frame, Kicker, Rise, Source, type Slide } from './Deck';
 
@@ -167,10 +168,47 @@ function FindScene() {
   );
 }
 
+function RewardsScene() {
+  const stars = (n: number) => '★'.repeat(n) + '☆'.repeat(5 - n);
+  const lines: [string, string][] = [
+    ['$', 'npm run demo:rewards        # real purchases and reviews, real program, local validator'],
+    ...payout.story.map((x): [string, string] => ['o', `${x.buyer.padEnd(6)} bought from ${payout.cap(x.merchant).padEnd(6)} ${stars(x.rating)}  "${x.comment}"`]),
+    ['bad', 'glib   took an order from wren and never delivered: wren refunded in full'],
+    ['', ''],
+    ['$', 'npm run rewards -- --pay    # reviews matured: judged on what happened next, paid from the treasury'],
+    ...payout.rows
+      .filter((r) => r.reviewer !== 'quill')
+      .map((r): [string, string] => [r.label === 'early_warning' ? 'ok' : r.label === 'vouched_then_failed' || r.label === 'outlier' ? 'bad' : 'o', `${r.reviewer.padEnd(6)} → ${r.subject.padEnd(6)} ${stars(r.rating)}  ${payout.LABELS[r.label]!.x.padEnd(5)} ${payout.LABELS[r.label]!.short.padEnd(28)} ${`$${r.reward}`.padStart(7)}`]),
+    ['ok', `paid ${payout.fees.paidToReviewers} USDC of ${payout.fees.collected} USDC in fees · npm run rewards -- --verify: every payout recomputes`],
+  ];
+  return (
+    <Frame pad={72}>
+      <Kicker>Reviews that pay · the airdrop, recorded {payout.recordedAt}</Kicker>
+      <div style={{ marginTop: 22, borderRadius: 22, background: '#050605', border: '1px solid #272b21', padding: '22px 30px', flex: 1 }}>
+        {lines.map(([tag, line], k) => (
+          <motion.div
+            key={k}
+            className="mono"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 + k * 0.2 }}
+            style={{ fontSize: 17, lineHeight: 1.6, whiteSpace: 'pre', overflow: 'hidden', color: tag === '$' ? white : tag === 'ok' ? mint : tag === 'bad' ? '#ec835a' : '#c9c6b6' }}
+          >
+            {line || ' '}
+          </motion.div>
+        ))}
+      </div>
+      <div className="mono" style={{ fontSize: 14, color: '#5d5c52', marginTop: 12 }}>
+        Same pay for any stars; x1.5 for a warning that proved right; nothing for praising a wallet that then failed. Reproduce: {payout.reproduce}
+      </div>
+    </Frame>
+  );
+}
+
 export const DEMO: Slide[] = [
   {
     id: 'title',
-    seconds: 5,
+    seconds: 4,
     say: 'This is how Tessera works, in under three minutes.',
     render: () => (
       <Frame center>
@@ -182,7 +220,7 @@ export const DEMO: Slide[] = [
   },
   {
     id: 'accounts',
-    seconds: 19,
+    seconds: 18,
     say: 'One Anchor program, five kinds of account. Config holds the rules. Each wallet has an Agent account, its credit file. Each buyer and merchant pair has a Pair account. Each purchase is an Order, which owns the vault. Each rating is a Review, stored on-chain in full.',
     render: () => (
       <Frame pad={72}>
@@ -234,7 +272,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   },
   {
     id: 'network',
-    seconds: 21,
+    seconds: 19,
     surface: 'paper',
     say: 'This is the network, read from devnet in the browser. No indexer, no database. Squares are merchants, circles are buyers. A coin on a line is money in escrow. Bright nodes are Trusted. The small cluster on its own is a wash-trading ring.',
     render: () => (
@@ -246,7 +284,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   },
   {
     id: 'terminal',
-    seconds: 22,
+    seconds: 20,
     say: 'Here one agent buys from another. It reads the merchant’s A2A card, gets a 402, checks the escrow on-chain, and pays through the facilitator. The merchant delivers and commits a hash, and the buyer checks it. Two unknown wallets, so the money was held.',
     render: () => (
       <Frame pad={84}>
@@ -269,8 +307,14 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
     render: () => <FindScene />,
   },
   {
+    id: 'rewards',
+    seconds: 12,
+    say: 'Reviews are paid by an airdrop from the fees. Three buyers reviewed Glib, then Glib failed a delivery. The honest warning earned the most; the glowing reviews earned nothing.',
+    render: () => <RewardsScene />,
+  },
+  {
     id: 'score',
-    seconds: 19,
+    seconds: 18,
     say: 'The score is integer arithmetic over those accounts, written once in Rust and once in TypeScript. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and ninety-four checks, attacks included.',
     render: () => (
       <Frame pad={84}>
@@ -295,7 +339,7 @@ let evidence = (450 * history + 300 * tenure
               <div style={{ fontSize: 23, marginTop: 8 }}>checks against the real program, each account compared with a reference model</div>
             </Rise>
             <Rise delay={1.0}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>18<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 18</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>27<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 27</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>formula tests: every guarantee we state is one</div>
             </Rise>
           </div>
@@ -306,7 +350,7 @@ let evidence = (450 * history + 300 * tenure
   },
   {
     id: 'checkout',
-    seconds: 36,
+    seconds: 31,
     surface: 'paper',
     say: 'A person can buy from the same agents with a wallet. The merchant opens the escrow. The browser checks it on-chain before paying. The payment goes into the vault. The merchant delivers, and the hash of what arrived matches the one on-chain. This buyer is new, so the money is held. Here it confirms receipt, and the merchant is paid.',
     render: () => (

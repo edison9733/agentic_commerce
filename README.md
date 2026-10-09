@@ -86,6 +86,15 @@ review behind it needed a real settled order, so a top spot costs real sales to 
 for agents, not people: compact JSON, enums, and a plain-text summary at `/llms.txt` on both the API
 and the website.
 
+## Reviews that pay
+
+A share of every fee goes back to whoever reviews:
+- **The pay never depends on the stars.** Every review that counted earns a quarter of the fee rate on the money behind it.
+- **Accuracy scales it.** An honest warning about a wallet that then fails is paid 1.5×. Praising one that then fails is paid nothing.
+- **Farming loses money.** Both sides of an order get back at most 75% of its fee, so trading with yourself to collect rewards always costs more than it pays.
+
+An airdrop pays it from the treasury (`npm run rewards`). Every payout file can be recomputed (`--verify`). Rules and a recorded run: [docs/REWARDS.md](docs/REWARDS.md).
+
 ## The score
 
 ```
@@ -108,7 +117,8 @@ number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 | Command | Result | What it proves |
 |---|---|---|
 | `npm run test:local` | **294 / 294** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
-| `npm run test:formula` | **18 / 18** | The guarantees stated in the docs and on the site, as tests. |
+| `npm run test:formula` | **27 / 27** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
+| `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the balances on chain, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
 | `npm run test:wallet` | **pass** | The website's checkout with a browser wallet, on devnet. A Wallet Standard wallet is injected into headless Chrome; the site lists it, connects, and the wallet signs each step: fund, pay into escrow, check the delivery hash, release, review. The order and the review are then read back from the chain. It is not a test of a particular wallet extension. |
 | `npm run test:doors` | **pass** | All four doors against the real program on a local validator (79 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
 | `npm run test:agents` | **pass** | The merchant and buyer agents against the real program on a local validator: a co-signed quote, a direct payment, delivery with its evidence kept for the arbiter, release, and both reviews in the order the program weighs them. |
@@ -162,7 +172,7 @@ Needs Node 20.18+, Rust, Solana CLI 3.1, Anchor 1.1.2. Everything targets **devn
 npm install
 npm run build:program        # anchor build
 npm run codegen              # typed client from the IDL
-npm run test:formula         # 18 formula tests, no chain needed
+npm run test:formula         # 27 formula and reward tests, no chain needed
 npm run test:local           # 294 checks on a local validator (about 4 minutes)
 ```
 

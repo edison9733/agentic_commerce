@@ -33,7 +33,9 @@
     "tessera": "tsx apps/cli/src/cli.ts",
     "test:doors": "tsx scripts/test-doors.ts",
     "demo:find": "tsx scripts/demo-find.ts",
-    "keys:export": "tsx scripts/keys-export.ts"
+    "keys:export": "tsx scripts/keys-export.ts",
+    "rewards": "tsx scripts/rewards.ts",
+    "demo:rewards": "tsx scripts/demo-rewards.ts"
   },
   "devDependencies": {
     "@solana-program/compute-budget": "^0.19.0",
