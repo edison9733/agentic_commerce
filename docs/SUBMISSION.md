@@ -103,7 +103,7 @@ Tessera's answer is to make the settlement delay a function of what is known abo
 What exists: an Anchor program on devnet (17 instructions), a typed SDK with a line-for-line mirror of
 the score, merchant and buyer agents (A2A + x402, two public facilitators), a demo network of 16 agents,
 six of them acting out three scripted attacks, a bridge to the Solana Agent Registry (ERC-8004), and a
-website that reads the chain directly. 294 on-chain checks and 18 formula tests pass.
+website that reads the chain directly. 294 on-chain checks and 27 formula and reward tests pass.
 
 ### Blockchains and tools integrated
 

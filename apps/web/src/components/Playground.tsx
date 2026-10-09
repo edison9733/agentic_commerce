@@ -14,7 +14,7 @@ const GREEN = '#126b4a';
 const money = (units: bigint, p: Params) =>
   p.creditFull >= 1000n * 1_000_000n ? `$${Math.round(Number(units) / 1e6).toLocaleString('en-US')}` : usd(units);
 
-function Control({ label, value, hint, children }: { label: string; value: ReactNode; hint: ReactNode; children: ReactNode }) {
+export function Control({ label, value, hint, children }: { label: string; value: ReactNode; hint: ReactNode; children: ReactNode }) {
   return (
     <div className="grid gap-3 rounded-2xl border p-5" style={{ borderColor: LINE, background: '#fffdf6' }}>
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
@@ -27,9 +27,9 @@ function Control({ label, value, hint, children }: { label: string; value: React
   );
 }
 
-function Choice<T extends string | number>({ options, value, set, label }: { options: [T, string][]; value: T; set: (v: T) => void; label: string }) {
+export function Choice<T extends string | number>({ options, value, set, label, cols = 'grid-cols-2 sm:grid-cols-4' }: { options: [T, string][]; value: T; set: (v: T) => void; label: string; cols?: string }) {
   return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label={label}>
+    <div className={`grid gap-2 ${cols}`} role="radiogroup" aria-label={label}>
       {options.map(([v, text]) => (
         <button
           key={String(v)}
@@ -46,7 +46,7 @@ function Choice<T extends string | number>({ options, value, set, label }: { opt
   );
 }
 
-function Range({ value, set, min = 0, max, step = 1, label }: { value: number; set: (n: number) => void; min?: number; max: number; step?: number; label: string }) {
+export function Range({ value, set, min = 0, max, step = 1, label }: { value: number; set: (n: number) => void; min?: number; max: number; step?: number; label: string }) {
   const fill = `${((value - min) / (max - min)) * 100}%`;
   return (
     <input type="range" className="range" min={min} max={max} step={step} value={value} onChange={(ev) => set(Number(ev.target.value))} aria-label={label} style={{ '--fill': fill } as CSSProperties} />

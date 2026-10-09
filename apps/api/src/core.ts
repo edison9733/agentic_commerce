@@ -35,6 +35,7 @@ import {
   OrderVerificationError,
   orderAddresses,
   pairPdaOf,
+  rewards,
   score,
   settleAccounts,
   sha256,
@@ -600,6 +601,27 @@ function reviewCounts(o: Order, reviewerIsBuyer: boolean, state: OrderState): { 
   return { counts: true, why: 'weighted by what settled' };
 }
 
+/**
+ * What this review can earn in the review-reward airdrop (docs/REWARDS.md): a
+ * share of the fee, the same whatever the stars, scaled by how accurate the
+ * review proves to be. An estimate: the program sets the exact weight.
+ */
+async function rewardFor(cfg: Cfg, reviewer: Address, settled: bigint, counts: boolean, now: bigint) {
+  const p = cfg.data.params;
+  const rp = p.periodSecs >= 86_400 ? rewards.MAINNET_REWARD_PARAMS : rewards.DEVNET_REWARD_PARAMS;
+  const agent = await readAgent(reviewer);
+  const q = score.TIER_WEIGHT[agent ? score.evaluate(agent, p, now).tier : 0];
+  const capped = settled < p.pairCap ? settled : p.pairCap;
+  const weight = counts ? (capped * q) / 100n : 0n;
+  return {
+    atOneTimes: money(rewards.baseReward(weight, cfg.data.feeBps, rp), cfg.decimals),
+    upTo: money(rewards.maxReward(weight, cfg.data.feeBps, rp), cfg.decimals),
+    judgedAfterSecs: rp.maturitySecs,
+    note: 'An estimate from your tier now. The program sets the exact weight when the review lands, and settling this order can raise your tier first.',
+    rule: 'The same whatever the stars. After judgedAfterSecs it is paid x1.5 if you warned others about a wallet that then failed, x1.2 if you agree with other reviewers, x0.5 if far from them, and nothing for 4-5 stars to a wallet that then failed.',
+  };
+}
+
 export async function reportOutcome(i: { order: Address; reporter: Address; outcome: Outcome; rating?: number; comment?: string }): Promise<Reply> {
   const cfg = await config();
   if (isReply(cfg)) return cfg;
@@ -629,7 +651,8 @@ export async function reportOutcome(i: { order: Address; reporter: Address; outc
     if (isBuyer ? o.buyerReviewed : o.merchantReviewed) return reply('already_reported', { state, message: 'This party has already reviewed this order.' });
     if (now > o.settledAt + BigInt(p.reviewSecs)) return reply('review_window_closed', { state, message: 'Reviews are accepted for a limited time after settlement.' });
     const w = reviewCounts(o, isBuyer, o.state);
-    return txReply('review', i.reporter, [await reviewIx()], { order: i.order, rating, reviewWeighs: w.counts ? 'full' : 'nothing', because: w.why });
+    const reward = await rewardFor(cfg, i.reporter, o.paidMerchant + o.paidFee, w.counts, now);
+    return txReply('review', i.reporter, [await reviewIx()], { order: i.order, rating, reviewWeighs: w.counts ? 'full' : 'nothing', because: w.why, reward });
   }
 
   if (!isBuyer) return reply('wrong_state', { state, message: 'A merchant can report on an order once it has settled.' });
@@ -645,6 +668,7 @@ export async function reportOutcome(i: { order: Address; reporter: Address; outc
           order: i.order,
           rating,
           reviewWeighs: 'full',
+          reward: await rewardFor(cfg, i.reporter, o.amount, true, now),
           payouts: await payouts(i.order, o, cfg, 10_000),
           ...(i.outcome === 'satisfied' ? {} : { note: 'The hold is over, so it is too late to dispute. This releases the money and records your rating.' }),
         },

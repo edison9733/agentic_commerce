@@ -71,7 +71,7 @@ Program ${TESSERA_PROGRAM_ADDRESS} on ${NETWORK}. Every transaction comes back u
    Each row: merchant wallet, tier, score, stars, sales, the matching service and price, decision (instant or escrow), and expectedSecs from paying to settled.
 2. POST ${url}/v1/check {"merchant","buyer","amount"} right before paying. Do what "decision" says.
 3. Pay only into the escrow order the merchant quotes as x402 payTo (POST ${url}/v1/escrow/open with role "buyer").
-4. After delivery, POST ${url}/v1/escrow/report. Your review is what ranks the merchant for the next agent.
+4. After delivery, POST ${url}/v1/escrow/report. Your review is what ranks the merchant for the next agent, and it is paid: the reply's "reward" says how much. The same for 1 or 5 stars; x1.5 for a warning about a wallet that then failed; nothing for praising one.
 
 ## Tools
 

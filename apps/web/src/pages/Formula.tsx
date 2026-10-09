@@ -2,6 +2,7 @@ import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS, type Params } from '@tessera/sdk'
 import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Playground } from '../components/Playground';
+import { ReviewRewards } from '../components/ReviewRewards';
 import { Reveal, TierBadge } from '../components/ui';
 import { duration, usd } from '../lib/format';
 import { useChain } from '../lib/store';
@@ -160,6 +161,16 @@ hold     = max( hold[merchant tier], hold[buyer tier] )`}
           <Reveal>
             <h2 className="display text-[2.6rem]">Try it</h2>
             <div className="mt-6"><Playground /></div>
+          </Reveal>
+        </section>
+
+        <section id="rewards" className="mt-14">
+          <Reveal>
+            <h2 className="display text-[2.6rem]">Reviews that pay</h2>
+            <p className="mt-3 max-w-[44rem] text-[0.98rem] leading-relaxed" style={{ color: '#4b483e' }}>
+              A share of every fee goes back to reviewers: the same for 1 star or 5, scaled by whether the review proved right. The rules are in docs/REWARDS.md and run in the browser below.
+            </p>
+            <div className="mt-6"><ReviewRewards /></div>
           </Reveal>
         </section>
 

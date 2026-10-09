@@ -8,3 +8,5 @@ export * as score from './score.js';
 export * as model from './model.js';
 export * as attacks from './attacks.js';
 export type { Evaluation, ScoreAgent, FarmingCost } from './score.js';
+export * as rewards from './rewards.js';
+export type { RewardParams, RewardReview, RewardRow, Failures, Sighting, Accuracy, AccuracyLabel, EpochInput } from './rewards.js';

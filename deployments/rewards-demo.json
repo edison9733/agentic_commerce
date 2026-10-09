@@ -1,0 +1,553 @@
+{
+  "recordedAt": "2026-10-09T15:10:50.677Z",
+  "network": "local solana-test-validator, the real Tessera program, time compressed (a period is 2 s, reviews mature after 25 s)",
+  "reproduce": "npm run build:program && npm run demo:rewards",
+  "names": {
+    "EZknxhrdR2zxNHRD8uiPXprPUvBUCUcBtKJDXoeMyiEE": "scout",
+    "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h": "nova",
+    "Ft6uhJqLp9G46qbeV6BhkMBDZgQtHGjtPBzHGQbr3esK": "orbit",
+    "BrrUSyFhxoGHpGUua13sVC7yJwUFha8Lw27BBb2CGgpC": "wren",
+    "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q": "quill",
+    "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm": "glib"
+  },
+  "story": [
+    {
+      "buyer": "scout",
+      "merchant": "quill",
+      "rating": 5,
+      "comment": "Exactly the two sentences I needed."
+    },
+    {
+      "buyer": "nova",
+      "merchant": "quill",
+      "rating": 5,
+      "comment": "Reliable every time."
+    },
+    {
+      "buyer": "orbit",
+      "merchant": "quill",
+      "rating": 4,
+      "comment": "Fast and right."
+    },
+    {
+      "buyer": "wren",
+      "merchant": "quill",
+      "rating": 1,
+      "comment": "Useless."
+    },
+    {
+      "buyer": "scout",
+      "merchant": "glib",
+      "rating": 5,
+      "comment": "Brilliant, instant."
+    },
+    {
+      "buyer": "nova",
+      "merchant": "glib",
+      "rating": 4,
+      "comment": "Good enough."
+    },
+    {
+      "buyer": "orbit",
+      "merchant": "glib",
+      "rating": 2,
+      "comment": "Summarised the wrong text. Careful with this one."
+    }
+  ],
+  "afterwards": "Glib then took an order from wren and never delivered: wren was refunded in full.",
+  "estimate": {
+    "buyer": "scout",
+    "merchant": "quill",
+    "amount": "20.00",
+    "rating": 5,
+    "reward": {
+      "atOneTimes": {
+        "units": "5000",
+        "usdc": "0.005"
+      },
+      "upTo": {
+        "units": "7500",
+        "usdc": "0.0075"
+      },
+      "judgedAfterSecs": 600,
+      "rule": "The same whatever the stars. After judgedAfterSecs it is paid x1.5 if you warned others about a wallet that then failed, x1.2 if you agree with other reviewers, x0.5 if far from them, and nothing for 4-5 stars to a wallet that then failed."
+    }
+  },
+  "fees": {
+    "collected": "1.25",
+    "paidToReviewers": "0.169",
+    "shareOfFees": 13.52
+  },
+  "rows": [
+    {
+      "reviewer": "scout",
+      "subject": "quill",
+      "rating": 5,
+      "weight": "8.00",
+      "base": "0.02",
+      "label": "fair",
+      "bps": 10000,
+      "reward": "0.02",
+      "why": "Within 2 stars of what other reviewers said: paid 1x"
+    },
+    {
+      "reviewer": "nova",
+      "subject": "quill",
+      "rating": 5,
+      "weight": "8.00",
+      "base": "0.02",
+      "label": "fair",
+      "bps": 10000,
+      "reward": "0.02",
+      "why": "Within 2 stars of what other reviewers said: paid 1x"
+    },
+    {
+      "reviewer": "orbit",
+      "subject": "quill",
+      "rating": 4,
+      "weight": "8.00",
+      "base": "0.02",
+      "label": "agrees",
+      "bps": 12000,
+      "reward": "0.024",
+      "why": "Within 1 star of what other reviewers said: paid 1.2x"
+    },
+    {
+      "reviewer": "wren",
+      "subject": "quill",
+      "rating": 1,
+      "weight": "8.00",
+      "base": "0.02",
+      "label": "outlier",
+      "bps": 5000,
+      "reward": "0.01",
+      "why": "More than 2 stars from what everyone else said: paid 0.5x"
+    },
+    {
+      "reviewer": "scout",
+      "subject": "glib",
+      "rating": 5,
+      "weight": "12.00",
+      "base": "0.03",
+      "label": "vouched_then_failed",
+      "bps": 0,
+      "reward": "0.00",
+      "why": "Rated it 4 or 5 stars, then the wallet failed: paid nothing"
+    },
+    {
+      "reviewer": "nova",
+      "subject": "glib",
+      "rating": 4,
+      "weight": "12.00",
+      "base": "0.03",
+      "label": "vouched_then_failed",
+      "bps": 0,
+      "reward": "0.00",
+      "why": "Rated it 4 or 5 stars, then the wallet failed: paid nothing"
+    },
+    {
+      "reviewer": "orbit",
+      "subject": "glib",
+      "rating": 2,
+      "weight": "12.00",
+      "base": "0.03",
+      "label": "early_warning",
+      "bps": 15000,
+      "reward": "0.045",
+      "why": "Warned others, then the wallet failed: paid 1.5x"
+    },
+    {
+      "reviewer": "quill",
+      "subject": "nova",
+      "rating": 5,
+      "weight": "20.00",
+      "base": "0.05",
+      "label": "no_peers",
+      "bps": 10000,
+      "reward": "0.05",
+      "why": "Nobody else reviewed it around then: paid 1x"
+    }
+  ],
+  "payouts": [
+    {
+      "who": "quill",
+      "usdc": "0.05",
+      "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+    },
+    {
+      "who": "wren",
+      "usdc": "0.01",
+      "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+    },
+    {
+      "who": "nova",
+      "usdc": "0.02",
+      "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+    },
+    {
+      "who": "scout",
+      "usdc": "0.02",
+      "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+    },
+    {
+      "who": "orbit",
+      "usdc": "0.069",
+      "signature": "1ixJ1N3fHzXpUe91v7fFEY41Mp3B3jWwejLs89LDSsZtAzSZ9MifkBFuqZ2hBdbErD2THFSsctXGWC7iP7yRPDq"
+    }
+  ],
+  "report": {
+    "epoch": "2026-10-09T15:10:48Z",
+    "params": {
+      "shareBps": 2500,
+      "maturitySecs": 25,
+      "consensusWindowSecs": 3600,
+      "lateSightSecs": 30,
+      "dustUnits": "1"
+    },
+    "input": {
+      "reviews": [
+        {
+          "address": "2u1WLYT1bTphyrtpCpcDDYhALvPmiMrp5XEatbtr54Jv",
+          "reviewer": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+          "subject": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+          "reviewerIsBuyer": false,
+          "rating": 5,
+          "weight": "20000000",
+          "createdAt": 1791558621
+        },
+        {
+          "address": "4pz5GqTZmTEA3vozV59Y6A3RjvJGU4LoHsymrfETHsaz",
+          "reviewer": "EZknxhrdR2zxNHRD8uiPXprPUvBUCUcBtKJDXoeMyiEE",
+          "subject": "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm",
+          "reviewerIsBuyer": true,
+          "rating": 5,
+          "weight": "12000000",
+          "createdAt": 1791558613
+        },
+        {
+          "address": "6rtonmBDxy6soiRw9qZf5RenwL6EhZLsfKzypHwMEvGg",
+          "reviewer": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+          "subject": "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm",
+          "reviewerIsBuyer": true,
+          "rating": 4,
+          "weight": "12000000",
+          "createdAt": 1791558617
+        },
+        {
+          "address": "9MMXZ252B16zr4zunN9BmuzHPrmFmWQjVgx78qximme4",
+          "reviewer": "Ft6uhJqLp9G46qbeV6BhkMBDZgQtHGjtPBzHGQbr3esK",
+          "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+          "reviewerIsBuyer": true,
+          "rating": 4,
+          "weight": "8000000",
+          "createdAt": 1791558607
+        },
+        {
+          "address": "AkmUmQgciXXyxdTQyvnaWcUL3Uj3pM12M5k28VT9STwR",
+          "reviewer": "BrrUSyFhxoGHpGUua13sVC7yJwUFha8Lw27BBb2CGgpC",
+          "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+          "reviewerIsBuyer": true,
+          "rating": 1,
+          "weight": "8000000",
+          "createdAt": 1791558610
+        },
+        {
+          "address": "AwfKcaoSRhMwRAaJRZMiS1vbtPwbE6qZKJMrpXHTZHsp",
+          "reviewer": "EZknxhrdR2zxNHRD8uiPXprPUvBUCUcBtKJDXoeMyiEE",
+          "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+          "reviewerIsBuyer": true,
+          "rating": 5,
+          "weight": "8000000",
+          "createdAt": 1791558600
+        },
+        {
+          "address": "FQNnPiFbFZTFtDNsoko3AE4WJmmENRpSok6PF1FEdxu8",
+          "reviewer": "Ft6uhJqLp9G46qbeV6BhkMBDZgQtHGjtPBzHGQbr3esK",
+          "subject": "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm",
+          "reviewerIsBuyer": true,
+          "rating": 2,
+          "weight": "12000000",
+          "createdAt": 1791558620
+        },
+        {
+          "address": "FVxAk26PBDnxge9zxAog1ySgB8LYyHbWpNjyayq5M57x",
+          "reviewer": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+          "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+          "reviewerIsBuyer": true,
+          "rating": 5,
+          "weight": "8000000",
+          "createdAt": 1791558604
+        }
+      ],
+      "sightings": {
+        "2u1WLYT1bTphyrtpCpcDDYhALvPmiMrp5XEatbtr54Jv": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "4pz5GqTZmTEA3vozV59Y6A3RjvJGU4LoHsymrfETHsaz": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "6rtonmBDxy6soiRw9qZf5RenwL6EhZLsfKzypHwMEvGg": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "9MMXZ252B16zr4zunN9BmuzHPrmFmWQjVgx78qximme4": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "AkmUmQgciXXyxdTQyvnaWcUL3Uj3pM12M5k28VT9STwR": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "AwfKcaoSRhMwRAaJRZMiS1vbtPwbE6qZKJMrpXHTZHsp": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "FQNnPiFbFZTFtDNsoko3AE4WJmmENRpSok6PF1FEdxu8": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        },
+        "FVxAk26PBDnxge9zxAog1ySgB8LYyHbWpNjyayq5M57x": {
+          "firstSeenAt": 1791558621,
+          "before": {
+            "disputesLost": 0,
+            "missed": 0
+          }
+        }
+      },
+      "failuresNow": {
+        "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm:merchant": {
+          "disputesLost": 0,
+          "missed": 1
+        },
+        "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q:merchant": {
+          "disputesLost": 0,
+          "missed": 0
+        },
+        "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h:buyer": {
+          "disputesLost": 0,
+          "missed": 0
+        }
+      },
+      "paidBefore": [],
+      "feeBps": 100,
+      "now": 1791558648
+    },
+    "rows": [
+      {
+        "review": "AwfKcaoSRhMwRAaJRZMiS1vbtPwbE6qZKJMrpXHTZHsp",
+        "reviewer": "EZknxhrdR2zxNHRD8uiPXprPUvBUCUcBtKJDXoeMyiEE",
+        "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+        "reviewerIsBuyer": true,
+        "rating": 5,
+        "weight": "8000000",
+        "base": "20000",
+        "accuracy": {
+          "bps": 10000,
+          "label": "fair",
+          "consensusMilli": 3333,
+          "failedAfter": false
+        },
+        "reward": "20000",
+        "why": "Within 2 stars of what other reviewers said: paid 1x"
+      },
+      {
+        "review": "FVxAk26PBDnxge9zxAog1ySgB8LYyHbWpNjyayq5M57x",
+        "reviewer": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+        "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+        "reviewerIsBuyer": true,
+        "rating": 5,
+        "weight": "8000000",
+        "base": "20000",
+        "accuracy": {
+          "bps": 10000,
+          "label": "fair",
+          "consensusMilli": 3333,
+          "failedAfter": false
+        },
+        "reward": "20000",
+        "why": "Within 2 stars of what other reviewers said: paid 1x"
+      },
+      {
+        "review": "9MMXZ252B16zr4zunN9BmuzHPrmFmWQjVgx78qximme4",
+        "reviewer": "Ft6uhJqLp9G46qbeV6BhkMBDZgQtHGjtPBzHGQbr3esK",
+        "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+        "reviewerIsBuyer": true,
+        "rating": 4,
+        "weight": "8000000",
+        "base": "20000",
+        "accuracy": {
+          "bps": 12000,
+          "label": "agrees",
+          "consensusMilli": 3666,
+          "failedAfter": false
+        },
+        "reward": "24000",
+        "why": "Within 1 star of what other reviewers said: paid 1.2x"
+      },
+      {
+        "review": "AkmUmQgciXXyxdTQyvnaWcUL3Uj3pM12M5k28VT9STwR",
+        "reviewer": "BrrUSyFhxoGHpGUua13sVC7yJwUFha8Lw27BBb2CGgpC",
+        "subject": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+        "reviewerIsBuyer": true,
+        "rating": 1,
+        "weight": "8000000",
+        "base": "20000",
+        "accuracy": {
+          "bps": 5000,
+          "label": "outlier",
+          "consensusMilli": 4666,
+          "failedAfter": false
+        },
+        "reward": "10000",
+        "why": "More than 2 stars from what everyone else said: paid 0.5x"
+      },
+      {
+        "review": "4pz5GqTZmTEA3vozV59Y6A3RjvJGU4LoHsymrfETHsaz",
+        "reviewer": "EZknxhrdR2zxNHRD8uiPXprPUvBUCUcBtKJDXoeMyiEE",
+        "subject": "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm",
+        "reviewerIsBuyer": true,
+        "rating": 5,
+        "weight": "12000000",
+        "base": "30000",
+        "accuracy": {
+          "bps": 0,
+          "label": "vouched_then_failed",
+          "consensusMilli": 3000,
+          "failedAfter": true
+        },
+        "reward": "0",
+        "why": "Rated it 4 or 5 stars, then the wallet failed: paid nothing"
+      },
+      {
+        "review": "6rtonmBDxy6soiRw9qZf5RenwL6EhZLsfKzypHwMEvGg",
+        "reviewer": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+        "subject": "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm",
+        "reviewerIsBuyer": true,
+        "rating": 4,
+        "weight": "12000000",
+        "base": "30000",
+        "accuracy": {
+          "bps": 0,
+          "label": "vouched_then_failed",
+          "consensusMilli": 3500,
+          "failedAfter": true
+        },
+        "reward": "0",
+        "why": "Rated it 4 or 5 stars, then the wallet failed: paid nothing"
+      },
+      {
+        "review": "FQNnPiFbFZTFtDNsoko3AE4WJmmENRpSok6PF1FEdxu8",
+        "reviewer": "Ft6uhJqLp9G46qbeV6BhkMBDZgQtHGjtPBzHGQbr3esK",
+        "subject": "2ud14WdmZJPSCEZKKt6dwchhJuTixff79EFcr8hviWVm",
+        "reviewerIsBuyer": true,
+        "rating": 2,
+        "weight": "12000000",
+        "base": "30000",
+        "accuracy": {
+          "bps": 15000,
+          "label": "early_warning",
+          "consensusMilli": 4500,
+          "failedAfter": true
+        },
+        "reward": "45000",
+        "why": "Warned others, then the wallet failed: paid 1.5x"
+      },
+      {
+        "review": "2u1WLYT1bTphyrtpCpcDDYhALvPmiMrp5XEatbtr54Jv",
+        "reviewer": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+        "subject": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+        "reviewerIsBuyer": false,
+        "rating": 5,
+        "weight": "20000000",
+        "base": "50000",
+        "accuracy": {
+          "bps": 10000,
+          "label": "no_peers",
+          "consensusMilli": null,
+          "failedAfter": false
+        },
+        "reward": "50000",
+        "why": "Nobody else reviewed it around then: paid 1x"
+      }
+    ],
+    "payouts": [
+      {
+        "wallet": "8ribaHaeUb4qrbR2N2mqz44QwzCocrP52dzjWVL9rN1q",
+        "amount": "50000",
+        "usdc": "0.05",
+        "reviews": [
+          "2u1WLYT1bTphyrtpCpcDDYhALvPmiMrp5XEatbtr54Jv"
+        ],
+        "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+      },
+      {
+        "wallet": "BrrUSyFhxoGHpGUua13sVC7yJwUFha8Lw27BBb2CGgpC",
+        "amount": "10000",
+        "usdc": "0.01",
+        "reviews": [
+          "AkmUmQgciXXyxdTQyvnaWcUL3Uj3pM12M5k28VT9STwR"
+        ],
+        "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+      },
+      {
+        "wallet": "CaBYTsk9S8TU6xnrkuvpztUcgbxqvfRqxgonHEV2fm8h",
+        "amount": "20000",
+        "usdc": "0.02",
+        "reviews": [
+          "FVxAk26PBDnxge9zxAog1ySgB8LYyHbWpNjyayq5M57x",
+          "6rtonmBDxy6soiRw9qZf5RenwL6EhZLsfKzypHwMEvGg"
+        ],
+        "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+      },
+      {
+        "wallet": "EZknxhrdR2zxNHRD8uiPXprPUvBUCUcBtKJDXoeMyiEE",
+        "amount": "20000",
+        "usdc": "0.02",
+        "reviews": [
+          "AwfKcaoSRhMwRAaJRZMiS1vbtPwbE6qZKJMrpXHTZHsp",
+          "4pz5GqTZmTEA3vozV59Y6A3RjvJGU4LoHsymrfETHsaz"
+        ],
+        "signature": "3299SFWgnLzHo4gL8BCEK4mBecHtQQsssQtcJG3akZHUpcMMyeJxu3b74voAGUET3e2gLhkc8WjKJZUxECTjmbhu"
+      },
+      {
+        "wallet": "Ft6uhJqLp9G46qbeV6BhkMBDZgQtHGjtPBzHGQbr3esK",
+        "amount": "69000",
+        "usdc": "0.069",
+        "reviews": [
+          "9MMXZ252B16zr4zunN9BmuzHPrmFmWQjVgx78qximme4",
+          "FQNnPiFbFZTFtDNsoko3AE4WJmmENRpSok6PF1FEdxu8"
+        ],
+        "signature": "1ixJ1N3fHzXpUe91v7fFEY41Mp3B3jWwejLs89LDSsZtAzSZ9MifkBFuqZ2hBdbErD2THFSsctXGWC7iP7yRPDq"
+      }
+    ],
+    "carried": {},
+    "totals": {
+      "reviews": 8,
+      "paid": "169000",
+      "paidUsdc": "0.169"
+    }
+  }
+}
