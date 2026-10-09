@@ -1,5 +1,5 @@
 import { motion, useMotionValueEvent, useScroll } from 'motion/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, usePath } from '../lib/router';
 import { useChain } from '../lib/store';
 import { Logo } from './ui';
@@ -18,6 +18,8 @@ export function Nav({ dark = false }: { dark?: boolean }) {
   const { status } = useChain();
   const { scrollY } = useScroll();
   const [solid, setSolid] = useState(false);
+  const [open, setOpen] = useState(false);
+  useEffect(() => setOpen(false), [path]);
   useMotionValueEvent(scrollY, 'change', (y) => setSolid(y > 24));
   const bg = dark ? 'rgba(10,11,9,0.72)' : 'rgba(251,248,239,0.78)';
   return (
@@ -41,7 +43,7 @@ export function Nav({ dark = false }: { dark?: boolean }) {
             Tessera
           </span>
         </Link>
-        <nav className="hidden items-center gap-7 text-[0.93rem] md:flex">
+        <nav className="hidden items-center gap-7 whitespace-nowrap text-[0.93rem] lg:flex">
           {LINKS.map(([to, label]) => (
             <Link key={to} to={to} className="relative py-1">
               <span style={{ opacity: path.startsWith(to) ? 1 : 0.68 }}>{label}</span>
@@ -52,7 +54,7 @@ export function Nav({ dark = false }: { dark?: boolean }) {
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <span className="mono hidden items-center gap-2 text-[0.72rem] sm:inline-flex" style={{ opacity: 0.75 }} title="Read straight from Solana devnet">
+          <span className="mono hidden items-center gap-2 whitespace-nowrap text-[0.72rem] sm:inline-flex" style={{ opacity: 0.75 }} title="Read straight from Solana devnet">
             <span
               style={{
                 width: 7,
@@ -65,8 +67,26 @@ export function Nav({ dark = false }: { dark?: boolean }) {
             {status === 'live' ? 'devnet · live' : status === 'error' ? 'devnet · unreachable' : 'devnet · loading'}
           </span>
           <Wallet dark={dark} />
+          <button
+            className="rounded-full border px-3.5 py-2 text-[0.88rem] lg:hidden"
+            style={{ borderColor: dark ? '#3a3f33' : '#cfc8b2', cursor: 'pointer' }}
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls="nav-menu"
+          >
+            {open ? 'Close' : 'Menu'}
+          </button>
         </div>
       </div>
+      {open && (
+        <nav id="nav-menu" className="wrap grid gap-1 pb-4 lg:hidden" style={{ background: dark ? '#0a0b09' : '#fbf8ef' }}>
+          {LINKS.map(([to, label]) => (
+            <Link key={to} to={to} className="rounded-xl px-3 py-3 text-[1.05rem]" style={{ background: path.startsWith(to) ? (dark ? '#272b21' : '#f1ebd8') : 'transparent' }} onClick={() => setOpen(false)}>
+              {label}
+            </Link>
+          ))}
+        </nav>
+      )}
     </motion.header>
   );
 }
