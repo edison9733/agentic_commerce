@@ -47,11 +47,29 @@ export type Snapshot = {
   feed: FeedEvent[];
 };
 
-let snap: Snapshot = { status: 'loading', loadedAt: 0, config: null, agents: [], pairs: [], orders: [], reviews: [], feed: [] };
+type Shared = { __tesseraSnap?: Snapshot };
+
+/**
+ * A deck slide shows the site in a same-origin iframe. That page starts from
+ * what the deck has already read, instead of reading devnet again from
+ * scratch while the slide is on screen. It keeps polling as usual.
+ */
+function fromParent(): Snapshot | null {
+  try {
+    if (window.parent === window) return null;
+    const s = (window.parent as unknown as Shared).__tesseraSnap;
+    return s?.config ? s : null;
+  } catch {
+    return null;
+  }
+}
+
+let snap: Snapshot = fromParent() ?? { status: 'loading', loadedAt: 0, config: null, agents: [], pairs: [], orders: [], reviews: [], feed: [] };
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 const set = (patch: Partial<Snapshot>) => {
   snap = { ...snap, ...patch };
+  (window as unknown as Shared).__tesseraSnap = snap;
   emit();
 };
 
@@ -65,8 +83,8 @@ const KIND: Record<number, FeedEvent['kind']> = {
   [OrderState.Resolved]: 'resolved',
 };
 
-const lastState = new Map<string, number>();
-let primed = false;
+const lastState = new Map<string, number>(snap.orders.map((o) => [o.address, o.data.state]));
+let primed = snap.status === 'live';
 
 function diff(orders: Decoded<Order>[]): FeedEvent[] {
   const out: FeedEvent[] = [];

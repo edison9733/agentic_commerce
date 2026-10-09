@@ -44,6 +44,11 @@ The demo deck's "network", "checkout" and "profile" slides are the live site in 
 slide performs a real purchase on devnet with the site's built-in test wallet, so `npm run agents` has to
 be running.
 
+Those slides need devnet when they are captured, so two of the demo stills in `out/` come from
+elsewhere. `demo-slides/08.png` (checkout) is a frame of the devnet purchase recorded in
+`tessera-demo.mp4`. `demo-slides/09.png` (profile) is the real profile page, read from a local
+validator holding the `npm run demo:find` merchants. When presented live, both slides read devnet.
+
 ## Rendering
 
 ```bash
