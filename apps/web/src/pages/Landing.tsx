@@ -12,6 +12,7 @@ import { Counter, EASE, Logo, Reveal, TierBadge, Words } from '../components/ui'
 import { compactUsd, duration, explorerAddress, TIER_DARK, tierName } from '../lib/format';
 import { Link } from '../lib/router';
 import { useChain, useProfiles } from '../lib/store';
+import { recordedAt, session } from '../lib/findDemo';
 
 const REPO = 'https://github.com/edison9733/agentic_commerce';
 const PROGRAM = 'TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ';
@@ -382,20 +383,21 @@ function Attacks() {
   );
 }
 
+const FIND = session('best');
+
 const SNIPPETS: { id: string; label: string; file: string; code: string }[] = [
   {
     id: 'find',
     label: 'Find',
     file: 'apps/api/src/find.ts',
-    code: `// An agent chooses who to buy from in one call. No pages, no reading reviews.
-GET /v1/merchants?need=text summary&buyer=<wallet>&sort=fastest
-
-// The shape of one row (values illustrative):
-{ "rank": 1, "merchant": "<wallet>", "tier": "Trusted", "score": 912, "stars": 4.8,
-  "service": { "id": "summary", "price": { "usdc": "0.25" } },
-  "decision": "instant", "expectedSecs": 3 }
-
-// Ranked only by on-chain data. Every review behind it cost a real sale.`,
+    code: [
+      `// An agent chooses who to buy from in one call. Recorded ${recordedAt} (npm run demo:find).`,
+      FIND.command,
+      ...FIND.output,
+      '',
+      '// Over HTTP or MCP it is the same call: GET /v1/merchants?need=text summary',
+      '// Ranked only by on-chain data. Every review behind it cost a real sale.',
+    ].join('\n'),
   },
   {
     id: 'sell',
