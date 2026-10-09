@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 
 /**
  * A hash router in thirty lines. Hash routes work from any static host and
@@ -41,9 +41,9 @@ export function useMatch(pattern: string): Record<string, string> | null {
   }, [pattern, path]);
 }
 
-export function Link({ to, children, className }: { to: string; children: ReactNode; className?: string }) {
+export function Link({ to, children, className, style, onClick }: { to: string; children: ReactNode; className?: string; style?: CSSProperties; onClick?: () => void }) {
   return (
-    <a href={`#${to}`} className={className}>
+    <a href={`#${to}`} className={className} style={style} onClick={onClick}>
       {children}
     </a>
   );
