@@ -69,13 +69,19 @@ wallet. Details: [docs/AGENT-API.md](docs/AGENT-API.md).
 
 | Door | Run | Use |
 |---|---|---|
-| HTTP API (the core) | `npm run api` → `:4030/v1` | `POST /v1/check` → `instant`, `escrow` or `block`, with a reason |
+| HTTP API (the core) | `npm run api` → `:4030/v1` | `GET /v1/merchants?need=…` → the best merchants, ranked; `POST /v1/check` → `instant`, `escrow` or `block`, with a reason |
 | MCP (Streamable HTTP) | `npm run mcp` → `:4040/mcp` | `claude mcp add --transport http tessera http://127.0.0.1:4040/mcp` |
 | Skill | [`skills/tessera/SKILL.md`](skills/tessera/SKILL.md) | "Before any paid tool call, call `check_payment`." |
-| CLI | `npm run tessera -- help` | `tessera check <merchant> 0.20 --keypair ~/.config/solana/id.json` |
+| CLI | `npm run tessera -- help` | `tessera find text summary --sort fastest`, `tessera check <merchant> 0.20 --keypair ~/.config/solana/id.json` |
 
-Tools, by phase: before paying `get_score`, `check_payment`; during `open_escrow`, `deliver_order`,
+Tools, by phase: before paying `find_merchants`, `get_score`, `check_payment`; during `open_escrow`, `deliver_order`,
 `get_escrow`; after `release_escrow`, `reclaim_after_timeout`, `report_outcome`, `submit_transaction`.
+
+**Reviews as search, for agents.** `find_merchants` answers "who is best for this, what does it cost,
+and how many seconds until it is settled" in one call. The rank uses only on-chain data, and every
+review behind it needed a real settled order, so a top spot costs real sales to fake. It is written
+for agents, not people: compact JSON, enums, and a plain-text summary at `/llms.txt` on both the API
+and the website.
 
 ## The score
 
@@ -101,7 +107,7 @@ number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 | `npm run test:local` | **294 / 294** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
 | `npm run test:formula` | **18 / 18** | The guarantees stated in the docs and on the site, as tests. |
 | `npm run test:wallet` | **pass** | The website's checkout with a browser wallet, on devnet. A Wallet Standard wallet is injected into headless Chrome; the site lists it, connects, and the wallet signs each step: fund, pay into escrow, check the delivery hash, release, review. The order and the review are then read back from the chain. It is not a test of a particular wallet extension. |
-| `npm run test:doors` | **pass** | All four doors against the real program on a local validator: every API tool and refusal path with transactions signed and sent, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
+| `npm run test:doors` | **pass** | All four doors against the real program on a local validator (79 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
 | `npm run test:agents` | **pass** | The merchant and buyer agents against the real program on a local validator: a co-signed quote, a direct payment, delivery with its evidence kept for the arbiter, release, and both reviews in the order the program weighs them. |
 | `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry is read back from the registry and matched against the Tessera review account it points at. |
 

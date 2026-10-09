@@ -288,8 +288,8 @@ let evidence = (450 * history + 300 * tenure
   },
   {
     id: 'stack',
-    seconds: 14,
-    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two with two facilitators, A2A with the x402 extension, and the Solana Agent Registry. It is on devnet, with time compressed, one arbiter key, and no audit. Those come next.',
+    seconds: 15,
+    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two, A2A, and the Solana Agent Registry. Agents call it over an API, MCP, a skill or a CLI. It is on devnet, with time compressed, one arbiter key, and no audit. Those come next.',
     render: () => (
       <Frame pad={84}>
         <Kicker>Stack, and what is not done</Kicker>
@@ -301,10 +301,11 @@ let evidence = (450 * history + 300 * tenure
               ['Payments', 'x402 v2 `exact` · two facilitators quoted per order'],
               ['Agents', 'A2A JSON-RPC · a2a-x402 extension v0.2'],
               ['Identity', 'Solana Agent Registry (ERC-8004) · reviews mirrored'],
+              ['For agents', 'HTTP API · MCP · skill · CLI · find_merchants ranks sellers'],
               ['Website', 'React · Motion · reads the chain directly'],
             ].map(([k, v], i) => (
               <Rise key={k} delay={0.3 + i * 0.12}>
-                <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', padding: '16px 0', borderTop: '1px solid #272b21', fontSize: 25 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', padding: '13px 0', borderTop: '1px solid #272b21', fontSize: 25 }}>
                   <span style={{ color: white }}>{k}</span>
                   <span className="mono" style={{ fontSize: 20 }}>{v}</span>
                 </div>

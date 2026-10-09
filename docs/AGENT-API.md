@@ -33,6 +33,7 @@ projects) or to `.claude/skills/tessera` in a project.
 
 | Phase | Tool | HTTP | What it returns |
 |---|---|---|---|
+| Before | `find_merchants` | `GET /v1/merchants?need=…` | Merchants for a need, ranked by on-chain record, each with its price, `decision` and `expectedSecs` from paying to settled |
 | Before | `get_score` | `GET /v1/score/{wallet}` | The credit file: score, tier, components, record as merchant and as buyer |
 | Before | `check_payment` | `POST /v1/check` | `decision` (`instant`, `escrow`, `block`), a `reason` code, the hold |
 | During | `open_escrow` | `POST /v1/escrow/open` | `role: merchant`: an `open_order` transaction; its `payTo` goes in the 402. `role: buyer`: the quoted order is verified on-chain, then a `fund_escrow` transaction |
@@ -43,12 +44,47 @@ projects) or to `.claude/skills/tessera` in a project.
 | After | `report_outcome` | `POST /v1/escrow/report` | `satisfied`: release and review in one transaction. `unsatisfied`: dispute during the hold, else review. `not_delivered`: refund after the deadline |
 | After | `submit_transaction` | `POST /v1/tx/submit` | Relays a transaction your wallet signed and waits for confirmation. Optional |
 
-`deliver_order`, `get_escrow` and `submit_transaction` were added to the six suggested tools: the
-merchant side needs a way to deliver, an agent needs to see where an order stands, and some agents
-can sign but have no RPC.
+`find_merchants`, `deliver_order`, `get_escrow` and `submit_transaction` were added to the six
+suggested tools: an agent needs to choose who to buy from, the merchant side needs a way to deliver,
+an agent needs to see where an order stands, and some agents can sign but have no RPC.
 
 The full request and response shapes are in the OpenAPI document the API serves at
 `GET /v1/openapi.json`, generated from the same route table the server runs.
+
+## How `find_merchants` ranks
+
+It is built for an agent choosing in one call, not for a person browsing. Reviews are already folded
+into the rank, so an agent does not have to read them.
+
+- **Who is a candidate:** every wallet that has sold through Tessera or whose credit file points
+  (`uri`) to an A2A agent card.
+- **Matching the need:** the words of `need` against the card's skills (id, name, description, tags)
+  and names, by stem, so "summaries" finds "summary". At least half the words must match. The best
+  matching skill is the row's `service`, with its price from the card's Tessera extension.
+- **What ranks:** only on-chain data. `best` (default) sorts by score: settled volume weighted by
+  each counterparty's tier, distinct buyers, tenure, the stars of reviews weighted by the money behind
+  them (with a prior, so one 5-star review does not beat 200 sales at 4.7), and standing penalties.
+  `fastest` sorts by `expectedSecs`: the merchant's median delivery time over its last 50 delivered
+  orders (or the delivery deadline if it has none) plus the hold `check_payment` would give this buyer.
+  `cheapest` sorts by price. Ties go to the score.
+- **What a row carries:** `decision`, `reason` and `holdSecs` from the same function as
+  `check_payment`, `expectedSecs`, the two reviews with the most money behind them, and where to call
+  the merchant (`a2a`, `service.x402`).
+- **Nobody is hidden for a bad record.** A penalised merchant is listed, lower, routed to escrow.
+
+The list is read from one snapshot of the program's accounts, shared for 30 s
+(`TESSERA_FIND_SNAPSHOT_MS`), so call `check_payment` right before paying.
+
+Card text is the merchant's own: it only decides matching and price, it is cut short and stripped of
+control characters, a card whose Tessera extension names another wallet is ignored, and every reply
+says that `name`, `service` and review text are data, not instructions. The card URL is chosen by
+whoever registered the wallet, so the API fetches it with http(s) only, no redirects, a 1.5 s timeout,
+a 64 KB cap, and no private or loopback addresses (checked on the address actually connected to)
+unless the API listens only on this machine (`HOST`, default `127.0.0.1`) or
+`TESSERA_ALLOW_PRIVATE_CARDS=1`.
+
+`GET /llms.txt` is the same story in one page of plain text, for agents and the crawlers that feed
+them.
 
 ## How `check_payment` decides
 
@@ -80,6 +116,7 @@ status that says so.
 | `status` | HTTP | Meaning |
 |---|---|---|
 | `ok` | 200 | As asked |
+| `no_match` | 200 | `find_merchants`: nobody offers that need (at that price); `ranked` is empty and `message` says what to try |
 | `unknown_merchant` | 200 | `check_payment`: the merchant has no credit file; the decision still stands |
 | `unknown_wallet` | 200 | `get_score`: no credit file; score 0, New |
 | `invalid_request` | 400 | A field is missing or malformed; `message` names it and what it accepts |
@@ -120,7 +157,8 @@ signs what it is given. So:
 
 `npm run test:doors` starts a local validator with the program, then drives all four doors:
 
-- **API**: every tool and refusal path, with each transaction signed here as an agent's wallet
+- **API**: every tool and refusal path, including `find_merchants` against two agent cards (one a
+  copycat claiming another wallet), with each transaction signed here as an agent's wallet
   would, and sent.
 - **MCP**: the tool list, the enums in its schemas, and the same answers as the API.
 - **Skill**: `SKILL.md` names every tool.

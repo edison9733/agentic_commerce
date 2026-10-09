@@ -89,6 +89,61 @@ function RingSlide() {
   );
 }
 
+/** The top merchants as find_merchants ranks them: live from the chain, or the 4 October snapshot when offline. */
+function FindSlide() {
+  const { profiles } = useProfiles();
+  const live = profiles.filter((p) => p.agent.asMerchant.orders > 0).slice(0, 3);
+  const rows = live.length
+    ? live.map((p) => ({ name: p.name, tier: p.eval.tier, score: p.eval.score, stars: p.stars, sales: p.agent.asMerchant.orders }))
+    : snapshot.agentsByScore
+        .filter((a) => a.role === 'merchant')
+        .slice(0, 3)
+        .map((a) => ({ name: a.name, tier: ['New', 'Building', 'Established', 'Trusted'].indexOf(a.tier), score: a.score, stars: a.stars, sales: a.orders }));
+  return (
+    <Frame pad={84}>
+      <Kicker>Reviews as search, for agents</Kicker>
+      <Big size={78} max="21ch" color={white}>
+        Who should I buy from? <em>One call.</em>
+      </Big>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 56, marginTop: 40, alignItems: 'start' }}>
+        <Rise delay={0.4}>
+          <div className="mono" style={{ fontSize: 22, padding: '18px 26px', borderRadius: 16, background: '#10120e', border: '1px solid #272b21', color: '#c9c6b6' }}>
+            GET /v1/merchants?need=<span style={{ color: mint }}>text summary</span>&amp;sort=<span style={{ color: mint }}>best</span>
+          </div>
+          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+            {rows.map((r, k) => (
+              <Rise key={r.name} delay={0.7 + k * 0.14}>
+                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 200px 90px 110px', alignItems: 'center', gap: 16, padding: '16px 24px', borderRadius: 16, border: `1px solid ${k === 0 ? mint : '#272b21'}`, background: k === 0 ? '#121a14' : '#10120e' }}>
+                  <span className="display" style={{ fontSize: 34, color: k === 0 ? mint : '#8b8a7c' }}>{k + 1}</span>
+                  <span className="display" style={{ fontSize: 34, color: white }}>{r.name}</span>
+                  <span style={{ fontSize: 20 }}><TierBadge tier={Math.max(0, r.tier)} dark /></span>
+                  <span className="mono" style={{ fontSize: 20, color: white }}>★{r.stars.toFixed(2)}</span>
+                  <span className="mono" style={{ fontSize: 18, color: '#8b8a7c' }}>{r.sales} sales</span>
+                </div>
+              </Rise>
+            ))}
+          </div>
+        </Rise>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {[
+            ['Ranked by money, not words', 'Each review needed a real settled order and counts by what it paid.'],
+            ['Answers the next question too', 'Every row says instant or escrow, and the seconds from paying to settled.'],
+            ['Built for agents', 'Compact JSON with enums, over an API, MCP, a skill or a CLI. No pages to read.'],
+          ].map(([h, b], k) => (
+            <Rise key={h} delay={0.9 + k * 0.15}>
+              <div style={{ padding: '18px 24px', borderRadius: 18, border: '1px solid #272b21', background: '#10120e' }}>
+                <div className="display" style={{ fontSize: 32, color: white }}>{h}</div>
+                <div style={{ fontSize: 21, marginTop: 6, lineHeight: 1.35, color: '#c9c6b6' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+      </div>
+      <Source>{live.length ? 'Merchants ranked by score, read from devnet now.' : `Merchants ranked by score on the devnet demo network, ${snapshot.takenAt.slice(0, 10)}.`} The API adds each merchant's price and settle time: apps/api/src/find.ts</Source>
+    </Frame>
+  );
+}
+
 function ZkSlide() {
   const wallets = ['sock-1', 'sock-2', 'sock-3', 'washer'];
   const rows = [
@@ -263,7 +318,7 @@ function TierSlide() {
 export const PITCH: Slide[] = [
   {
     id: 'title',
-    seconds: 6,
+    seconds: 5,
     say: 'This is Tessera. The credit layer for agent commerce.',
     render: () => (
       <Frame center>
@@ -407,6 +462,12 @@ export const PITCH: Slide[] = [
     ),
   },
   {
+    id: 'find',
+    seconds: 10,
+    say: 'One call tells an agent who to buy from: ranked by reviews that each cost a real sale, with the price and the seconds to settle.',
+    render: () => <FindSlide />,
+  },
+  {
     id: 'ring',
     seconds: 15,
     say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns thousands in fees first. And an exit scam nets twenty-five dollars, at any size.',
@@ -420,26 +481,26 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'live',
-    seconds: 14,
-    say: 'This is live on devnet. Agents find each other over A2A, pay over x402, and earn their tier on-chain. The honest merchants reached Trusted. The wash-trading ring did not.',
+    seconds: 12,
+    say: 'This is live on devnet. Agents find each other, pay over x402, and earn their tier on-chain. The honest merchants reached Trusted. The wash-trading ring did not.',
     render: () => <LiveSlide />,
   },
   {
     id: 'cost',
-    seconds: 12,
-    say: 'It is also cheaper. Moving seven cents on a card costs thirty cents and stays disputable for a hundred and twenty days. Here it costs a fraction of a cent.',
+    seconds: 10,
+    say: 'It is also cheaper. Seven cents on a card costs thirty cents, disputable for four months. Here it costs a fraction of a cent.',
     render: () => <EfficiencySlide />,
   },
   {
     id: 'layers',
-    seconds: 13,
-    say: 'Solana has x402 for payment, and an agent registry for identity. Tessera is the layer between them. Our agents are in that registry on devnet, and every review we send it carries proof of payment.',
+    seconds: 10,
+    say: 'Solana has x402 for payment and a registry for identity. Tessera is the layer between them, and every review we send that registry carries proof of payment.',
     render: () => <LayerSlide />,
   },
   {
     id: 'market',
-    seconds: 14,
-    say: 'McKinsey estimates that agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles through escrow. A seller adds one function. A buyer adds one check.',
+    seconds: 13,
+    say: 'McKinsey estimates agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles. A seller adds one function. A buyer adds one check.',
     surface: 'paper',
     render: () => (
       <Frame pad={88}>
@@ -495,7 +556,7 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'close',
-    seconds: 8,
+    seconds: 7,
     say: 'Micropayments were the easy part. Every payment matters. This is Tessera.',
     render: () => (
       <Frame center>

@@ -29,6 +29,8 @@ import { OUTCOMES, ROLES, TOOLS, type ToolName } from '@tessera/api/contract';
 const HELP = `tessera: credit checks and non-custodial escrow for agent payments on Solana
 
 Before payment
+  find [need words…] [--buyer W] [--sort best|fastest|cheapest] [--max-price A] [--amount A] [--limit N]
+                                                 the best merchants for a need, ranked by on-chain record
   score <wallet>                                 a wallet's credit file
   check <merchant> <amount> [--buyer W] [--min-hold S]
                                                  instant, escrow or block, and why
@@ -76,6 +78,9 @@ const { values: flags, positionals } = parseArgs({
     outcome: { type: 'string' },
     rating: { type: 'string' },
     comment: { type: 'string' },
+    sort: { type: 'string' },
+    'max-price': { type: 'string' },
+    limit: { type: 'string' },
     help: { type: 'boolean', short: 'h' },
   },
 }) as { values: Flags; positionals: string[] };
@@ -112,7 +117,8 @@ async function call(tool: ToolName, args: Record<string, unknown>): Promise<{ ht
   });
   let res: Response;
   try {
-    res = await fetch(`${API}${path}`, {
+    const qs = spec.method === 'GET' && Object.keys(rest).length ? `?${new URLSearchParams(Object.entries(rest).map(([k, v]) => [k, String(v)])).toString()}` : '';
+    res = await fetch(`${API}${path}${qs}`, {
       method: spec.method,
       headers: { 'content-type': 'application/json' },
       ...(spec.method === 'POST' ? { body: JSON.stringify(rest) } : {}),
@@ -207,6 +213,19 @@ function show(tool: ToolName, { http, body }: { http: number; body: Record<strin
     for (const l of sim?.logs ?? (body.logs as string[] | undefined) ?? []) console.log(`  ${l}`);
     return;
   }
+  if (tool === 'find_merchants') {
+    if (status === 'no_match') return void console.log(`no_match: ${body.message}`);
+    console.log(`${body.count} found · sorted ${body.sort}: ${body.basis}`);
+    for (const r of (body.ranked as Record<string, any>[]) ?? []) {
+      const svc = r.service ? `  ${r.service.id} ${r.service.price ? usdc(r.service.price) : 'price ?'}` : '';
+      const time = r.expectedSecs === null ? 'cannot pay' : `~${r.expectedSecs} s to settled`;
+      console.log(`${String(r.rank).padStart(2)}. ${r.merchant}  ${r.name ?? ''}  ${r.tier} ${r.score} ★${Number(r.stars).toFixed(2)} (${r.reviews} reviews, ${r.sales} sales)`);
+      console.log(`    ${String(r.decision).toUpperCase()} ${time}${svc}`);
+      for (const rv of r.topReviews ?? []) console.log(`    "${rv.text}" ★${rv.stars}`);
+    }
+    console.log(String(body.next));
+    return;
+  }
   if (tool === 'get_score') {
     console.log(party('wallet', body));
     if (body.known === false) console.log(String(body.message));
@@ -266,6 +285,17 @@ const need = (v: unknown, what: string) => (v === undefined || v === '' ? die(`$
 let tool: ToolName;
 let args: Record<string, unknown>;
 switch (cmd) {
+  case 'find':
+    tool = 'find_merchants';
+    args = {
+      need: positionals.slice(1).join(' ') || undefined,
+      buyer: me('buyer'),
+      sort: flags.sort,
+      maxPrice: flags['max-price'],
+      amount: flags.amount,
+      limit: int(flags.limit as string, '--limit'),
+    };
+    break;
   case 'score':
     tool = 'get_score';
     args = { wallet: need(a1, '<wallet>') };

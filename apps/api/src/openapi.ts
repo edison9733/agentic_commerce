@@ -1,5 +1,6 @@
 /** The OpenAPI 3.1 document, generated from the routes and the contract. */
 import {
+  SORTS,
   ACTIONS,
   ADDRESS_PATTERN,
   AMOUNT_PATTERN,
@@ -47,7 +48,10 @@ export function openapi(routes: Route[], serverUrl: string) {
         operationId: r.tool,
         summary: TOOLS[r.tool].summary,
         tags: [TOOLS[r.tool].phase === 'before' ? 'Before payment' : TOOLS[r.tool].phase === 'during' ? 'During payment' : 'After payment'],
-        parameters: r.fields.filter((f) => inPath.includes(f.name)).map((f) => ({ name: f.name, in: 'path', required: true, schema: schemaOf(f) })),
+        parameters: [
+          ...r.fields.filter((f) => inPath.includes(f.name)).map((f) => ({ name: f.name, in: 'path', required: true, schema: schemaOf(f) })),
+          ...(r.method === 'GET' ? body.map((f) => ({ name: f.name, in: 'query', required: !!f.required, schema: schemaOf(f) })) : []),
+        ],
         ...(r.method === 'POST'
           ? {
               requestBody: {
@@ -91,6 +95,7 @@ export function openapi(routes: Route[], serverUrl: string) {
         Reason: { type: 'string', enum: [...REASONS] },
         Action: { type: 'string', enum: [...ACTIONS] },
         Tier: { type: 'string', enum: [...TIERS] },
+        Sort: { type: 'string', enum: [...SORTS] },
         OrderState: { type: 'string', enum: [...ORDER_STATES] },
         Reply: {
           type: 'object',

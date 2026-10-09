@@ -43,6 +43,7 @@ export type Reason = (typeof REASONS)[number];
 /** Every response has a `status`. `ok` is the only one that means "as asked". */
 export const STATUSES = [
   'ok',
+  'no_match',
   'unknown_merchant',
   'unknown_wallet',
   'unknown_order',
@@ -66,6 +67,7 @@ export type Status = (typeof STATUSES)[number];
 /** The HTTP code each status is sent with. An answer about an unknown party is still an answer. */
 export const HTTP_CODE: Record<Status, number> = {
   ok: 200,
+  no_match: 200,
   unknown_merchant: 200,
   unknown_wallet: 200,
   unknown_order: 404,
@@ -88,6 +90,18 @@ export const HTTP_CODE: Record<Status, number> = {
 /** Who is asking `open_escrow` for a transaction. */
 export const ROLES = ['buyer', 'merchant'] as const;
 export type Role = (typeof ROLES)[number];
+
+/**
+ * How `find_merchants` orders what it finds. `best`: the score, which already
+ * weighs reviews by the money behind them. `fastest`: least time from paying
+ * to settled (delivery plus hold, for this buyer). `cheapest`: lowest price.
+ */
+export const SORTS = ['best', 'fastest', 'cheapest'] as const;
+export type Sort = (typeof SORTS)[number];
+/** Longest search text `find_merchants` takes. */
+export const MAX_NEED_CHARS = 120;
+/** Most merchants `find_merchants` returns. */
+export const MAX_FIND_LIMIT = 20;
 
 /** What `report_outcome` reports. */
 export const OUTCOMES = ['satisfied', 'unsatisfied', 'not_delivered'] as const;
@@ -129,6 +143,13 @@ export const MAX_MIN_HOLD_SECS = 90 * 86_400;
  * phase of a payment they belong to.
  */
 export const TOOLS = {
+  find_merchants: {
+    phase: 'before',
+    method: 'GET',
+    path: '/v1/merchants',
+    summary:
+      'Ranks merchants for a need by their on-chain record: reviews weighted by the money behind them, settled sales, penalties. Each row says what paying would take (instant or escrow) and how many seconds from paying to settled.',
+  },
   get_score: {
     phase: 'before',
     method: 'GET',

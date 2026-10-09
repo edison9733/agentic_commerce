@@ -46,6 +46,7 @@ import {
   type Agent,
   type Config,
   type Order,
+  type Pair,
 } from '@tessera/sdk';
 import { chainNow, explorerAddress, explorerTx, getConfig, NETWORK, readAgent, readOrder, readPair, rpc, tokenBalance } from './chain.js';
 import { HTTP_CODE, ORDER_STATES, type Action, type Decision, type Outcome, type Reason, type Status } from './contract.js';
@@ -53,18 +54,18 @@ import { buildUnsigned, type Unsigned } from './tx.js';
 
 export type Reply = { http: number; body: Record<string, unknown> };
 
-const reply = (status: Status, fields: Record<string, unknown> = {}): Reply => ({ http: HTTP_CODE[status], body: { status, ...fields } });
+export const reply = (status: Status, fields: Record<string, unknown> = {}): Reply => ({ http: HTTP_CODE[status], body: { status, ...fields } });
 
-type Cfg = { data: Config; decimals: number };
+export type Cfg = { data: Config; decimals: number };
 
-async function config(): Promise<Cfg | Reply> {
+export async function config(): Promise<Cfg | Reply> {
   const c = await getConfig();
   return c ?? reply('not_configured', { message: `The Tessera program ${TESSERA_PROGRAM_ADDRESS} has no config on this cluster.` });
 }
-const isReply = (v: unknown): v is Reply => typeof v === 'object' && v !== null && 'http' in v && 'body' in v;
+export const isReply = (v: unknown): v is Reply => typeof v === 'object' && v !== null && 'http' in v && 'body' in v;
 
 /** An amount both ways: raw units and USDC. */
-const money = (units: bigint, decimals: number) => ({ units: units.toString(), usdc: fromUnits(units, decimals) });
+export const money = (units: bigint, decimals: number) => ({ units: units.toString(), usdc: fromUnits(units, decimals) });
 
 const stateName = (s: OrderState) => ORDER_STATES[s]!;
 const seconds = (n: bigint) => Number(n);
@@ -140,7 +141,7 @@ export async function getScore(wallet: Address): Promise<Reply> {
 
 // ----------------------------------------------------------- check_payment
 
-type Assessment = {
+export type Assessment = {
   decision: Decision;
   reason: Reason;
   message: string;
@@ -152,13 +153,25 @@ type Assessment = {
 };
 
 async function assess(cfg: Cfg, merchant: Address, buyer: Address | undefined, units: bigint, minHoldSecs: number, now: bigint) {
-  const p = cfg.data.params;
   const [m, b, pair, balance] = await Promise.all([
     readAgent(merchant),
     buyer ? readAgent(buyer) : Promise.resolve(null),
     buyer ? readPair(buyer, merchant) : Promise.resolve(null),
     buyer ? tokenBalance(buyer, cfg.data.mint) : Promise.resolve(null),
   ]);
+  return { a: decide(cfg, { merchant, buyer, units, minHoldSecs, now, m, b, pair, balance }), m, b };
+}
+
+/**
+ * The decision itself, from accounts already read. `find_merchants` calls it
+ * for every candidate with one read of everything, `check_payment` for one.
+ */
+export function decide(
+  cfg: Cfg,
+  i: { merchant: Address; buyer?: Address; units: bigint; minHoldSecs: number; now: bigint; m: Agent | null; b: Agent | null; pair: Pair | null; balance: bigint | null },
+): Assessment {
+  const { merchant, buyer, units, minHoldSecs, now, m, b, pair, balance } = i;
+  const p = cfg.data.params;
   // `block` only means the payment cannot work as asked. It is never a verdict on the merchant.
   const block = (reason: Reason, message: string): Assessment => ({ decision: 'block', reason, message, holdSecs: 0, merchantKnown: !!m, pairTrusted: false });
 
@@ -242,7 +255,7 @@ async function assess(cfg: Cfg, merchant: Address, buyer: Address | undefined, u
       pairTrusted,
     };
   })();
-  return { a, m, b };
+  return a;
 }
 
 export async function checkPayment(i: { merchant: Address; buyer?: Address; amount: string; minHoldSecs?: number }): Promise<Reply> {

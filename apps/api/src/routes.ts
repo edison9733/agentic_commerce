@@ -4,7 +4,7 @@
  * the two cannot drift apart.
  */
 import type { Address } from '@solana/kit';
-import { MAX_COMMENT_BYTES, MAX_MIN_HOLD_SECS, OUTCOMES, ROLES, type Outcome, type ToolName } from './contract.js';
+import { MAX_COMMENT_BYTES, MAX_FIND_LIMIT, MAX_MIN_HOLD_SECS, MAX_NEED_CHARS, OUTCOMES, ROLES, SORTS, type Outcome, type ToolName } from './contract.js';
 import {
   checkPayment,
   deliverOrder,
@@ -18,12 +18,13 @@ import {
   submit,
   type Reply,
 } from './core.js';
+import { findMerchants } from './find.js';
 import type { Field } from './validate.js';
 
 export type Route = {
   tool: ToolName;
   method: 'GET' | 'POST';
-  /** Express-style path, e.g. /v1/score/:wallet */
+  /** Express-style path, e.g. /v1/score/:wallet. A GET route takes its other fields from the query string. */
   path: string;
   fields: Field[];
   /** Read routes are cheap; build routes simulate a transaction; submit sends one. */
@@ -36,6 +37,21 @@ const invalid = (message: string): Reply => ({ http: 400, body: { status: 'inval
 const minHold: Field = { name: 'minHoldSecs', kind: 'int', min: 0, max: MAX_MIN_HOLD_SECS };
 
 export const ROUTES: Route[] = [
+  {
+    tool: 'find_merchants',
+    method: 'GET',
+    path: '/v1/merchants',
+    fields: [
+      { name: 'need', kind: 'text', maxBytes: MAX_NEED_CHARS },
+      { name: 'buyer', kind: 'address' },
+      { name: 'amount', kind: 'amount' },
+      { name: 'maxPrice', kind: 'amount' },
+      { name: 'sort', kind: 'enum', values: SORTS },
+      { name: 'limit', kind: 'int', min: 1, max: MAX_FIND_LIMIT },
+    ],
+    limit: 'read',
+    run: (v) => findMerchants(v as Parameters<typeof findMerchants>[0]),
+  },
   {
     tool: 'get_score',
     method: 'GET',
