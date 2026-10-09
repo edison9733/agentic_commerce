@@ -324,7 +324,7 @@ let evidence = (450 * history + 300 * tenure
     render: () => (
       <>
         <ProfileScene />
-        <Caption>A merchant that earned Trusted on devnet. Score, evidence, instant limit and reviews are all fields of public accounts.</Caption>
+        <Caption>A merchant's credit file. Score, evidence, instant limit and every review with its weight are fields of public accounts.</Caption>
       </>
     ),
   },
