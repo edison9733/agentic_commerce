@@ -9,7 +9,25 @@ The three decks are pages of the website, so they can show the live network and 
 | Weekly update (one minute) | `http://localhost:5173/#/deck/update` | `out/tessera-update.mp4` | `out/update-script.md` |
 
 Also in `out/`: every slide as a PNG (`pitch-slides/`, `demo-slides/`) and each deck as a PDF.
+
+Two PowerPoint decks in a looser, meme-heavy style, with speaker notes on every slide:
+
+| File | What it covers |
+|---|---|
+| `out/tessera-zk-sybil.pptx` | How zk proofs and nullifiers (Semaphore) would close the open sybil holes C2 and C12 in [SECURITY.md](../docs/SECURITY.md). A design, not built. |
+| `out/tessera-buyer-seller-guide.pptx` | Step by step from `git clone` to a live purchase on devnet, as the seller and as the buyer (browser and x402 agent), letting an agent pick the seller with `find_merchants`, and where to watch each transaction. |
+
+`out/how-it-works.png` is a one-slide "how to use it" mindmap (your agent finds the best-reviewed seller,
+pays, gets it, rates, comes back) in the colours of the Canva deck; its source is `how-it-works.html`
+(1920x1080).
+
 In `assets/`: the logo (SVG and 1024 px PNG) and a cover image.
+
+The pitch gained two slides after the videos were rendered: on 7 October slide 10, `zk` (proof of
+personhood as the next step), and on 9 October slide 8, `find` (reviews as search for agents: one call
+to `find_merchants`). The demo's stack slide now lists the four ways in for agents. The slide PNGs and
+the PDFs in `out/` include these, but the rendered videos and the generated scripts in `out/` predate
+them: render again on a Mac, or record your own voice from the deck as `docs/SUBMISSION.md` suggests.
 
 ## Presenting
 
@@ -46,7 +64,7 @@ scripts in `out/` are generated; editing them changes nothing.
 
 The pitch and the demo have to stay at or under three minutes for the Colosseum submission, and the
 weekly update under one. The renderer prints the total and warns if it is over. The narration is also
-kept short enough to read aloud at a normal pace: 418 words for the pitch, 395 for the demo.
+kept short enough to read aloud at a normal pace: 429 words for the pitch, 400 for the demo.
 
 After a render, look at the checkout slide of the demo video before using it. That slide performs a
 real purchase; if the agents server or the faucet was down, the video will show the failure.

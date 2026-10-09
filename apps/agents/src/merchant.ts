@@ -2,8 +2,11 @@
  * A merchant agent: quotes a price by opening an escrow, and once the escrow
  * is funded does the work, commits a hash of it on-chain and hands it over.
  */
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 import { address, type Address } from '@solana/kit';
 import type { PaymentPayload, PaymentRequired, PaymentRequirements, SettleResponse } from '@x402/core/types';
+import { decodeTransactionFromPayload, getTokenPayerFromTransaction } from '@x402/svm';
 import { fromHex, fromUnits, score, TESSERA_PROGRAM_ADDRESS, TIER_NAMES, toHex, type Order } from '@tessera/sdk';
 import {
   confirmFunded,
@@ -20,6 +23,38 @@ import {
 import { config } from './config.js';
 import { facilitators, verifyAndSettle } from './facilitator.js';
 import { canonical, hashOf, SERVICES, type Service } from './services.js';
+import { REPO_ROOT } from '../../../scripts/lib.js';
+
+/**
+ * What each merchant delivered is the arbiter's evidence, so it is written to
+ * disk before the hash goes on-chain and outlives a restart. Kept out of git.
+ */
+const EVIDENCE_FILE = resolve(REPO_ROOT, '.data/deliveries.jsonl');
+type Evidence = { merchant: string; order: string; sku: string; deliverable: unknown };
+
+function keepEvidence(e: Evidence): void {
+  try {
+    mkdirSync(dirname(EVIDENCE_FILE), { recursive: true });
+    appendFileSync(EVIDENCE_FILE, JSON.stringify(e) + '\n');
+  } catch (err) {
+    console.warn(`[evidence] could not write ${EVIDENCE_FILE}: ${(err as Error).message}`);
+  }
+}
+
+/** Every delivery kept so far, oldest first. */
+export function loadEvidence(): Evidence[] {
+  if (!existsSync(EVIDENCE_FILE)) return [];
+  const out: Evidence[] = [];
+  for (const line of readFileSync(EVIDENCE_FILE, 'utf8').split('\n')) {
+    if (!line.trim()) continue;
+    try {
+      out.push(JSON.parse(line) as Evidence);
+    } catch {
+      // a line cut short by a crash is skipped
+    }
+  }
+  return out;
+}
 
 export type EscrowTerms = {
   program: string;
@@ -46,6 +81,12 @@ export type Quote = {
   terms: EscrowTerms;
   required: PaymentRequired;
   openedAt: number;
+  /**
+   * Handed only to whoever asked for the quote. The website's checkout must
+   * show it to collect the delivery, so someone watching the chain cannot
+   * collect a delivery another wallet paid for.
+   */
+  claim?: string;
 };
 
 export type Fulfilment = {
@@ -110,11 +151,16 @@ export class MerchantAgent {
     if (this.unpaidFor(buyer) >= config.maxUnpaidPerBuyer) {
       throw new Error('too many unpaid orders for this wallet; pay or wait for them to expire');
     }
+    // Every quote fronts rent, and buyer addresses cost nothing to invent, so
+    // the per-wallet cap alone does not bound what quotes can cost.
+    if (this.quotes.size >= config.maxOpenQuotes) {
+      throw new Error('this merchant has too many unpaid quotes open; try again in a few minutes');
+    }
     const input = req.input ?? {};
     const requestHash = await hashOf({ sku: service.sku, input });
     const opened = await openOrder(this.ops, {
       buyer,
-      merchant: this.wallet,
+      merchant: this.signer.identity,
       amount: service.price,
       requestHash,
       minHoldSecs: req.minHoldSecs,
@@ -184,6 +230,16 @@ export class MerchantAgent {
       if (!accepted || payment.accepted.amount !== accepted.amount || payment.accepted.asset !== accepted.asset) {
         throw new Error('payment does not match any option that was quoted');
       }
+      // The order address is public on-chain. Without this, anyone could pay
+      // for an order quoted to another wallet and walk off with what that
+      // wallet asked for.
+      let payer = '';
+      try {
+        payer = getTokenPayerFromTransaction(decodeTransactionFromPayload(payment.payload as { transaction: string }));
+      } catch {
+        // an undecodable payment is refused below
+      }
+      if (payer !== quote.terms.buyer) throw new Error('payment does not match: it is not signed by this order\'s buyer');
       const settled = await verifyAndSettle(payment, accepted);
       receipts.push(settled.response);
       timings.verifyMs = settled.verifyMs;
@@ -216,6 +272,7 @@ export class MerchantAgent {
     timings.workMs = Date.now() - tWork;
 
     const deliveryHash = await hashOf(deliverable);
+    keepEvidence({ merchant: this.id, order, sku: quote.sku, deliverable });
     const tDeliver = Date.now();
     const { signature, instant } = await deliver(this.signer, order, o, deliveryHash);
     timings.deliverMs = Date.now() - tDeliver;

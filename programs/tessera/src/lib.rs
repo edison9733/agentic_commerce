@@ -114,10 +114,12 @@ pub mod tessera {
 
     // ----------------------------------------------------------------- orders
 
-    /// Open an escrow and price its risk. The buyer does not sign: a merchant
-    /// agent opens the order when it quotes a 402, so the buyer needs no SOL.
-    /// A buyer's client must read this account back and check every field
-    /// before paying.
+    /// Open an escrow and price its risk. The merchant signs: an order in its
+    /// name that it never quoted could otherwise be funded and left to expire,
+    /// and the missed delivery would cost it score. The buyer does not sign:
+    /// a merchant agent opens the order when it quotes a 402, so the buyer
+    /// needs no SOL. A buyer's client must read this account back and check
+    /// every field before paying.
     ///
     /// `min_hold_secs` lets a buyer ask for more protection than the tiers
     /// call for. It can lengthen the hold, never shorten it.
@@ -316,6 +318,10 @@ pub mod tessera {
 
     /// The arbiter recorded when the order was opened splits the vault.
     /// Whoever gets less than half lost, and losing costs score.
+    ///
+    /// An arbiter that never answers must not lock the money forever: once
+    /// the complaint period has passed since the hold would have ended,
+    /// anyone may split the vault evenly. An even split penalises nobody.
     pub fn resolve_dispute<'info>(
         mut ctx: Context<'info, Settle<'info>>,
         merchant_bps: u16,
@@ -324,7 +330,12 @@ pub mod tessera {
         {
             let order = &ctx.accounts.order;
             require!(order.state == OrderState::Disputed, TesseraError::InvalidState);
-            require_keys_eq!(ctx.accounts.authority.key(), order.arbiter, TesseraError::Unauthorized);
+            if ctx.accounts.authority.key() != order.arbiter {
+                let now = Clock::get()?.unix_timestamp;
+                let complaint_secs = ctx.accounts.config.params.complaint_secs as i64;
+                require!(now > order.release_at.saturating_add(complaint_secs), TesseraError::Unauthorized);
+                require!(merchant_bps as u64 == BPS / 2, TesseraError::InvalidParams);
+            }
         }
         settle(&mut ctx, merchant_bps, OrderState::Resolved, false)
     }
@@ -431,7 +442,30 @@ pub mod tessera {
             }
         }
 
+        // A review only counts when the reviewer's side of the story is on
+        // record. A merchant can open and fund an order in the name of any
+        // buyer, so its review of that buyer weighs nothing until the buyer
+        // has spoken for the order itself. And the side that lost a dispute
+        // does not get a second, weighted say on it.
         let settled = order.paid_merchant.saturating_add(order.paid_fee);
+        let counts = match order.state {
+            OrderState::Released => reviewer_is_buyer || order.buyer_reviewed,
+            OrderState::Resolved => {
+                let doubled = settled.saturating_mul(2);
+                if reviewer_is_buyer {
+                    doubled <= order.amount
+                } else {
+                    doubled >= order.amount
+                }
+            }
+            // A refund settled nothing, so its review weighs 0 regardless.
+            _ => true,
+        };
+        // Money moves without the buyer; reputation does not. A released order
+        // becomes evidence for the merchant when the buyer reviews it.
+        let merchant_evidence = reviewer_is_buyer && order.state == OrderState::Released;
+        let buyer_tier = order.buyer_tier;
+
         let q = score::tier_weight(score::evaluate(&ctx.accounts.reviewer_agent, &params, now).tier);
         let pair = &mut ctx.accounts.pair;
         let spent = if reviewer_is_buyer {
@@ -440,7 +474,11 @@ pub mod tessera {
             &mut pair.rated_by_merchant
         };
         let cap = weighted(params.pair_cap, q);
-        let weight = weighted(settled, q).min(cap.saturating_sub(*spent));
+        let weight = if counts {
+            weighted(settled, q).min(cap.saturating_sub(*spent))
+        } else {
+            0
+        };
         *spent = spent.saturating_add(weight);
 
         let s = &mut ctx.accounts.subject_agent;
@@ -448,6 +486,9 @@ pub mod tessera {
         s.rating_sum = s.rating_sum.saturating_add(weight as u128 * rating as u128);
         s.rating_weight = s.rating_weight.saturating_add(weight);
         s.reviews_received = s.reviews_received.saturating_add(1);
+        if merchant_evidence {
+            grant_merchant_evidence(s, pair, &params, buyer_tier, settled, now);
+        }
         score::refresh(s, &params, now);
         let subject_score = s.score;
 
@@ -548,6 +589,20 @@ fn grant_points(points: &mut u32, held: &mut u16, pct: u64) {
     }
 }
 
+/// What a released order earns the merchant: credit and Diversity weighted by
+/// the buyer's tier at open, and an active period. Granted when the buyer
+/// reviews the order, because a merchant can name any wallet as its buyer and
+/// fund the order itself; only the buyer's own signature shows the buyer took
+/// part.
+fn grant_merchant_evidence(m: &mut Agent, pair: &mut Pair, params: &Params, buyer_tier: u8, gross: u64, now: i64) {
+    let pct = score::tier_weight(buyer_tier);
+    grant_credit(&mut m.credit, &mut pair.credit_to_merchant, gross, pct, params.pair_cap);
+    if pair.volume >= params.pair_cap / 10 {
+        grant_points(&mut m.counterparty_points, &mut pair.points_to_merchant, pct);
+    }
+    score::touch_activity(m, params, now);
+}
+
 #[allow(clippy::too_many_arguments)]
 fn pay_leg<'info>(
     token_program: Pubkey,
@@ -591,7 +646,6 @@ fn settle<'info>(
     let bump = ctx.accounts.order.bump;
     let fee_bps = ctx.accounts.order.fee_bps;
     let amount = ctx.accounts.order.amount;
-    let buyer_tier = ctx.accounts.order.buyer_tier;
     let merchant_tier = ctx.accounts.order.merchant_tier;
     let instant = ctx.accounts.order.instant;
 
@@ -683,10 +737,12 @@ fn settle<'info>(
             }
             m.fees_paid = m.fees_paid.saturating_add(fee);
 
-            // Each side earns credit weighted by the *other* side's tier at open.
-            let pct_for_merchant = score::tier_weight(buyer_tier);
+            // Each side earns credit weighted by the *other* side's tier at
+            // open. The buyer's is granted now: the merchant opened and
+            // delivered the order, so it is on record. The merchant's waits for
+            // the buyer's review (see `grant_merchant_evidence`), because the
+            // buyer never signed anything to get here.
             let pct_for_buyer = score::tier_weight(merchant_tier);
-            grant_credit(&mut m.credit, &mut pair.credit_to_merchant, merchant_gross, pct_for_merchant, params.pair_cap);
             grant_credit(&mut b.credit, &mut pair.credit_to_buyer, merchant_gross, pct_for_buyer, params.pair_cap);
 
             if pair.orders == 0 {
@@ -703,11 +759,9 @@ fn settle<'info>(
             // A counterparty counts toward Diversity only once the pair has
             // moved a tenth of the pair cap, so dust cannot fake a network.
             if pair.volume >= params.pair_cap / 10 {
-                grant_points(&mut m.counterparty_points, &mut pair.points_to_merchant, pct_for_merchant);
                 grant_points(&mut b.counterparty_points, &mut pair.points_to_buyer, pct_for_buyer);
             }
 
-            score::touch_activity(m, &params, now);
             score::touch_activity(b, &params, now);
 
             config.orders_settled = config.orders_settled.saturating_add(1);
@@ -864,8 +918,8 @@ pub struct OpenOrder<'info> {
     pub mint: Box<Account<'info, Mint>>,
     /// CHECK: recorded as the buyer; does not sign.
     pub buyer: UncheckedAccount<'info>,
-    /// CHECK: recorded as the merchant; proves itself by signing `deliver`.
-    pub merchant: UncheckedAccount<'info>,
+    /// The merchant agrees to every order opened in its name.
+    pub merchant: Signer<'info>,
     #[account(mut, seeds = [b"agent", buyer.key().as_ref()], bump = buyer_agent.bump)]
     pub buyer_agent: Box<Account<'info, Agent>>,
     #[account(mut, seeds = [b"agent", merchant.key().as_ref()], bump = merchant_agent.bump)]

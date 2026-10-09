@@ -74,6 +74,8 @@ const GUARANTEES: [string, string][] = [
   ['A refund or a lost dispute earns no credit, and a review of a refund weighs nothing.', 'formula + on-chain'],
   ['Three wallets trading with each other for a year never reach Trusted.', 'formula'],
   ['Instant settlement can net an exit scam at most the base allowance.', 'formula + on-chain'],
+  ['A merchant cannot borrow the tier of a buyer who never took part, or review-bomb it.', 'formula + on-chain'],
+  ['The side that lost a dispute cannot answer with a weighted review.', 'formula + on-chain'],
   ['A buyer that is not the order\'s buyer, or a quote for the wrong amount or escrow, is refused before payment.', 'on-chain'],
   ['The merchant cannot take the money before the hold ends, or shorten a hold the buyer asked for.', 'on-chain'],
 ];
@@ -116,7 +118,7 @@ hold     = max( hold[merchant tier], hold[buyer tier] )`}
             Each counterparty adds the best tier weight it has held while trading with this wallet, once the pair has moved a tenth of the pair cap. Ten sock puppets are worth one Trusted customer.
           </Term>
           <Term name="Rating" math="clamp((stars − 1.5) ÷ 3, 0, 1)    stars = (prior × 3 + Σ w·r) ÷ (prior + Σ w)">
-            Stars are weighted by the volume that settled on the reviewed order, scaled by the reviewer's own tier and capped per pair, then shrunk toward a 3-star prior. No reviews means half marks. A review of a refunded order weighs nothing, so reviews cannot be minted by buying and cancelling.
+            Stars are weighted by the volume that settled on the reviewed order, scaled by the reviewer's own tier and capped per pair, then shrunk toward a 3-star prior. No reviews means half marks. A review of a refunded order weighs nothing, so reviews cannot be minted by buying and cancelling. A merchant's review counts once the buyer has reviewed the same order, and the side that lost a dispute gets no weight.
           </Term>
           <Term name="Behaviour" math="1 − standing penalty">
             Losing a dispute adds 25%, missing a delivery deadline adds 10%. The penalty heals a little every period. While any of it stands, the wallet cannot be Trusted, so it cannot settle instantly.

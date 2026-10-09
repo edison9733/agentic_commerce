@@ -384,6 +384,20 @@ function Attacks() {
 
 const SNIPPETS: { id: string; label: string; file: string; code: string }[] = [
   {
+    id: 'find',
+    label: 'Find',
+    file: 'apps/api/src/find.ts',
+    code: `// An agent chooses who to buy from in one call. No pages, no reading reviews.
+GET /v1/merchants?need=text summary&buyer=<wallet>&sort=fastest
+
+// The shape of one row (values illustrative):
+{ "rank": 1, "merchant": "<wallet>", "tier": "Trusted", "score": 912, "stars": 4.8,
+  "service": { "id": "summary", "price": { "usdc": "0.25" } },
+  "decision": "instant", "expectedSecs": 3 }
+
+// Ranked only by on-chain data. Every review behind it cost a real sale.`,
+  },
+  {
     id: 'sell',
     label: 'Sell',
     file: 'apps/agents/src/server.ts',
@@ -426,7 +440,7 @@ const result = score.evaluate(agent.data, config.data.params, now);
 ];
 
 function Developers() {
-  const [tab, setTab] = useState('sell');
+  const [tab, setTab] = useState('find');
   const snippet = SNIPPETS.find((x) => x.id === tab)!;
   const registered = Object.keys(registry.agents).length;
   const mirrored = Object.keys(registry.feedback).length;
@@ -441,10 +455,10 @@ function Developers() {
         <Reveal>
           <div className="eyebrow" style={{ color: '#8b8a7c' }}>For developers</div>
           <h2 className="display mt-4 max-w-[19ch] text-[clamp(2.4rem,5.6vw,4.6rem)]" style={{ color: '#f1eee2' }}>
-            One call to sell. <em>One check to buy.</em>
+            One call to find. One to sell. <em>One check to buy.</em>
           </h2>
           <p className="mt-6 max-w-[44rem] text-[1.05rem] leading-relaxed">
-            No new payment scheme and no custom client. The seller opens an escrow and names it as the address to pay. The buyer checks that address on-chain before it signs.
+            No new payment scheme and no custom client. A buying agent asks for the best merchant and gets a ranked answer built from reviews that each cost a real sale. The seller opens an escrow and names it as the address to pay. The buyer checks that address on-chain before it signs.
           </p>
         </Reveal>
         <Reveal delay={0.1} className="mt-12">
@@ -491,7 +505,7 @@ function Developers() {
           ))}
         </div>
         <p className="mono mt-5 text-[0.74rem]" style={{ color: '#5d5c52' }}>
-          How the registry bridge works, and what it does not do: <a className="link" href={`${REPO}/blob/main/docs/ERC-8004.md`} target="_blank" rel="noreferrer">docs/ERC-8004.md</a>
+          For agents: <a className="link" href="./llms.txt">llms.txt</a> · the API, MCP, skill and CLI: <a className="link" href={`${REPO}/blob/main/docs/AGENT-API.md`} target="_blank" rel="noreferrer">docs/AGENT-API.md</a> · how the registry bridge works, and what it does not do: <a className="link" href={`${REPO}/blob/main/docs/ERC-8004.md`} target="_blank" rel="noreferrer">docs/ERC-8004.md</a>
         </p>
       </div>
     </section>
@@ -502,8 +516,9 @@ function Proof() {
   const { config } = useChain();
   const { profiles } = useProfiles();
   const rows: [string, string][] = [
-    ['256 / 256', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
-    ['16 / 16', 'formula tests pass: every guarantee on this page is a test'],
+    ['294 / 294', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
+    ['18 / 18', 'formula tests pass: every guarantee on this page is a test'],
+    ['79 / 79', 'checks pass across the four ways in for agents (HTTP API, MCP, skill, CLI), from finding a merchant to a refund'],
     ['0 SOL', 'spent by the buyer on a purchase paid through the x402 facilitator on devnet (balance identical before and after)'],
     [`${((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s`, `median time for the x402 facilitator to settle a payment into escrow on devnet (${snapshot.measured.viaFacilitator} payments measured)`],
   ];

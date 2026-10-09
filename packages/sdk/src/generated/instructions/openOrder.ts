@@ -33,6 +33,7 @@ import {
   type InstructionWithAccounts,
   type InstructionWithData,
   type ReadonlyAccount,
+  type ReadonlySignerAccount,
   type ReadonlyUint8Array,
   type WritableAccount,
   type WritableSignerAccount,
@@ -103,7 +104,8 @@ export type OpenOrderInstruction<
         ? ReadonlyAccount<TAccountBuyer>
         : TAccountBuyer,
       TAccountMerchant extends string
-        ? ReadonlyAccount<TAccountMerchant>
+        ? ReadonlySignerAccount<TAccountMerchant> &
+            AccountSignerMeta<TAccountMerchant>
         : TAccountMerchant,
       TAccountBuyerAgent extends string
         ? WritableAccount<TAccountBuyerAgent>
@@ -185,7 +187,7 @@ export type OpenOrderAsyncInput<
   TAccountVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountMint extends InstructionAccountInput = InstructionAccountInput,
   TAccountBuyer extends InstructionAccountInput = InstructionAccountInput,
-  TAccountMerchant extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMerchant extends InstructionSignerInput = InstructionSignerInput,
   TAccountBuyerAgent extends InstructionAccountInput = InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput =
     InstructionAccountInput,
@@ -207,6 +209,7 @@ export type OpenOrderAsyncInput<
   vault?: TAccountVault;
   mint: TAccountMint;
   buyer: TAccountBuyer;
+  /** The merchant agrees to every order opened in its name. */
   merchant: TAccountMerchant;
   buyerAgent?: TAccountBuyerAgent;
   merchantAgent?: TAccountMerchantAgent;
@@ -227,7 +230,7 @@ export async function getOpenOrderInstructionAsync<
   TAccountVault extends InstructionAccountInput,
   TAccountMint extends InstructionAccountInput,
   TAccountBuyer extends InstructionAccountInput,
-  TAccountMerchant extends InstructionAccountInput,
+  TAccountMerchant extends InstructionSignerInput,
   TAccountBuyerAgent extends InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput,
   TAccountPair extends InstructionAccountInput,
@@ -325,7 +328,7 @@ export async function getOpenOrderInstructionAsync<
     buyer: { value: input.buyer ?? null, isSigner: false, isWritable: false },
     merchant: {
       value: input.merchant ?? null,
-      isSigner: false,
+      isSigner: true,
       isWritable: false,
     },
     buyerAgent: {
@@ -531,7 +534,7 @@ export type OpenOrderInput<
   TAccountVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountMint extends InstructionAccountInput = InstructionAccountInput,
   TAccountBuyer extends InstructionAccountInput = InstructionAccountInput,
-  TAccountMerchant extends InstructionAccountInput = InstructionAccountInput,
+  TAccountMerchant extends InstructionSignerInput = InstructionSignerInput,
   TAccountBuyerAgent extends InstructionAccountInput = InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput =
     InstructionAccountInput,
@@ -553,6 +556,7 @@ export type OpenOrderInput<
   vault: TAccountVault;
   mint: TAccountMint;
   buyer: TAccountBuyer;
+  /** The merchant agrees to every order opened in its name. */
   merchant: TAccountMerchant;
   buyerAgent: TAccountBuyerAgent;
   merchantAgent: TAccountMerchantAgent;
@@ -573,7 +577,7 @@ export function getOpenOrderInstruction<
   TAccountVault extends InstructionAccountInput,
   TAccountMint extends InstructionAccountInput,
   TAccountBuyer extends InstructionAccountInput,
-  TAccountMerchant extends InstructionAccountInput,
+  TAccountMerchant extends InstructionSignerInput,
   TAccountBuyerAgent extends InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput,
   TAccountPair extends InstructionAccountInput,
@@ -669,7 +673,7 @@ export function getOpenOrderInstruction<
     buyer: { value: input.buyer ?? null, isSigner: false, isWritable: false },
     merchant: {
       value: input.merchant ?? null,
-      isSigner: false,
+      isSigner: true,
       isWritable: false,
     },
     buyerAgent: {
@@ -814,6 +818,7 @@ export type ParsedOpenOrderInstruction<
     vault: TAccountMetas[2];
     mint: TAccountMetas[3];
     buyer: TAccountMetas[4];
+    /** The merchant agrees to every order opened in its name. */
     merchant: TAccountMetas[5];
     buyerAgent: TAccountMetas[6];
     merchantAgent: TAccountMetas[7];

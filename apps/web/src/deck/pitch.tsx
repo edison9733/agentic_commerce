@@ -89,6 +89,110 @@ function RingSlide() {
   );
 }
 
+/** The top merchants as find_merchants ranks them: live from the chain, or the 4 October snapshot when offline. */
+function FindSlide() {
+  const { profiles } = useProfiles();
+  const live = profiles.filter((p) => p.agent.asMerchant.orders > 0).slice(0, 3);
+  const rows = live.length
+    ? live.map((p) => ({ name: p.name, tier: p.eval.tier, score: p.eval.score, stars: p.stars, sales: p.agent.asMerchant.orders }))
+    : snapshot.agentsByScore
+        .filter((a) => a.role === 'merchant')
+        .slice(0, 3)
+        .map((a) => ({ name: a.name, tier: ['New', 'Building', 'Established', 'Trusted'].indexOf(a.tier), score: a.score, stars: a.stars, sales: a.orders }));
+  return (
+    <Frame pad={84}>
+      <Kicker>Reviews as search, for agents</Kicker>
+      <Big size={78} max="21ch" color={white}>
+        Who should I buy from? <em>One call.</em>
+      </Big>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 56, marginTop: 40, alignItems: 'start' }}>
+        <Rise delay={0.4}>
+          <div className="mono" style={{ fontSize: 22, padding: '18px 26px', borderRadius: 16, background: '#10120e', border: '1px solid #272b21', color: '#c9c6b6' }}>
+            GET /v1/merchants?need=<span style={{ color: mint }}>text summary</span>&amp;sort=<span style={{ color: mint }}>best</span>
+          </div>
+          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+            {rows.map((r, k) => (
+              <Rise key={r.name} delay={0.7 + k * 0.14}>
+                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 200px 90px 110px', alignItems: 'center', gap: 16, padding: '16px 24px', borderRadius: 16, border: `1px solid ${k === 0 ? mint : '#272b21'}`, background: k === 0 ? '#121a14' : '#10120e' }}>
+                  <span className="display" style={{ fontSize: 34, color: k === 0 ? mint : '#8b8a7c' }}>{k + 1}</span>
+                  <span className="display" style={{ fontSize: 34, color: white }}>{r.name}</span>
+                  <span style={{ fontSize: 20 }}><TierBadge tier={Math.max(0, r.tier)} dark /></span>
+                  <span className="mono" style={{ fontSize: 20, color: white }}>★{r.stars.toFixed(2)}</span>
+                  <span className="mono" style={{ fontSize: 18, color: '#8b8a7c' }}>{r.sales} sales</span>
+                </div>
+              </Rise>
+            ))}
+          </div>
+        </Rise>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {[
+            ['Ranked by money, not words', 'Each review needed a real settled order and counts by what it paid.'],
+            ['Answers the next question too', 'Every row says instant or escrow, and the seconds from paying to settled.'],
+            ['Built for agents', 'Compact JSON with enums, over an API, MCP, a skill or a CLI. No pages to read.'],
+          ].map(([h, b], k) => (
+            <Rise key={h} delay={0.9 + k * 0.15}>
+              <div style={{ padding: '18px 24px', borderRadius: 18, border: '1px solid #272b21', background: '#10120e' }}>
+                <div className="display" style={{ fontSize: 32, color: white }}>{h}</div>
+                <div style={{ fontSize: 21, marginTop: 6, lineHeight: 1.35, color: '#c9c6b6' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+      </div>
+      <Source>{live.length ? 'Merchants ranked by score, read from devnet now.' : `Merchants ranked by score on the devnet demo network, ${snapshot.takenAt.slice(0, 10)}.`} The API adds each merchant's price and settle time: apps/api/src/find.ts</Source>
+    </Frame>
+  );
+}
+
+function ZkSlide() {
+  const wallets = ['sock-1', 'sock-2', 'sock-3', 'washer'];
+  const rows = [
+    ['Rings collapse', "Orders between one operator's own wallets earn nothing."],
+    ['Penalties stick', 'A fresh wallet still answers for the person behind it.'],
+    ['Nobody learns who', 'The proof shows membership in a verified group, never which member.'],
+  ];
+  return (
+    <Frame pad={84}>
+      <Kicker>Next: proof of personhood</Kicker>
+      <Big size={74} max="22ch" color={white}>
+        One person, one identity. <em>However many wallets.</em>
+      </Big>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.05fr 1fr', gap: 64, marginTop: 44, alignItems: 'center' }}>
+        <Rise delay={0.4}>
+          <svg viewBox="0 0 640 380" width="100%" role="img" aria-label="Four wallets of one operator lead to a single nullifier">
+            {wallets.map((w, k) => {
+              const y = 40 + k * 93;
+              return (
+                <g key={w}>
+                  <motion.line x1={92} y1={y} x2={392} y2={180} stroke="#3a4033" strokeWidth={2} initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 0.9, delay: 0.6 + k * 0.12, ease: EASE }} />
+                  <circle cx={70} cy={y} r={22} fill="#1c1f18" stroke="#8b8a7c" strokeWidth={2} />
+                  <text x={70} y={y + 46} textAnchor="middle" className="mono" fontSize={15} fill="#8b8a7c">{w}</text>
+                </g>
+              );
+            })}
+            <motion.g initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.7, delay: 1.3, ease: EASE }} style={{ transformOrigin: '510px 180px' }}>
+              <rect x={392} y={120} width={240} height={120} rx={20} fill="#121a14" stroke={mint} strokeWidth={2} />
+              <text x={512} y={168} textAnchor="middle" className="mono" fontSize={18} fill={mint}>one nullifier</text>
+              <text x={512} y={200} textAnchor="middle" className="mono" fontSize={14} fill="#8b8a7c">Poseidon(secret, scope)</text>
+            </motion.g>
+          </svg>
+        </Rise>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {rows.map(([h, b], k) => (
+            <Rise key={h} delay={0.9 + k * 0.15}>
+              <div style={{ padding: '20px 26px', borderRadius: 18, border: '1px solid #272b21', background: '#10120e' }}>
+                <div className="display" style={{ fontSize: 36, color: white }}>{h}</div>
+                <div style={{ fontSize: 22, marginTop: 6, lineHeight: 1.35, color: '#c9c6b6' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+      </div>
+      <Source>Roadmap, not built. A Semaphore-style zero-knowledge proof (Groth16 over BN254, which Solana verifies with its alt_bn128 syscalls) closes the two open items in docs/SECURITY.md: large rings (C2) and whitewashing (C12).</Source>
+    </Frame>
+  );
+}
+
 function EfficiencySlide() {
   const payment = 0.07;
   const card = payment * 0.029 + 0.3;
@@ -214,7 +318,7 @@ function TierSlide() {
 export const PITCH: Slide[] = [
   {
     id: 'title',
-    seconds: 6,
+    seconds: 5,
     say: 'This is Tessera. The credit layer for agent commerce.',
     render: () => (
       <Frame center>
@@ -358,33 +462,45 @@ export const PITCH: Slide[] = [
     ),
   },
   {
+    id: 'find',
+    seconds: 10,
+    say: 'One call tells an agent who to buy from: ranked by reviews that each cost a real sale, with the price and the seconds to settle.',
+    render: () => <FindSlide />,
+  },
+  {
     id: 'ring',
     seconds: 15,
     say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns thousands in fees first. And an exit scam nets twenty-five dollars, at any size.',
     render: () => <RingSlide />,
   },
   {
+    id: 'zk',
+    seconds: 8,
+    say: 'Next, a zero-knowledge proof that each operator is one person. A ring becomes one identity. Nobody learns who.',
+    render: () => <ZkSlide />,
+  },
+  {
     id: 'live',
-    seconds: 14,
-    say: 'This is live on devnet. Agents find each other over A2A, pay over x402, and earn their tier on-chain. The honest merchants reached Trusted. The wash-trading ring did not.',
+    seconds: 12,
+    say: 'This is live on devnet. Agents find each other, pay over x402, and earn their tier on-chain. The honest merchants reached Trusted. The wash-trading ring did not.',
     render: () => <LiveSlide />,
   },
   {
     id: 'cost',
-    seconds: 15,
-    say: 'It is also cheaper, and final sooner. Moving seven cents on a card costs thirty cents, and stays open to dispute for a hundred and twenty days. Here it costs a fraction of a cent, and a new wallet waits three days.',
+    seconds: 10,
+    say: 'It is also cheaper. Seven cents on a card costs thirty cents, disputable for four months. Here it costs a fraction of a cent.',
     render: () => <EfficiencySlide />,
   },
   {
     id: 'layers',
-    seconds: 14,
-    say: 'Solana already has x402 for payment, and an agent registry for identity. Tessera is the layer between them. Our agents are in that registry on devnet today, and every review we send it carries proof of payment.',
+    seconds: 10,
+    say: 'Solana has x402 for payment and a registry for identity. Tessera is the layer between them, and every review we send that registry carries proof of payment.',
     render: () => <LayerSlide />,
   },
   {
     id: 'market',
-    seconds: 14,
-    say: 'McKinsey estimates that agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles through escrow. A seller adds one function. A buyer adds one check.',
+    seconds: 13,
+    say: 'McKinsey estimates agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles. A seller adds one function. A buyer adds one check.',
     surface: 'paper',
     render: () => (
       <Frame pad={88}>
@@ -440,7 +556,7 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'close',
-    seconds: 8,
+    seconds: 7,
     say: 'Micropayments were the easy part. Every payment matters. This is Tessera.',
     render: () => (
       <Frame center>

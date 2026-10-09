@@ -229,7 +229,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   {
     id: 'score',
     seconds: 19,
-    say: 'The score is integer arithmetic over those accounts, written once in Rust and once in TypeScript. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and fifty-six checks, attacks included.',
+    say: 'The score is integer arithmetic over those accounts, written once in Rust and once in TypeScript. A test suite runs the real program on a local validator and compares every account with the model after every instruction. Two hundred and ninety-four checks, attacks included.',
     render: () => (
       <Frame pad={84}>
         <Kicker>One formula, three places: program, SDK, browser</Kicker>
@@ -249,11 +249,11 @@ let evidence = (450 * history + 300 * tenure
           </Rise>
           <div style={{ display: 'grid', gap: 26 }}>
             <Rise delay={0.7}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>256<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 256</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>294<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 294</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>checks against the real program, each account compared with a reference model</div>
             </Rise>
             <Rise delay={1.0}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>16<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 16</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>18<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 18</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>formula tests: every guarantee we state is one</div>
             </Rise>
           </div>
@@ -288,8 +288,8 @@ let evidence = (450 * history + 300 * tenure
   },
   {
     id: 'stack',
-    seconds: 14,
-    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two with two facilitators, A2A with the x402 extension, and the Solana Agent Registry. It is on devnet, with time compressed, one arbiter key, and no audit. Those come next.',
+    seconds: 15,
+    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two, A2A, and the Solana Agent Registry. Agents call it over an API, MCP, a skill or a CLI. It is on devnet, with time compressed, one arbiter key, and no audit. Those come next.',
     render: () => (
       <Frame pad={84}>
         <Kicker>Stack, and what is not done</Kicker>
@@ -301,10 +301,11 @@ let evidence = (450 * history + 300 * tenure
               ['Payments', 'x402 v2 `exact` · two facilitators quoted per order'],
               ['Agents', 'A2A JSON-RPC · a2a-x402 extension v0.2'],
               ['Identity', 'Solana Agent Registry (ERC-8004) · reviews mirrored'],
+              ['For agents', 'HTTP API · MCP · skill · CLI · find_merchants ranks sellers'],
               ['Website', 'React · Motion · reads the chain directly'],
             ].map(([k, v], i) => (
               <Rise key={k} delay={0.3 + i * 0.12}>
-                <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', padding: '16px 0', borderTop: '1px solid #272b21', fontSize: 25 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '170px 1fr', padding: '13px 0', borderTop: '1px solid #272b21', fontSize: 25 }}>
                   <span style={{ color: white }}>{k}</span>
                   <span className="mono" style={{ fontSize: 20 }}>{v}</span>
                 </div>

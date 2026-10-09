@@ -224,6 +224,11 @@ export async function handleRpc(
       const quote = await m.quote({ ...req, sku: req.skill, resourceUrl: `${config.publicUrl}/agents/${m.id}/a2a` });
       const task = paymentRequired(taskId, contextId, quote, [message]);
       tasks.set(taskId, { task, merchant: m.id, order: quote.terms.order });
+      // Oldest tasks go first once the map is large: memory stays bounded.
+      for (const k of tasks.keys()) {
+        if (tasks.size <= 2000) break;
+        tasks.delete(k);
+      }
       return { result: task };
     } catch (e) {
       return { error: fail(-32000, (e as Error).message) };

@@ -61,6 +61,28 @@ what is known about the two parties. That function is a credit score.**
    devnet, each registry identity points at its Tessera credit file, and Tessera reviews are mirrored
    there as feedback that carries proof of payment. See [docs/ERC-8004.md](docs/ERC-8004.md).
 
+## Four ways in for agents
+
+One core and three thin layers over it, so an agent uses Tessera in whatever it speaks. All four
+return the same decisions and statuses; every transaction comes back unsigned for the agent's own
+wallet. Details: [docs/AGENT-API.md](docs/AGENT-API.md).
+
+| Door | Run | Use |
+|---|---|---|
+| HTTP API (the core) | `npm run api` → `:4030/v1` | `GET /v1/merchants?need=…` → the best merchants, ranked; `POST /v1/check` → `instant`, `escrow` or `block`, with a reason |
+| MCP (Streamable HTTP) | `npm run mcp` → `:4040/mcp` | `claude mcp add --transport http tessera http://127.0.0.1:4040/mcp` |
+| Skill | [`skills/tessera/SKILL.md`](skills/tessera/SKILL.md) | "Before any paid tool call, call `check_payment`." |
+| CLI | `npm run tessera -- help` | `tessera find text summary --sort fastest`, `tessera check <merchant> 0.20 --keypair ~/.config/solana/id.json` |
+
+Tools, by phase: before paying `find_merchants`, `get_score`, `check_payment`; during `open_escrow`, `deliver_order`,
+`get_escrow`; after `release_escrow`, `reclaim_after_timeout`, `report_outcome`, `submit_transaction`.
+
+**Reviews as search, for agents.** `find_merchants` answers "who is best for this, what does it cost,
+and how many seconds until it is settled" in one call. The rank uses only on-chain data, and every
+review behind it needed a real settled order, so a top spot costs real sales to fake. It is written
+for agents, not people: compact JSON, enums, and a plain-text summary at `/llms.txt` on both the API
+and the website.
+
 ## The score
 
 ```
@@ -82,9 +104,11 @@ number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 
 | Command | Result | What it proves |
 |---|---|---|
-| `npm run test:local` | **256 / 256** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
-| `npm run test:formula` | **16 / 16** | The guarantees stated in the docs and on the site, as tests. |
+| `npm run test:local` | **294 / 294** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
+| `npm run test:formula` | **18 / 18** | The guarantees stated in the docs and on the site, as tests. |
 | `npm run test:wallet` | **pass** | The website's checkout with a browser wallet, on devnet. A Wallet Standard wallet is injected into headless Chrome; the site lists it, connects, and the wallet signs each step: fund, pay into escrow, check the delivery hash, release, review. The order and the review are then read back from the chain. It is not a test of a particular wallet extension. |
+| `npm run test:doors` | **pass** | All four doors against the real program on a local validator (79 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
+| `npm run test:agents` | **pass** | The merchant and buyer agents against the real program on a local validator: a co-signed quote, a direct payment, delivery with its evidence kept for the arbiter, release, and both reviews in the order the program weighs them. |
 | `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry is read back from the registry and matched against the Tessera review account it points at. |
 
 Measured on devnet over a public RPC on 4 October 2026 (UTC); raw data in [`deployments/measurements.jsonl`](deployments/measurements.jsonl):
@@ -135,8 +159,8 @@ Needs Node 20.18+, Rust, Solana CLI 3.1, Anchor 1.1.2. Everything targets **devn
 npm install
 npm run build:program        # anchor build
 npm run codegen              # typed client from the IDL
-npm run test:formula         # 16 formula tests, no chain needed
-npm run test:local           # 256 checks on a local validator (about 3 minutes)
+npm run test:formula         # 18 formula tests, no chain needed
+npm run test:local           # 294 checks on a local validator (about 4 minutes)
 ```
 
 To run the demo network against the deployed program you need the role keypairs in `.keys/`. They are
@@ -165,6 +189,18 @@ npm run buy -w @tessera/agents -- --buyer scout --merchant atlas --mode x402
 The site reads the chain directly, so `npm run web` alone shows the live network. Only the Market page
 needs `npm run agents`.
 
+### Putting the site on Vercel
+
+The site is static files (`npm run build:web` writes `apps/web/dist`), and `vercel.json` tells Vercel how
+to build it. Import the GitHub repo in Vercel and keep the root directory at the repo root; each push to
+the production branch redeploys. Optional environment variables, set in the Vercel project:
+
+- `VITE_RPC_URLS`: comma-separated devnet RPC URLs, tried in order (defaults to two public ones).
+- `VITE_AGENTS_URL`: the public `https://` address of `npm run agents`, for the Market page and the demo
+  deck's checkout. The agents server is not on Vercel; without it the Market page says it is unreachable.
+
+These are read at build time, so redeploy after changing them.
+
 ## Repository layout
 
 ```
@@ -172,6 +208,10 @@ programs/tessera/     Anchor program: escrow state machine, score, reviews, disp
 packages/sdk/         Typed client (Codama), PDA helpers, payment verification,
                       the score mirror, the reference model, attack simulations
 apps/agents/          Merchant agents (A2A + x402), buyer agent, swarm, crank, arbiter
+apps/api/             The HTTP API: credit checks and unsigned escrow transactions (the core door)
+apps/mcp/             The same tools over MCP (Streamable HTTP)
+apps/cli/             The tessera command; signs locally with --keypair
+skills/tessera/       SKILL.md for skill-aware agents
 apps/web/             React + Motion site: live network, credit files, market, decks
 scripts/              Devnet bootstrap and the local-validator test suite
 pitch/                Video renderer; scripts are generated from the decks
@@ -193,7 +233,10 @@ Not real yet:
   instead of days, so a wallet's journey can be watched in under an hour. The formula is the same.
 - **Single keys.** The arbiter and the program's upgrade authority are one key each. Both need a
   multisig before any real money.
-- **Unaudited**, and the A2A endpoint is hand-rolled from the specification rather than certified.
+- **Unaudited** by a third party, and the A2A endpoint is hand-rolled from the specification rather
+  than certified. An internal review on 7 October found and fixed three serious holes and seven smaller
+  ones ([docs/SECURITY.md](docs/SECURITY.md#audit-of-7-october-2026)). **The program deployed on devnet
+  predates those fixes** until it is upgraded; the steps are in the same section.
 - **It prices faking; it does not detect it.** On-chain data cannot tell a bot from a customer who
   spends the same money. See the limits in [docs/SECURITY.md](docs/SECURITY.md).
 

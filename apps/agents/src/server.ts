@@ -13,8 +13,9 @@
  *
  *   npm run agents
  */
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import cors from 'cors';
-import express, { type Request, type Response } from 'express';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { address, lamports } from '@solana/kit';
 import { getTransferSolInstruction } from '@solana-program/system';
 import {
@@ -40,7 +41,7 @@ import {
 } from './chain.js';
 import { config } from './config.js';
 import { facilitators } from './facilitator.js';
-import { MerchantAgent, type Behaviour } from './merchant.js';
+import { loadEvidence, MerchantAgent, type Behaviour } from './merchant.js';
 import { hashOf } from './services.js';
 
 const ops = clientForSigner(await loadKeypair('.keys/server.json'));
@@ -52,9 +53,50 @@ for (const m of [...MERCHANTS, ...ADVERSARIES.filter((a) => a.role === 'merchant
   merchants.set(m.id, new MerchantAgent(m.id, m.title, clientForSigner(await loadKeypair(keyPath(m.id))), ops, behaviour));
 }
 
+// The arbiter's evidence from earlier runs.
+let restored = 0;
+for (const e of loadEvidence()) {
+  const m = merchants.get(e.merchant);
+  if (m) {
+    m.deliveries.set(e.order, { sku: e.sku, deliverable: e.deliverable });
+    restored += 1;
+  }
+}
+
 const app = express();
+if (config.trustProxy) app.set('trust proxy', config.trustProxy);
 app.use(cors({ origin: config.webOrigins, exposedHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE'] }));
 app.use(express.json({ limit: '64kb' }));
+
+/**
+ * A fixed window of requests per client. Quotes open orders on-chain and the
+ * faucet hands out funds, and both are paid for by this server, so a script
+ * inventing wallet addresses must not be able to call them without end.
+ */
+function perClient(what: string, max: number, windowMs: number) {
+  const hits = new Map<string, { n: number; until: number }>();
+  return (req: Request, res: Response, next: NextFunction) => {
+    const now = Date.now();
+    if (hits.size > 10_000) for (const [k, h] of hits) if (h.until < now) hits.delete(k);
+    const key = req.ip ?? 'unknown';
+    const h = hits.get(key);
+    if (!h || h.until < now) {
+      hits.set(key, { n: 1, until: now + windowMs });
+      return next();
+    }
+    if (h.n >= max) return void res.status(429).json({ error: `too many ${what} from this address; try again in ${Math.ceil((h.until - now) / 1000)} s` });
+    h.n += 1;
+    next();
+  };
+}
+const quoteLimit = perClient('quotes', config.quotesPerMinute, 60_000);
+const faucetLimit = perClient('faucet requests', 3, 3_600_000);
+
+const sameSecret = (a: string, b: string) => {
+  const x = Buffer.from(a);
+  const y = Buffer.from(b);
+  return x.length === y.length && timingSafeEqual(x, y);
+};
 
 const merchantOf = (req: Request, res: Response): MerchantAgent | null => {
   const m = merchants.get(String(req.params.id));
@@ -87,7 +129,7 @@ app.get('/agents/:id/.well-known/agent-card.json', async (req, res) => {
   if (m) res.json(await agentCard(m));
 });
 
-app.post('/agents/:id/a2a', async (req, res) => {
+app.post('/agents/:id/a2a', (req, res, next) => (req.body?.params?.message?.taskId ? next() : quoteLimit(req, res, next)), async (req, res) => {
   const m = merchantOf(req, res);
   if (!m) return;
   const id = req.body?.id ?? null;
@@ -102,7 +144,7 @@ app.post('/agents/:id/a2a', async (req, res) => {
 });
 
 // ------------------------------------------------------- plain HTTP 402
-app.get('/agents/:id/x402/:skill', async (req, res) => {
+app.get('/agents/:id/x402/:skill', (req, res, next) => (req.header('PAYMENT-SIGNATURE') ? next() : quoteLimit(req, res, next)), async (req, res) => {
   const m = merchantOf(req, res);
   if (!m) return;
   const header = req.header('PAYMENT-SIGNATURE');
@@ -154,7 +196,7 @@ app.get('/api/catalog', async (_req, res) => {
   );
 });
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', quoteLimit, async (req, res) => {
   try {
     const m = merchants.get(String(req.body?.merchant));
     if (!m) return void res.status(404).json({ error: 'unknown merchant' });
@@ -165,17 +207,24 @@ app.post('/api/orders', async (req, res) => {
       minHoldSecs: Number(req.body?.minHoldSecs ?? 0) || undefined,
       resourceUrl: `${config.publicUrl}/api/orders`,
     });
-    res.json({ terms: quote.terms, required: quote.required });
+    quote.claim = randomBytes(18).toString('base64url');
+    res.json({ terms: quote.terms, required: quote.required, claim: quote.claim });
   } catch (e) {
     res.status(400).json({ error: (e as Error).message });
   }
 });
 
-/** Called after the buyer's wallet has funded the vault. The program decides whether it did. */
+/**
+ * Called after the buyer's wallet has funded the vault. The program decides
+ * whether it did. The order address is public, so the caller also shows the
+ * claim that only the quote's requester was given.
+ */
 app.post('/api/orders/:order/fulfil', async (req, res) => {
   const order = String(req.params.order);
   const m = [...merchants.values()].find((x) => x.quotes.has(order));
-  if (!m) return void res.status(404).json({ error: 'unknown or already fulfilled order' });
+  const claim = m?.quotes.get(order)?.claim;
+  if (!m || !claim) return void res.status(404).json({ error: 'unknown or already fulfilled order' });
+  if (!sameSecret(String(req.body?.claim ?? ''), claim)) return void res.status(403).json({ error: 'this order was quoted to someone else' });
   try {
     const f = await m.fulfil(order);
     res.json(f);
@@ -215,7 +264,7 @@ async function refillFaucet(tok: ReturnType<typeof tokenHelpers>): Promise<void>
   console.log(`[faucet] refilled with ${fromUnits(amount)} USDC from ${best.m.id}'s takings`);
 }
 
-app.post('/api/faucet', async (req, res) => {
+app.post('/api/faucet', faucetLimit, async (req, res) => {
   let to: ReturnType<typeof address> | undefined;
   try {
     to = address(String(req.body?.wallet));
@@ -277,6 +326,14 @@ async function crank(now: bigint): Promise<void> {
         await arbitrate(m, order, o);
         o = await readOrder(ops, address(order));
       }
+      // The program weighs a merchant's review of a released order only once
+      // the buyer has reviewed it, so wait for that until the window closes.
+      if (o && !o.merchantReviewed && o.state === OrderState.Released && !o.buyerReviewed) {
+        // Look again in half a minute, not every tick: the RPC budget is shared.
+        if (now <= o.settledAt + BigInt(cfg.params.reviewSecs)) m.pending.set(order, Number(now) + 30);
+        else m.pending.delete(order);
+        continue;
+      }
       if (o && !o.merchantReviewed && (o.state === OrderState.Released || o.state === OrderState.Resolved)) {
         const buyerLost = o.state === OrderState.Resolved && o.refunded === 0n;
         if (o.state === OrderState.Released || buyerLost) {
@@ -308,12 +365,19 @@ async function crank(now: bigint): Promise<void> {
 /**
  * The demo arbiter. It does one honest check: is what the merchant holds the
  * thing whose hash it committed on-chain, and is it a valid answer to what
- * was ordered? If so the dispute is unfounded.
+ * was ordered? If so the dispute is unfounded. With no evidence on file it
+ * cannot tell, so it splits the vault evenly, which penalises nobody: losing
+ * the file must not hand every disputing buyer a win.
  */
 async function arbitrate(m: MerchantAgent, order: string, o: NonNullable<Awaited<ReturnType<typeof readOrder>>>): Promise<void> {
   const d = m.deliveries.get(order);
-  const matches = d ? bytesEqual(await hashOf(d.deliverable), o.deliveryHash) : false;
-  const valid = d ? m.service(d.sku).valid(d.deliverable) : false;
+  if (!d) {
+    await resolveDispute(arbiter, address(order), o, 5_000);
+    console.log(`[arbiter] ${order.slice(0, 8)}: no record of what ${m.id} delivered; split evenly, nobody penalised`);
+    return;
+  }
+  const matches = bytesEqual(await hashOf(d.deliverable), o.deliveryHash);
+  const valid = m.service(d.sku).valid(d.deliverable);
   const merchantBps = matches && valid ? 10_000 : 0;
   await resolveDispute(arbiter, address(order), o, merchantBps);
   console.log(
@@ -446,6 +510,7 @@ app.listen(config.port, async () => {
   const cfg = await getConfig(ops);
   await recover().catch((e) => console.warn(`  recovery skipped: ${(e as Error).message.slice(0, 120)}`));
   console.log(`Tessera agents on ${config.publicUrl}`);
+  if (restored) console.log(`  arbiter evidence: ${restored} earlier deliveries on file`);
   console.log(`  facilitators: ${(await facilitators()).map((f) => f.url).join(', ') || 'NONE REACHABLE'}`);
   console.log(`  holds by tier: ${TIER_NAMES.map((t, i) => `${t} ${cfg.params.holdSecs[i]}s`).join(', ')}; fee ${cfg.feeBps / 100}%`);
   for (const m of merchants.values()) {

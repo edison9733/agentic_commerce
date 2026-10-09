@@ -86,6 +86,7 @@ test('one counterparty can never grant more than the pair cap', () => {
     const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 1_000n * USDC, now);
     model.deliver(o, m, P, now);
     model.settle(o, b, m, pair, P, { kind: 'release' }, now);
+    model.review(o, b, m, pair, true, 5, P, now);
   }
   assert.equal(m.credit, P.pairCap, '$50,000 from one Trusted buyer earns exactly the $500 cap');
   assert.ok(evaluate(m, P, T0 + 50n * DAY).tier < 2, 'one big customer does not make a merchant Established');
@@ -100,6 +101,7 @@ test('splitting a purchase into many small ones earns nothing extra', () => {
       const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, size, T0 + DAY);
       model.deliver(o, m, P, T0 + DAY);
       model.settle(o, b, m, pair, P, { kind: 'release' }, T0 + DAY);
+      model.review(o, b, m, pair, true, 5, P, T0 + DAY);
     }
     return m.credit;
   };
@@ -141,6 +143,36 @@ test('friendly fraud: a buyer who loses a dispute drops a tier and loses pair tr
   const next = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 20n * USDC, now + DAY);
   assert.equal(next.pairTrusted, false);
   assert.ok(next.holdSecs > 0, 'and every later order with this merchant is held');
+});
+
+test('a merchant cannot borrow the tier of a buyer who never took part', () => {
+  // The buyer does not sign open_order, and anyone can fund a vault. So a
+  // merchant can name a Trusted stranger as its buyer and pay itself.
+  const victim = establishedAgent(P, 3, T0);
+  const m = model.newAgent(T0);
+  const pair = model.newPair();
+  const o = model.openOrder(victim, m, pair, P, PROTOCOL_FEE_BPS, P.pairCap, T0 + DAY);
+  model.deliver(o, m, P, T0 + DAY);
+  model.settle(o, victim, m, pair, P, { kind: 'release' }, T0 + 4n * DAY);
+  assert.equal(m.credit, 0n, 'no credit until the buyer itself reviews the order');
+  assert.equal(m.counterpartyPoints, 0, 'and no Diversity');
+  const before = evaluate(victim, P, T0 + 4n * DAY).score;
+  assert.equal(model.review(o, m, victim, pair, false, 1, P, T0 + 4n * DAY), 0n, 'its one-star review weighs nothing');
+  assert.equal(evaluate(victim, P, T0 + 4n * DAY).score, before, 'and the victim\'s score does not move');
+  model.review(o, victim, m, pair, true, 5, P, T0 + 4n * DAY);
+  assert.equal(m.credit, P.pairCap, 'once the buyer reviews, the order counts in full');
+});
+
+test('the side that lost a dispute gets no weighted say on it', () => {
+  const m = establishedAgent(P, 3, T0);
+  const b = establishedAgent(P, 3, T0);
+  const pair = model.newPair();
+  const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 20n * USDC, T0 + DAY);
+  model.deliver(o, m, P, T0 + DAY);
+  model.dispute(b, m, pair);
+  model.settle(o, b, m, pair, P, { kind: 'resolve', merchantBps: 10_000 }, T0 + DAY);
+  assert.equal(model.review(o, b, m, pair, true, 1, P, T0 + DAY), 0n, 'the buyer who lost cannot retaliate');
+  assert.ok(model.review(o, m, b, pair, false, 1, P, T0 + DAY) > 0n, 'the merchant that won is heard');
 });
 
 test('exit scam: instant settlement can net at most the base allowance', () => {
