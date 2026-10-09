@@ -249,3 +249,51 @@ select {
   background: var(--color-night-line);
   border-radius: 8px;
 }
+
+/* the playground's sliders: a thick track and a thumb big enough to grab */
+.range {
+  width: 100%;
+  height: 28px;
+  background: transparent;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.range::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 8px;
+  background: linear-gradient(to right, #126b4a var(--fill, 0%), #e4ddc8 var(--fill, 0%));
+}
+.range::-moz-range-track {
+  height: 8px;
+  border-radius: 8px;
+  background: #e4ddc8;
+}
+.range::-moz-range-progress {
+  height: 8px;
+  border-radius: 8px;
+  background: #126b4a;
+}
+.range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 26px;
+  height: 26px;
+  margin-top: -9px;
+  border-radius: 50%;
+  background: #126b4a;
+  border: 4px solid #fffdf6;
+  box-shadow: 0 1px 4px rgba(20, 19, 15, 0.35);
+}
+.range::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #126b4a;
+  border: 4px solid #fffdf6;
+  box-shadow: 0 1px 4px rgba(20, 19, 15, 0.35);
+}
+.range:focus-visible {
+  outline: 2px solid #126b4a;
+  outline-offset: 4px;
+  border-radius: 8px;
+}
