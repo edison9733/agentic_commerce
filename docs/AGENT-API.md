@@ -54,20 +54,23 @@ The full request and response shapes are in the OpenAPI document the API serves 
 
 It runs the same arithmetic the program will run when the order opens and is delivered:
 
+The score routes payments; it never bans a merchant. `block` only means the payment itself cannot
+work as asked.
+
 1. `block` if buyer and merchant are the same wallet (`self_dealing`), the amount is below the
-   program's minimum (`amount_below_minimum`), the merchant carries a standing penalty of at least
-   half a lost dispute (`merchant_penalized`), or the buyer's wallet holds less than the amount
+   program's minimum (`amount_below_minimum`), or the buyer's wallet holds less than the amount
    (`insufficient_funds`).
 2. `escrow` with the longest hold if the merchant has no credit file (`merchant_unknown`, and the
-   reply's `status` is `unknown_merchant`).
+   reply's `status` is `unknown_merchant`), or if it carries a standing penalty of at least half a
+   lost dispute (`merchant_penalized`). Then the reply also carries `askMinHoldSecs`: the buyer asks
+   for that hold when the merchant quotes, because the program applies the tiers' hold otherwise.
 3. Otherwise the hold is the longer of the two tiers' holds, or the buyer's own minimum. A hold of 0
    inside the merchant's instant limit is `instant` (`both_trusted`, or `pair_history` when earlier
    undisputed orders with this merchant stand in for the buyer's tier). Past the limit it is
    `escrow` (`instant_limit_reached`). Any other hold is `escrow`, with `merchant_tier`,
    `buyer_tier` or `buyer_requested_hold` saying who set it.
 
-The block threshold can be changed with `TESSERA_BLOCK_PENALTY_BPS`. It is policy, not program: the
-program itself never refuses a penalised merchant; it holds the money longer.
+The penalty bar can be changed with `TESSERA_PENALTY_ESCROW_BPS`.
 
 ## Every response has a status
 

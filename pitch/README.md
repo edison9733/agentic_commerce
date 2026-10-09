@@ -17,6 +17,9 @@ Two PowerPoint decks in a looser, meme-heavy style, with speaker notes on every 
 | `out/tessera-zk-sybil.pptx` | How zk proofs and nullifiers (Semaphore) would close the open sybil holes C2 and C12 in [SECURITY.md](../docs/SECURITY.md). A design, not built. |
 | `out/tessera-buyer-seller-guide.pptx` | Step by step from `git clone` to a live purchase on devnet, as the seller and as the buyer (browser and x402 agent), and where to watch each transaction. |
 
+`out/how-it-works.png` is a one-slide "how to use it" mindmap (check reviews, pay, get it, rate, come
+back) in the colours of the Canva deck; its source is `how-it-works.html` (1920x1080).
+
 In `assets/`: the logo (SVG and 1024 px PNG) and a cover image.
 
 The pitch gained a slide on 7 October (slide 9, `zk`: proof of personhood as the next step). Its PNG

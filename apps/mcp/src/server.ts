@@ -35,7 +35,8 @@ const minHoldSecs = z.number().int().min(0).max(MAX_MIN_HOLD_SECS).optional().de
 
 export const INSTRUCTIONS = `Tessera checks the other side of a payment and holds the money in escrow on Solana when it should.
 Rule: before any paid tool call or x402 payment, call check_payment with the merchant's wallet, your wallet and the amount.
-- decision "block": do not pay. Tell the user the reason.
+- decision "block": the payment cannot work as asked (same wallet both sides, below the minimum, not enough money). Do not pay.
+- Nobody is banned: a merchant with a bad record gets decision "escrow" with the longest hold (reason "merchant_penalized"); ask for askMinHoldSecs when it quotes.
 - decision "escrow": pay only into a Tessera escrow (open_escrow with role "buyer" on the order the merchant quoted). Never pay the merchant's wallet directly.
 - decision "instant": the payment settles on delivery with no dispute window.
 - status "unknown_merchant" means nobody has settled an order with that wallet: treat it as a stranger.

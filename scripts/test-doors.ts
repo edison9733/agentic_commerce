@@ -260,7 +260,7 @@ try {
   ok('after it, anyone splits the vault evenly', split.body.action === 'split_silent_dispute' && split.body.payouts.toBuyer.usdc === '0.20' && sent(await signSend(split, stranger.identity)), split.body);
   ok('the order is Resolved', (await api('GET', `/v1/escrow/${o4.body.order}`)).body.state === 'Resolved');
 
-  log.step('HTTP API: a merchant that lost a dispute is blocked');
+  log.step('HTTP API: a merchant that lost a dispute is not banned, it waits longest');
   const o5 = await api('POST', '/v1/escrow/open', { role: 'merchant', merchant: M, buyer: B, amount: '0.20' });
   await signSend(o5, merchant.identity);
   await signSend(await api('POST', '/v1/escrow/open', { role: 'buyer', merchant: M, buyer: B, amount: '0.20', order: o5.body.order }), buyer.identity);
@@ -269,7 +269,7 @@ try {
   const od = (await fetchOrder(deployer.rpc, o5.body.order)).data;
   await arbiter.sendTransaction([getResolveDisputeInstruction({ ...(await settleAccounts(o5.body.order, od, treasury.identity.address)), authority: arbiter.identity, merchantBps: 0 })]);
   const blocked = await api('POST', '/v1/check', { merchant: M, buyer: B, amount: '0.20' });
-  ok('check_payment now says block: merchant_penalized', blocked.body.decision === 'block' && blocked.body.reason === 'merchant_penalized', blocked.body);
+  ok('check_payment routes it to escrow with the longest hold, never a block', blocked.body.decision === 'escrow' && blocked.body.reason === 'merchant_penalized' && blocked.body.holdSecs === 8 && blocked.body.askMinHoldSecs === 8, blocked.body);
 
   // ------------------------------------------------------------- the MCP
   log.step('MCP over Streamable HTTP');
@@ -290,7 +290,7 @@ try {
   ok('the server tells the model the rule', /before any paid tool call/i.test(client.getInstructions() ?? ''));
   const viaMcp = await client.callTool({ name: 'check_payment', arguments: { merchant: M, buyer: B, amount: '0.20' } });
   const sc = viaMcp.structuredContent as Record<string, unknown>;
-  ok('check_payment over MCP gives the same answer as the API', sc.decision === 'block' && sc.reason === 'merchant_penalized' && !viaMcp.isError, sc);
+  ok('check_payment over MCP gives the same answer as the API', sc.decision === 'escrow' && sc.reason === 'merchant_penalized' && !viaMcp.isError, sc);
   const unk = await client.callTool({ name: 'get_score', arguments: { wallet: poor.identity.address } });
   ok('get_score over MCP: unknown_wallet, not an error and not empty', (unk.structuredContent as Record<string, unknown>).status === 'unknown_wallet' && !unk.isError);
   let refused = false;
@@ -331,8 +331,10 @@ try {
   };
   const scoreOut = await cli(['score', M]);
   ok('tessera score prints the credit file', scoreOut.status === 0 && /as merchant: /.test(scoreOut.stdout), scoreOut.stderr || scoreOut.stdout);
-  const checkOut = await cli(['check', M, '0.20', '--buyer', B]);
-  ok('tessera check exits 3 on block', checkOut.status === 3 && /^BLOCK/.test(checkOut.stdout), checkOut.stdout);
+  const checkOut = await cli(['check', M, '0.20', '--buyer', poor.identity.address]);
+  ok('tessera check exits 3 on block (here: the buyer cannot afford it)', checkOut.status === 3 && /^BLOCK/.test(checkOut.stdout), checkOut.stdout);
+  const escrowOut = await cli(['check', M, '0.20', '--buyer', B]);
+  ok('a penalised merchant is escrow in the CLI too, exit 0', escrowOut.status === 0 && /^ESCROW/.test(escrowOut.stdout), escrowOut.stdout);
   const m2key = await keyfile(merchant2, 'merchant2');
   const buyerKey = await keyfile(buyer, 'buyer');
   const openOut = await cli(['open', 'merchant', '--buyer', B, '--amount', '0.05', '--keypair', m2key, '--send']);

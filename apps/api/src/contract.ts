@@ -4,7 +4,12 @@
  * them, and SKILL.md teaches them. Nothing here talks to a network.
  */
 
-/** What `check_payment` tells an agent to do with a payment. */
+/**
+ * What `check_payment` tells an agent to do with a payment. The score routes,
+ * it never bans: a merchant's record only ever moves a payment between
+ * `instant` and `escrow`. `block` means the payment itself cannot work as
+ * asked (the same wallet on both sides, below the minimum, not enough money).
+ */
 export const DECISIONS = ['instant', 'escrow', 'block'] as const;
 export type Decision = (typeof DECISIONS)[number];
 
@@ -24,7 +29,7 @@ export const REASONS = [
   'instant_limit_reached',
   /** The merchant has no Tessera credit file: nobody has settled an order with it. */
   'merchant_unknown',
-  /** The merchant carries a standing penalty from lost disputes or missed deliveries. */
+  /** The merchant carries a standing penalty from lost disputes or missed deliveries: escrow with the longest hold. Never a ban. */
   'merchant_penalized',
   /** Buyer and merchant are the same wallet. */
   'self_dealing',

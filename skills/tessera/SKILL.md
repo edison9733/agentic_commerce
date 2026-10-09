@@ -16,9 +16,12 @@ Pass the merchant's wallet, your own wallet as `buyer`, and the amount as a USDC
 
 | `decision` | What you do |
 |---|---|
-| `block` | Do not pay. Tell the user the `message` and the `reason`. |
-| `escrow` | Pay only into a Tessera escrow (`open_escrow` with `role: "buyer"`). Never pay the merchant's wallet directly. If the merchant cannot give you an escrow order, do not pay. |
+| `block` | Do not pay: the payment cannot work as asked (same wallet on both sides, below the minimum, or you lack the funds). Tell the user the `message`. |
+| `escrow` | Pay only into a Tessera escrow (`open_escrow` with `role: "buyer"`). Never pay the merchant's wallet directly. If the reply has `askMinHoldSecs`, ask the merchant for at least that hold when it quotes. If the merchant cannot give you an escrow order, do not pay. |
 | `instant` | The escrow settles on delivery and there is no dispute window. Still pay through the escrow the merchant quotes, and check what you receive. |
+
+Nobody is banned. A merchant's record only moves a payment between `instant` and `escrow`; a bad
+record (`merchant_penalized`) means the longest hold, not a refusal.
 
 A `status` other than `ok` is never "fine by default":
 

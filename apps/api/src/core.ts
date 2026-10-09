@@ -70,13 +70,15 @@ const stateName = (s: OrderState) => ORDER_STATES[s]!;
 const seconds = (n: bigint) => Number(n);
 
 /**
- * Standing penalty at which `check_payment` refuses a merchant: half a lost
- * dispute. Penalties heal a little every period, so the bar sits below one
- * dispute's worth: a lost dispute blocks a merchant for about as many periods
- * as it takes to heal halfway (50 days at the mainnet targets), and so do two
- * missed deliveries close together. One missed delivery does not.
+ * Standing penalty at which `check_payment` sends a merchant to the longest
+ * hold, whatever its tier: half a lost dispute. Nobody is banned: the score
+ * routes payments, it never refuses a merchant. Penalties heal a little every
+ * period, so the bar sits below one dispute's worth: a lost dispute keeps a
+ * merchant on the longest hold for about as many periods as it takes to heal
+ * halfway (50 days at the mainnet targets), and so do two missed deliveries
+ * close together. One missed delivery does not.
  */
-const blockPenaltyBps = (p: Config['params']) => Number(process.env.TESSERA_BLOCK_PENALTY_BPS ?? Math.floor(p.penaltyDisputeBps / 2));
+const penaltyBarBps = (p: Config['params']) => Number(process.env.TESSERA_PENALTY_ESCROW_BPS ?? Math.floor(p.penaltyDisputeBps / 2));
 
 // ------------------------------------------------------------------- score
 
@@ -145,6 +147,8 @@ type Assessment = {
   holdSecs: number;
   merchantKnown: boolean;
   pairTrusted: boolean;
+  /** Ask the merchant for at least this hold when it quotes (open_order's minHoldSecs). */
+  askMinHoldSecs?: number;
 };
 
 async function assess(cfg: Cfg, merchant: Address, buyer: Address | undefined, units: bigint, minHoldSecs: number, now: bigint) {
@@ -155,20 +159,12 @@ async function assess(cfg: Cfg, merchant: Address, buyer: Address | undefined, u
     buyer ? readPair(buyer, merchant) : Promise.resolve(null),
     buyer ? tokenBalance(buyer, cfg.data.mint) : Promise.resolve(null),
   ]);
+  // `block` only means the payment cannot work as asked. It is never a verdict on the merchant.
   const block = (reason: Reason, message: string): Assessment => ({ decision: 'block', reason, message, holdSecs: 0, merchantKnown: !!m, pairTrusted: false });
 
   const a = ((): Assessment => {
     if (buyer && buyer === merchant) return block('self_dealing', 'Buyer and merchant are the same wallet.');
     if (units < p.minOrder) return block('amount_below_minimum', `The program's smallest order is ${fromUnits(p.minOrder, cfg.decimals, 0)} USDC.`);
-    if (m) {
-      const penalty = Number(score.currentPenalty(m, p, now));
-      if (penalty >= blockPenaltyBps(p)) {
-        return block(
-          'merchant_penalized',
-          `The merchant carries a ${penalty / 100}% penalty: ${m.asMerchant.disputesLost} lost dispute(s), ${m.asMerchant.expired} missed delivery(ies). Do not pay it.`,
-        );
-      }
-    }
     if (balance !== null && balance < units) {
       return block('insufficient_funds', `The buyer holds ${fromUnits(balance, cfg.decimals)} USDC, less than ${fromUnits(units, cfg.decimals)}.`);
     }
@@ -181,6 +177,21 @@ async function assess(cfg: Cfg, merchant: Address, buyer: Address | undefined, u
         holdSecs: hold,
         merchantKnown: false,
         pairTrusted: false,
+      };
+    }
+    const penalty = Number(score.currentPenalty(m, p, now));
+    if (penalty >= penaltyBarBps(p)) {
+      const hold = Math.max(p.holdSecs[0]!, minHoldSecs);
+      return {
+        decision: 'escrow',
+        reason: 'merchant_penalized',
+        message:
+          `Not banned, but the merchant carries a ${penalty / 100}% penalty (${m.asMerchant.disputesLost} lost dispute(s), ` +
+          `${m.asMerchant.expired} missed delivery(ies)). Pay only into escrow, and ask for a ${hold} s hold (minHoldSecs) when it quotes.`,
+        holdSecs: hold,
+        merchantKnown: true,
+        pairTrusted: false,
+        askMinHoldSecs: hold,
       };
     }
     const mTier = score.evaluate(m, p, now).tier;
@@ -246,6 +257,7 @@ export async function checkPayment(i: { merchant: Address; buyer?: Address; amou
     message: a.message,
     holdSecs: a.holdSecs,
     disputeWindowSecs: a.decision === 'escrow' ? a.holdSecs : 0,
+    ...(a.askMinHoldSecs ? { askMinHoldSecs: a.askMinHoldSecs } : {}),
     pairTrusted: a.pairTrusted,
     amount: money(units, cfg.decimals),
     merchant: summarize(i.merchant, m, cfg, now),
