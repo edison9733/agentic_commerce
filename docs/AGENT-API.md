@@ -83,6 +83,11 @@ a 64 KB cap, and no private or loopback addresses (checked on the address actual
 unless the API listens only on this machine (`HOST`, default `127.0.0.1`) or
 `TESSERA_ALLOW_PRIVATE_CARDS=1`.
 
+To see it with real agents, `npm run demo:find` (after `npm run build:program`) starts a local
+validator with the program, has three buyer agents make twelve purchases from four merchant agents
+through this API, each wallet signing its own transactions, then asks `find_merchants` as a new buyer
+and as a regular one. It prints the CLI output and records it in `deployments/find-demo.json`.
+
 `GET /llms.txt` is the same story in one page of plain text, for agents and the crawlers that feed
 them.
 

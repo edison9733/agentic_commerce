@@ -5,6 +5,7 @@ import { Bars, LineChart, type Series } from '../components/charts';
 import { Graph } from '../components/Graph';
 import { Counter, EASE, Logo, TierBadge } from '../components/ui';
 import { compactUsd, duration, SERIES, TIER_DARK } from '../lib/format';
+import { ranked, recordedAt, reproduce } from '../lib/findDemo';
 import { useChain, useProfiles } from '../lib/store';
 import registry from '../../../../deployments/registry.json';
 import snapshot from '../../../../deployments/snapshot.json';
@@ -89,40 +90,45 @@ function RingSlide() {
   );
 }
 
-/** The top merchants as find_merchants ranks them: live from the chain, or the 4 October snapshot when offline. */
+/** find_merchants as recorded by `npm run demo:find`: real purchases and reviews on the real program. */
 function FindSlide() {
-  const { profiles } = useProfiles();
-  const live = profiles.filter((p) => p.agent.asMerchant.orders > 0).slice(0, 3);
-  const rows = live.length
-    ? live.map((p) => ({ name: p.name, tier: p.eval.tier, score: p.eval.score, stars: p.stars, sales: p.agent.asMerchant.orders }))
-    : snapshot.agentsByScore
-        .filter((a) => a.role === 'merchant')
-        .slice(0, 3)
-        .map((a) => ({ name: a.name, tier: ['New', 'Building', 'Established', 'Trusted'].indexOf(a.tier), score: a.score, stars: a.stars, sales: a.orders }));
+  const rows = ranked('best');
+  const regular = ranked('returning')[0]!;
   return (
     <Frame pad={84}>
       <Kicker>Reviews as search, for agents</Kicker>
       <Big size={78} max="21ch" color={white}>
         Who should I buy from? <em>One call.</em>
       </Big>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 56, marginTop: 40, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 52, marginTop: 36, alignItems: 'start' }}>
         <Rise delay={0.4}>
-          <div className="mono" style={{ fontSize: 22, padding: '18px 26px', borderRadius: 16, background: '#10120e', border: '1px solid #272b21', color: '#c9c6b6' }}>
-            GET /v1/merchants?need=<span style={{ color: mint }}>text summary</span>&amp;sort=<span style={{ color: mint }}>best</span>
+          <div className="mono" style={{ fontSize: 21, padding: '16px 24px', borderRadius: 16, background: '#10120e', border: '1px solid #272b21', color: '#c9c6b6' }}>
+            $ tessera find <span style={{ color: mint }}>text summary</span>
           </div>
-          <div style={{ display: 'grid', gap: 10, marginTop: 16 }}>
+          <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
             {rows.map((r, k) => (
-              <Rise key={r.name} delay={0.7 + k * 0.14}>
-                <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 200px 90px 110px', alignItems: 'center', gap: 16, padding: '16px 24px', borderRadius: 16, border: `1px solid ${k === 0 ? mint : '#272b21'}`, background: k === 0 ? '#121a14' : '#10120e' }}>
-                  <span className="display" style={{ fontSize: 34, color: k === 0 ? mint : '#8b8a7c' }}>{k + 1}</span>
-                  <span className="display" style={{ fontSize: 34, color: white }}>{r.name}</span>
-                  <span style={{ fontSize: 20 }}><TierBadge tier={Math.max(0, r.tier)} dark /></span>
-                  <span className="mono" style={{ fontSize: 20, color: white }}>★{r.stars.toFixed(2)}</span>
-                  <span className="mono" style={{ fontSize: 18, color: '#8b8a7c' }}>{r.sales} sales</span>
+              <Rise key={r.merchant} delay={0.7 + k * 0.14}>
+                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 150px', alignItems: 'center', gap: 16, padding: '14px 22px', borderRadius: 16, border: `1px solid ${k === 0 ? mint : '#272b21'}`, background: k === 0 ? '#121a14' : '#10120e' }}>
+                  <span className="display" style={{ fontSize: 34, color: k === 0 ? mint : '#8b8a7c' }}>{r.rank}</span>
+                  <div>
+                    <span className="display" style={{ fontSize: 34, color: white }}>{r.name}</span>
+                    <div className="mono" style={{ fontSize: 16, color: '#8b8a7c', marginTop: 2 }}>
+                      {r.tier} {r.score} · ★{r.stars.toFixed(2)} · {r.sales} sales{r.missedDeliveries ? <span style={{ color: '#ec835a' }}> · {r.missedDeliveries} missed delivery</span> : ''}
+                    </div>
+                  </div>
+                  <div className="mono" style={{ textAlign: 'right', fontSize: 18, color: white }}>
+                    {r.service?.price?.usdc} USDC
+                    <div style={{ fontSize: 15, color: '#8b8a7c' }}>{r.decision} · ~{r.expectedSecs} s</div>
+                  </div>
                 </div>
               </Rise>
             ))}
           </div>
+          <Rise delay={1.3}>
+            <div className="mono" style={{ fontSize: 17, marginTop: 14, color: '#c9c6b6' }}>
+              A regular customer asking the same: <span style={{ color: mint }}>{regular.name} · {regular.decision} · ~{regular.expectedSecs} s to settled</span>
+            </div>
+          </Rise>
         </Rise>
         <div style={{ display: 'grid', gap: 16 }}>
           {[
@@ -139,7 +145,7 @@ function FindSlide() {
           ))}
         </div>
       </div>
-      <Source>{live.length ? 'Merchants ranked by score, read from devnet now.' : `Merchants ranked by score on the devnet demo network, ${snapshot.takenAt.slice(0, 10)}.`} The API adds each merchant's price and settle time: apps/api/src/find.ts</Source>
+      <Source>Recorded {recordedAt}: twelve purchases between real agents on a local validator running the real program, then one call. Reproduce: {reproduce}</Source>
     </Frame>
   );
 }

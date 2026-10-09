@@ -5,6 +5,7 @@ import { findAta, USDC_DEVNET } from '@tessera/sdk';
 import { EASE, Logo } from '../components/ui';
 import { loadBurner } from '../lib/burner';
 import { AGENTS_URL, readRpc } from '../lib/client';
+import { recordedAt, reproduce, session } from '../lib/findDemo';
 import { useProfiles } from '../lib/store';
 import { Big, Body, Deck, Frame, Kicker, Rise, Source, type Slide } from './Deck';
 
@@ -131,10 +132,45 @@ const box = (x: number, y: number, w: number, title: string, sub: string, delay:
   </motion.g>
 );
 
+/** `tessera find`, as recorded by `npm run demo:find` on a local validator with the real program. */
+function FindScene() {
+  const best = session('best');
+  const regular = session('returning');
+  const lines: [string, string][] = [
+    ['$', best.command],
+    ...best.output.map((l): [string, string] => [/^\s*"/.test(l) ? 'q' : /^ ?\d+\./.test(l) ? 'r' : 'o', l]),
+    ['', ''],
+    ['$', regular.command],
+    ...regular.output.filter((l) => !/^\s*"/.test(l)).map((l): [string, string] => [/INSTANT/.test(l) ? 'ok' : 'o', l]),
+  ];
+  return (
+    <Frame pad={72}>
+      <Kicker>Choosing who to pay · find_merchants, recorded {recordedAt}</Kicker>
+      <div style={{ marginTop: 22, borderRadius: 22, background: '#050605', border: '1px solid #272b21', padding: '22px 30px', flex: 1 }}>
+        {lines.map(([tag, line], k) => (
+          <motion.div
+            key={k}
+            className="mono"
+            initial={{ opacity: 0, x: -8 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 + k * 0.32 }}
+            style={{ fontSize: 17.5, lineHeight: 1.62, whiteSpace: 'pre', overflow: 'hidden', color: tag === '$' ? white : tag === 'ok' ? mint : tag === 'r' ? '#e9e6d8' : tag === 'q' ? '#8b8a7c' : /missed/.test(line) ? '#ec835a' : '#c9c6b6' }}
+          >
+            {line || ' '}
+          </motion.div>
+        ))}
+      </div>
+      <div className="mono" style={{ fontSize: 14, color: '#5d5c52', marginTop: 12 }}>
+        Twelve purchases between real agents, each signed by its own wallet, on a local validator running the real program. Reproduce: {reproduce}
+      </div>
+    </Frame>
+  );
+}
+
 export const DEMO: Slide[] = [
   {
     id: 'title',
-    seconds: 6,
+    seconds: 5,
     say: 'This is how Tessera works, in under three minutes.',
     render: () => (
       <Frame center>
@@ -146,7 +182,7 @@ export const DEMO: Slide[] = [
   },
   {
     id: 'accounts',
-    seconds: 21,
+    seconds: 19,
     say: 'One Anchor program, five kinds of account. Config holds the rules. Each wallet has an Agent account, its credit file. Each buyer and merchant pair has a Pair account. Each purchase is an Order, which owns the vault. Each rating is a Review, stored on-chain in full.',
     render: () => (
       <Frame pad={72}>
@@ -198,9 +234,9 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   },
   {
     id: 'network',
-    seconds: 24,
+    seconds: 21,
     surface: 'paper',
-    say: 'This is the network, read from devnet in the browser. No indexer, no database. Squares are merchants, circles are buyers. A coin on a line is money in escrow, with its hold running down. Bright nodes are Trusted. The small cluster on its own is a wash-trading ring.',
+    say: 'This is the network, read from devnet in the browser. No indexer, no database. Squares are merchants, circles are buyers. A coin on a line is money in escrow. Bright nodes are Trusted. The small cluster on its own is a wash-trading ring.',
     render: () => (
       <>
         <Live route="/network" />
@@ -210,8 +246,8 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   },
   {
     id: 'terminal',
-    seconds: 24,
-    say: 'Here one agent buys from another. It reads the merchant’s A2A card, gets a 402, checks the escrow on-chain, and pays through the facilitator. The merchant delivers and commits a hash, and the buyer checks it. Two unknown wallets, so the money was held. The buyer’s SOL balance never moved.',
+    seconds: 22,
+    say: 'Here one agent buys from another. It reads the merchant’s A2A card, gets a 402, checks the escrow on-chain, and pays through the facilitator. The merchant delivers and commits a hash, and the buyer checks it. Two unknown wallets, so the money was held.',
     render: () => (
       <Frame pad={84}>
         <Kicker>Agent to agent, over A2A and x402 · captured from devnet</Kicker>
@@ -225,6 +261,12 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
         </div>
       </Frame>
     ),
+  },
+  {
+    id: 'find',
+    seconds: 13,
+    say: 'Before buying, an agent asks who to buy from. One call ranks merchants by reviews that cost real sales. The one that missed a delivery ranks last, and a regular customer settles instantly.',
+    render: () => <FindScene />,
   },
   {
     id: 'score',
@@ -276,9 +318,9 @@ let evidence = (450 * history + 300 * tenure
   },
   {
     id: 'profile',
-    seconds: 16,
+    seconds: 13,
     surface: 'paper',
-    say: 'Every wallet has a credit file anyone can read: the score and what it is made of, the instant limit, and every review with the weight it carried. This merchant is also in Solana’s Agent Registry, where its reviews are mirrored with proof of payment.',
+    say: 'Every wallet has a credit file anyone can read: the score and what it is made of, and every review with the weight it carried. Its reviews are mirrored to Solana’s Agent Registry with proof of payment.',
     render: () => (
       <>
         <ProfileScene />
@@ -288,8 +330,8 @@ let evidence = (450 * history + 300 * tenure
   },
   {
     id: 'stack',
-    seconds: 15,
-    say: 'The stack: Anchor, Solana Kit and Codama, x402 version two, A2A, and the Solana Agent Registry. Agents call it over an API, MCP, a skill or a CLI. It is on devnet, with time compressed, one arbiter key, and no audit. Those come next.',
+    seconds: 13,
+    say: 'The stack: Anchor, Solana Kit and Codama, x402, A2A, and the Solana Agent Registry. Agents call it over an API, MCP, a skill or a CLI. It is devnet only, with one arbiter key and no audit.',
     render: () => (
       <Frame pad={84}>
         <Kicker>Stack, and what is not done</Kicker>

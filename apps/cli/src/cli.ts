@@ -219,7 +219,7 @@ function show(tool: ToolName, { http, body }: { http: number; body: Record<strin
     for (const r of (body.ranked as Record<string, any>[]) ?? []) {
       const svc = r.service ? `  ${r.service.id} ${r.service.price ? usdc(r.service.price) : 'price ?'}` : '';
       const time = r.expectedSecs === null ? 'cannot pay' : `~${r.expectedSecs} s to settled`;
-      console.log(`${String(r.rank).padStart(2)}. ${r.merchant}  ${r.name ?? ''}  ${r.tier} ${r.score} ★${Number(r.stars).toFixed(2)} (${r.reviews} reviews, ${r.sales} sales)`);
+      console.log(`${String(r.rank).padStart(2)}. ${r.merchant}  ${r.name ?? ''}  ${r.tier} ${r.score} ★${Number(r.stars).toFixed(2)} (${r.reviews} reviews, ${r.sales} sales${r.missedDeliveries ? `, ${r.missedDeliveries} missed` : ''}${r.disputesLost ? `, ${r.disputesLost} disputes lost` : ''})`);
       console.log(`    ${String(r.decision).toUpperCase()} ${time}${svc}`);
       for (const rv of r.topReviews ?? []) console.log(`    "${rv.text}" ★${rv.stars}`);
     }
