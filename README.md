@@ -191,9 +191,11 @@ needs `npm run agents`.
 
 ### Putting the site on Vercel
 
-The site is static files (`npm run build:web` writes `apps/web/dist`), and `vercel.json` tells Vercel how
-to build it. Import the GitHub repo in Vercel and keep the root directory at the repo root; each push to
-the production branch redeploys. Optional environment variables, set in the Vercel project:
+The site is static files (`npm run build -w @tessera/web` writes `apps/web/dist`). In Vercel, import the
+GitHub repo and choose the **web** app ("Import single project"): Root Directory `apps/web`, framework
+Vite, default build and output settings. Each push to `main` redeploys. Do not add a `vercel.json` at
+the repo root: Vercel applies it to the `apps/web` project too, and its paths would be wrong there.
+Optional environment variables, set in the Vercel project:
 
 - `VITE_RPC_URLS`: comma-separated devnet RPC URLs, tried in order (defaults to two public ones).
 - `VITE_AGENTS_URL`: the public `https://` address of `npm run agents`, for the Market page and the demo
