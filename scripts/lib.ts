@@ -62,9 +62,23 @@ export const DEVNET: Cluster = {
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+/**
+ * Keys handed over in the environment instead of files, for hosts with no
+ * disk to put `.keys/` on (Railway and the like): TESSERA_KEYS is base64 of a
+ * JSON map from a path under `.keys/` to the key's 64 bytes, as
+ * `npm run keys:export` prints it. A file on disk still wins.
+ */
+let envKeys: Record<string, number[]> | undefined;
+function keyFromEnv(path: string): number[] | undefined {
+  if (!process.env.TESSERA_KEYS || !path.startsWith('.keys/')) return undefined;
+  envKeys ??= JSON.parse(Buffer.from(process.env.TESSERA_KEYS, 'base64').toString('utf8')) as Record<string, number[]>;
+  return envKeys[path.slice('.keys/'.length)];
+}
+
 export async function loadKeypair(path: string): Promise<KeyPairSigner> {
   const full = path.startsWith('~') ? path.replace('~', process.env.HOME ?? '') : resolve(REPO_ROOT, path);
-  const bytes = new Uint8Array(JSON.parse(readFileSync(full, 'utf8')) as number[]);
+  const fromEnv = existsSync(full) ? undefined : keyFromEnv(path);
+  const bytes = new Uint8Array(fromEnv ?? (JSON.parse(readFileSync(full, 'utf8')) as number[]));
   return createKeyPairSignerFromBytes(bytes);
 }
 

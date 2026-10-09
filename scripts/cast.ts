@@ -44,5 +44,6 @@ export const CAST: CastMember[] = [...MERCHANTS, ...BUYERS, ...ADVERSARIES];
 export const keyPath = (id: string) => `.keys/agents/${id}.json`;
 
 /** Where each merchant's A2A agent card is served by `npm run agents`. */
-export const AGENT_HOST = process.env.AGENT_HOST ?? 'http://localhost:4020';
+/** On Railway, the service's own public domain unless AGENT_HOST says otherwise. */
+export const AGENT_HOST = process.env.AGENT_HOST ?? (process.env.RAILWAY_PUBLIC_DOMAIN ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}` : 'http://localhost:4020');
 export const agentCardUrl = (id: string) => `${AGENT_HOST}/agents/${id}/.well-known/agent-card.json`;

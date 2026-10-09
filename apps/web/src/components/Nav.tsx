@@ -10,6 +10,7 @@ const LINKS: [string, string][] = [
   ['/agents', 'Agents'],
   ['/market', 'Market'],
   ['/formula', 'The score'],
+  ['/developers', 'For agents'],
 ];
 
 export function Nav({ dark = false }: { dark?: boolean }) {
