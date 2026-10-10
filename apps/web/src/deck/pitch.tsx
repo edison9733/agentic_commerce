@@ -65,7 +65,7 @@ function RingSlide() {
     <Frame pad={80}>
       <Kicker>We assumed people would cheat</Kicker>
       <Big size={66} max="24ch" color={white}>
-        Faking a record costs money and time <em>that never come back.</em>
+        Faking a record takes weeks, and steals back <em>little more than it cost.</em>
       </Big>
       <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: 56, marginTop: 26, alignItems: 'center' }}>
         <Rise delay={0.4}>
@@ -74,7 +74,7 @@ function RingSlide() {
         <div style={{ display: 'grid', gap: 26 }}>
           <Rise delay={0.6}>
             <div className="display" style={{ fontSize: 64, color: white, lineHeight: 1 }}>never</div>
-            <div style={{ fontSize: 22, marginTop: 8 }}>when a ring of 3 or 6 of your own wallets reaches Trusted (a full year simulated)</div>
+            <div style={{ fontSize: 22, marginTop: 8 }}>when a ring of 3 or 6 of your own wallets reaches Trusted, in a full simulated year (120 days shown)</div>
           </Rise>
           <Rise delay={0.75}>
             <div className="display" style={{ fontSize: 64, color: white, lineHeight: 1 }}>${Number(big.fees / USDC).toLocaleString()}</div>
@@ -82,7 +82,7 @@ function RingSlide() {
           </Rise>
           <Rise delay={0.9}>
             <div className="display" style={{ fontSize: 64, color: mint, lineHeight: 1 }}>${Number(P.instantBase / USDC)}</div>
-            <div style={{ fontSize: 22, marginTop: 8 }}>net of an exit scam per wallet, at any size</div>
+            <div style={{ fontSize: 22, marginTop: 8 }}>most a ring clears per wallet in an exit scam, at any size</div>
           </Rise>
         </div>
       </div>
@@ -538,7 +538,7 @@ export const PITCH: Slide[] = [
   {
     id: 'ring',
     seconds: 13,
-    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns over a thousand dollars in fees and a month first. An exit scam nets twenty-five dollars, at any size.',
+    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns over a thousand dollars and a month, to steal back its fees plus twenty-five dollars a wallet.',
     render: () => <RingSlide />,
   },
   {

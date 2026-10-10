@@ -97,13 +97,13 @@ export const UPDATE: Slide[] = [
   {
     id: 'hard',
     seconds: 15,
-    say: 'The hardest problem was instant settlement. A trusted merchant could take the money and run. So instant volume is now capped by the fees a merchant has already paid. An exit scam nets twenty-five dollars, at any size.',
+    say: 'The hardest problem was instant settlement. A trusted merchant could take the money and run. So instant volume is now capped by the fees a merchant has already paid. An exit scam nets twenty-five dollars a wallet, at any size.',
     render: () => (
       <Frame>
         <Kicker>The hard part</Kicker>
         <Big size={84} max="20ch" color={white}>Instant settlement invites <em>the exit scam.</em></Big>
         <Body delay={0.6} size={32} max="44ch">
-          The fix: a merchant may only take instantly what it has already paid in protocol fees, plus a small base. Fees never come back.
+          The fix: a merchant may only take instantly what it has already paid in protocol fees, plus a small base. So a scam recovers its fees and little more.
         </Body>
         <Rise delay={1.0} style={{ marginTop: 44 }}>
           <span className="mono" style={{ fontSize: 30, color: mint }}>net of an exit scam = (base + fees) − fees = ${Number(P.instantBase / 1_000_000n)}</span>
