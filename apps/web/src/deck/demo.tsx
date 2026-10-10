@@ -81,8 +81,7 @@ const waitFor = async (doc: Document, test: () => boolean, ms: number) => {
 
 /**
  * Buy an identicon with the built-in test wallet, then confirm receipt. A real
- * devnet purchase. A visitor whose own wallet is connected is never steered
- * through a payment: the tour only runs with the built-in test wallet.
+ * devnet purchase.
  */
 async function buyTour(doc: Document) {
   await waitFor(doc, () => /\$\d+\.\d\d USDC/.test(doc.body.innerText), 10_000);

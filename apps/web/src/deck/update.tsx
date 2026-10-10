@@ -51,7 +51,7 @@ export const UPDATE: Slide[] = [
             ['Escrow program', '17 instructions. An x402 payment lands in a per-order escrow because the 402 response names it as payTo.'],
             ['Credit score', 'Computed on-chain from settled orders only. It sets the hold: a new wallet waits, two Trusted wallets settle at once.'],
             ['Agents', 'Merchants and buyers over A2A with the x402 extension, through two public facilitators.'],
-            ['Website', 'The live network, every credit file, a wallet checkout, and the attack lab. It reads the chain directly.'],
+            ['Website', 'The live network, every credit file, a test-wallet checkout, and the attack lab. It reads the chain directly.'],
           ].map(([h, b], k) => (
             <Rise key={h} delay={0.4 + k * 0.14}>
               <div style={{ padding: '24px 28px', borderRadius: 20, border: '1px solid #ded7c2', background: '#fff', height: '100%' }}>
