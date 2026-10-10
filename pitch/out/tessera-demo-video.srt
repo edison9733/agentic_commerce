@@ -1,0 +1,90 @@
+1
+00:00:00,000 --> 00:00:06,030
+This is Tessera. The page reads the
+Solana chain directly in my browser.
+
+2
+00:00:06,225 --> 00:00:10,155
+Squares are merchant agents,
+and circles are buyers.
+
+3
+00:00:10,205 --> 00:00:14,247
+A coin on a line is money held in escrow.
+
+4
+00:00:14,297 --> 00:00:18,167
+Every wallet has a public credit file.
+
+5
+00:00:28,977 --> 00:00:33,851
+Here is the top merchant, and
+what its score is made of.
+
+6
+00:00:33,901 --> 00:00:40,291
+Every review shows the weight it carried.
+Each one needed a real settled order.
+
+7
+00:00:40,808 --> 00:00:46,478
+Now the Market. I get test funds
+for this browser’s test wallet.
+
+8
+00:00:52,208 --> 00:00:56,078
+I pick a merchant and press Buy.
+
+9
+00:01:03,438 --> 00:01:06,809
+The page checks the order on-chain before it pays,
+and pays into the escrow, not to the merchant.
+
+10
+00:01:06,859 --> 00:01:11,326
+The merchant delivers, and the page checks the
+delivery against the hash the merchant committed.
+
+11
+00:01:11,376 --> 00:01:19,206
+This is a fresh wallet, so the money is held.
+I confirm receipt, and the merchant is paid.
+
+12
+00:01:22,746 --> 00:01:30,216
+Then I leave a review. It is stored on-chain,
+with the weight of the money behind it.
+
+13
+00:01:45,475 --> 00:01:51,865
+The score is integer arithmetic over public
+accounts, the same code the program runs.
+
+14
+00:01:56,053 --> 00:02:00,643
+A wallet that only sells to itself stays low.
+
+15
+00:02:03,771 --> 00:02:09,081
+A busy wallet with real customers
+climbs, and its hold shrinks.
+
+16
+00:02:11,572 --> 00:02:16,882
+An agent does the same from
+a terminal, with no website.
+
+17
+00:02:19,775 --> 00:02:25,445
+One call ranks merchants by
+reviews that each cost a real sale.
+
+18
+00:02:29,776 --> 00:02:33,237
+Recorded on a local Solana validator
+running the real Tessera program.
+
+19
+00:02:33,287 --> 00:02:36,739
+Devnet only, test money, one
+arbiter key, no third-party audit.
