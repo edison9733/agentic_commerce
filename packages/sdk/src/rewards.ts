@@ -5,6 +5,10 @@
  *   base   = weight x feeBps x shareBps / 10^8      (never depends on the stars)
  *   reward = base x accuracy / 10^4
  *
+ * `feeBps` is the rate the review's own order paid (read when the airdrop
+ * first saw the review), or the config's rate now if that is lower. An order
+ * the airdrop never saw counts at most PROTOCOL_FEE_BPS.
+ *
  * `weight` is the program's own review weight: the money that settled on the
  * order, scaled by the reviewer's tier and capped per pair. A review of a
  * refund, or by the side that lost a dispute, weighs 0 and earns nothing.
@@ -15,16 +19,18 @@
  * the same time? An honest warning is paid the most; a glowing review of a
  * wallet that then failed is paid nothing.
  *
- * Weight <= settled and the fee is settled x feeBps, so each side's base is at
- * most shareBps of the order's fee. With shareBps = 2500 and the 1.5x ceiling,
- * both sides together get back at most 75% of the fee: trading with yourself
- * to farm rewards always costs more than it pays.
+ * Weight <= settled and the fee is settled x the order's feeBps, so each
+ * side's base is at most shareBps of the order's fee. With shareBps = 2500 and
+ * the 1.5x ceiling, both sides together get back at most 75% of the fee:
+ * trading with yourself to farm rewards always costs more than it pays.
  *
  * Every input is public chain data plus one thing the chain does not keep:
  * the subject's failure counts at the moment the review was first seen. The
  * airdrop script records those and publishes them with each payout, so anyone
  * can recompute it (`npm run rewards -- --verify <report>`).
  */
+
+import { PROTOCOL_FEE_BPS } from './constants.js';
 
 export type RewardParams = {
   /** Share of the order's fee rate each side's review can earn at 1x, in basis points. */
@@ -41,6 +47,9 @@ export type RewardParams = {
 
 /** The ceiling of the accuracy multiplier, in basis points. The fee bound above relies on it. */
 export const MAX_ACCURACY_BPS = 15_000;
+
+/** The largest shareBps that keeps both sides at the accuracy ceiling within 75% of the fee. */
+export const MAX_SHARE_BPS = 2500;
 
 export const DEVNET_REWARD_PARAMS: RewardParams = {
   shareBps: 2500,
@@ -61,6 +70,8 @@ export const MAINNET_REWARD_PARAMS: RewardParams = {
 /** The fields of a Review account the rules read. */
 export type RewardReview = {
   address: string;
+  /** The order the review is about. */
+  order?: string;
   reviewer: string;
   subject: string;
   reviewerIsBuyer: boolean;
@@ -72,8 +83,12 @@ export type RewardReview = {
 /** How often a wallet has failed in the role the review judged it in. */
 export type Failures = { disputesLost: number; missed: number };
 
-/** When the airdrop first saw a review, and the subject's failures at that moment. */
-export type Sighting = { firstSeenAt: number; before: Failures };
+/**
+ * When the airdrop first saw a review, the subject's failures at that moment,
+ * and the fee rate the review's order was opened at (absent when the order was
+ * already closed).
+ */
+export type Sighting = { firstSeenAt: number; before: Failures; orderFeeBps?: number };
 
 export type AccuracyLabel =
   | 'early_warning'
@@ -112,6 +127,17 @@ const ACCURACY_BPS: Record<AccuracyLabel, number> = {
   outlier: 5_000,
   no_peers: 10_000,
 };
+
+/**
+ * The fee rate a review's base is computed from: the lower of the rate its
+ * order paid and the config's rate now. When the order was never seen, the
+ * config's rate, but at most PROTOCOL_FEE_BPS.
+ */
+export function rewardFeeBps(seen: Sighting | undefined, configFeeBps: number): { feeBps: number; orderFeeSeen: boolean } {
+  const order = seen?.orderFeeBps;
+  if (order === undefined) return { feeBps: Math.min(configFeeBps, PROTOCOL_FEE_BPS), orderFeeSeen: false };
+  return { feeBps: Math.min(configFeeBps, order), orderFeeSeen: true };
+}
 
 /** What a review earns at 1x. The stars play no part. */
 export function baseReward(weight: bigint, feeBps: number, p: RewardParams): bigint {
@@ -163,6 +189,10 @@ export type RewardRow = {
   reviewerIsBuyer: boolean;
   rating: number;
   weight: bigint;
+  /** The fee rate the base used (`rewardFeeBps`). */
+  feeBps: number;
+  /** False when the order was gone before the airdrop saw the review, so its fee rate was assumed. */
+  orderFeeSeen: boolean;
   base: bigint;
   accuracy: Accuracy;
   reward: bigint;
@@ -177,6 +207,7 @@ export type EpochInput = {
   failuresNow: Record<string, Failures>;
   /** Reviews already paid, by address. */
   paid: Record<string, unknown>;
+  /** The config's fee rate now. Each review is paid on the lower of this and its order's rate. */
   feeBps: number;
   now: number;
 };
@@ -192,9 +223,11 @@ export function scoreEpoch(input: EpochInput, p: RewardParams): { rows: RewardRo
     .filter((r) => r.weight > 0n && r.createdAt + p.maturitySecs <= input.now && !(r.address in input.paid))
     .sort((a, b) => a.createdAt - b.createdAt || (a.address < b.address ? -1 : 1));
   for (const r of due) {
-    const acc = accuracy(r, peersOf(r, input.reviews, p), input.sightings[r.address], input.failuresNow[subjectKey(r)] ?? none, p);
-    const base = baseReward(r.weight, input.feeBps, p);
-    rows.push({ review: r.address, reviewer: r.reviewer, subject: r.subject, reviewerIsBuyer: r.reviewerIsBuyer, rating: r.rating, weight: r.weight, base, accuracy: acc, reward: (base * BigInt(acc.bps)) / 10_000n });
+    const seen = input.sightings[r.address];
+    const acc = accuracy(r, peersOf(r, input.reviews, p), seen, input.failuresNow[subjectKey(r)] ?? none, p);
+    const { feeBps, orderFeeSeen } = rewardFeeBps(seen, input.feeBps);
+    const base = baseReward(r.weight, feeBps, p);
+    rows.push({ review: r.address, reviewer: r.reviewer, subject: r.subject, reviewerIsBuyer: r.reviewerIsBuyer, rating: r.rating, weight: r.weight, feeBps, orderFeeSeen, base, accuracy: acc, reward: (base * BigInt(acc.bps)) / 10_000n });
   }
   const totals: Record<string, bigint> = {};
   for (const row of rows) totals[row.reviewer] = (totals[row.reviewer] ?? 0n) + row.reward;
