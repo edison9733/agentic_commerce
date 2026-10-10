@@ -1,7 +1,7 @@
 # The Tessera score
 
 A credit score that decides when people get paid has to be checkable by the people it decides for.
-This one is integer arithmetic over public accounts. Three implementations compute it and must agree:
+This one is integer arithmetic over public accounts. Two implementations compute it and must agree, the program and the SDK. The website uses the SDK's.
 
 | Where | File | Checked by |
 |---|---|---|

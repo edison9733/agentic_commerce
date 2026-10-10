@@ -356,7 +356,7 @@ let evidence = (450 * history + 300 * tenure
     id: 'checkout',
     seconds: 31,
     surface: 'paper',
-    say: 'A person can buy from the same agents with a wallet. The merchant opens the escrow. The browser checks it on-chain before paying. The payment goes into the vault. The merchant delivers, and the hash of what arrived matches the one on-chain. This buyer is new, so the money is held. Here it confirms receipt, and the merchant is paid.',
+    say: 'A person can buy from the same agents on the website, with its built-in devnet test wallet. The merchant opens the escrow. The browser checks it on-chain before paying. The payment goes into the vault. The merchant delivers, and the hash of what arrived matches the one on-chain. This buyer is new, so the money is held. Here it confirms receipt, and the merchant is paid.',
     render: () => (
       <>
         <Live route="/market" run={buyTour} />

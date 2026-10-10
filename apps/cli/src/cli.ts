@@ -72,8 +72,8 @@ Before payment
   check <merchant> <amount> [--buyer W] [--min-hold S]
                                                  instant, escrow or block, and why
 During payment
-  open merchant --buyer W --amount A [--merchant W] [--request JSON] [--order-id HEX] [--min-hold S]
-  open buyer --merchant W --amount A --order O [--buyer W] [--request JSON] [--min-hold S]
+  open merchant --buyer W --amount A [--merchant W] [--request JSON | --request-hash HEX] [--order-id HEX] [--min-hold S]
+  open buyer --merchant W --amount A (--order O | --order-id HEX) [--buyer W] [--request JSON | --request-hash HEX] [--min-hold S]
   deliver <order> (--deliverable JSON | --delivery-hash HEX) [--merchant W]
   escrow <order>                                 state, deadlines, what each side can do next
 After payment

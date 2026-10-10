@@ -159,8 +159,11 @@ export type Fulfilment = {
 /** A delivery made, with what is needed to hand it over again. */
 type Delivered = { f: Fulfilment; claim?: string; client: string; proof: string; at: number };
 
-/** `ring`: the demo's wash-trading merchant, which delivers whatever its own wallets ask for. */
-export type Behaviour = 'honest' | 'no-show' | 'junk' | 'ring';
+/**
+ * `ring`: the demo's wash-trading merchant. It delivers without the honest-merchant output check,
+ * for any buyer. In the demo only its own wallets buy from it.
+ */
+export type Behaviour = 'honest' | 'no-show' | 'ring';
 
 /**
  * The x402 payment is one token transfer of the order's amount into the

@@ -7,7 +7,7 @@ An airdrop pays it from the treasury, and anyone can recompute every payout from
 Code:
 - the rules: `packages/sdk/src/rewards.ts`;
 - the airdrop: `scripts/rewards.ts` and `scripts/rewards-lib.ts`;
-- the tests: `packages/sdk/test/rewards.test.ts`;
+- the tests: `packages/sdk/test/rewards.test.ts` and `packages/sdk/test/rewards-lib.test.ts`;
 - a recorded run: `scripts/demo-rewards.ts` → `deployments/rewards-demo.json`.
 
 ## The rules

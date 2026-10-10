@@ -10,10 +10,6 @@ There are three ways to try it, from no setup at all to doing every step of a tr
 
 Everything runs on Solana **devnet** with test money. Nothing here costs real money.
 
-> **For the project owner, once:** the program on devnet predates the audit fixes. Redeploy it
-> before others try this, using the steps in [SECURITY.md](SECURITY.md). If a command fails with a
-> program error before that, this is why.
-
 ---
 
 ## A. Look around (2 minutes)
@@ -47,7 +43,7 @@ devnet settings and two brand-new wallets.
 
 ### Step 0. One-time: install the tools
 
-1. Install **Node.js 22 or newer**, from https://nodejs.org.
+1. Install **Node 20.18 or newer (22 recommended)**, from https://nodejs.org.
 2. Install the **Solana CLI**:
    ```bash
    sh -c "$(curl -sSfL https://release.anza.xyz/stable/install)"

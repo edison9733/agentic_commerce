@@ -143,8 +143,8 @@ curl -s localhost:4030/v1/check -H 'content-type: application/json' \
 **CLI**. Every command calls the API; `--keypair` signs locally after the checks above.
 
 ```bash
-npm run tessera -- find text summary --sort fastest --keypair ~/.config/solana/id.json
-npm run tessera -- check BZ5MNkHdmvLoyof5ojyvsJuK5b1gGo4esPPTb4DGukoJ 0.20 --keypair ~/.config/solana/id.json
+npm run tessera -- find text summary --sort fastest --buyer <address>
+npm run tessera -- check BZ5MNkHdmvLoyof5ojyvsJuK5b1gGo4esPPTb4DGukoJ 0.20 --buyer <address>
 npm run tessera -- open buyer --merchant <wallet> --amount 0.20 --order <payTo> --keypair ~/my.json --send
 npm run tessera -- report <order> --outcome satisfied --keypair ~/my.json --send
 ```

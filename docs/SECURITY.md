@@ -26,7 +26,7 @@ what was done:
 | D7 | Over plain HTTP 402, anyone could pay for an order quoted to another wallet and receive what that wallet asked for. | Medium | The payment must be signed by the order's buyer. | server |
 | C18 | A buyer that lost a dispute could answer it with a fully weighted one-star review of the merchant. | Medium | The side that lost a dispute gets no weight on it. | local: step 5; formula |
 | B14 | A dispute the arbiter never resolved locked the money forever. | Medium | After the complaint period, anyone may split the vault evenly. Nobody is penalised. | local: step 14 |
-| B15 | A party could close its own token account to stall a release or a refund. | Low | Anyone can recreate it; the agents' settle transactions now always do. | — |
+| B15 | A party could close its own token account to stall a release or a refund. | Low | Anyone can recreate it; the agents' settle transactions now always do. | none |
 
 ## Audit of 10 October 2026
 
@@ -49,13 +49,9 @@ done:
 | D18 | The merchant server forgot quotes on restart and delivered nothing for orders funded after it, so the merchant took the missed-delivery penalty. | High | Quotes and delivery results are written to disk atomically; funded orders are completed or refunded before the deadline; delivery fails closed if its evidence cannot be saved. | agents smoke test |
 | D19 | The review-reward airdrop could pay the same reviews twice if a later batch failed. | Critical | Each batch is recorded as pending, then paid, before the next one is sent; an exclusive lock; a missing ledger refuses to pay; payouts carry memos so a lost ledger can be rebuilt from the chain. | rewards tests; `demo:rewards` |
 
-**The deployed devnet program predates both audits' program fixes.** They are in the source and pass the local suite.
-To carry them to devnet the upgrade authority redeploys: stop `npm run agents` and `npm run swarm`,
-wait out one review window (10 minutes on devnet) so no order released under the old rules is still
-reviewable, then run `anchor build` and
-`solana program deploy target/deploy/tessera.so --program-id TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ --url devnet`.
-No account layout changed, so every existing account keeps working. The agents in this repository
-already co-sign new orders, which the old program accepts as well.
+**Both audits' program fixes are deployed on devnet** (program `TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ`).
+They are in the source and pass the local suite. No account layout changed, so every existing account
+kept working through the upgrade.
 
 ## Principles
 
@@ -104,7 +100,7 @@ already co-sign new orders, which the old program accepts as well.
 | B12 | Substituting a token account, mint, vault or credit file the attacker controls. | ✅ | Order, agents and pair by seeds; vault as the order's associated token account; payout accounts by owner and mint. | by construction |
 | B13 | A stranger opens orders in an honest merchant's name, funds them and lets them expire, so every missed delivery penalises the merchant. | ✅ | `open_order` requires the merchant's signature. | local: `AccountNotSigner` |
 | B14 | The arbiter never answers, and the money stays locked. | ✅ | Once the complaint period has passed since the hold would have ended, anyone may split the vault evenly. An even split penalises nobody. | local: before the deadline `Unauthorized`, any other split `InvalidParams` |
-| B15 | A party closes its own token account to stall a release or a refund. | 🟡 | Anyone may recreate an associated token account; the agents' settle transactions do so first. The program still requires the account. | — |
+| B15 | A party closes its own token account to stall a release or a refund. | 🟡 | Anyone may recreate an associated token account; the agents' settle transactions do so first. The program still requires the account. | none |
 
 ## C. Reputation, sybils and farming
 
@@ -121,9 +117,9 @@ already co-sign new orders, which the old program accepts as well.
 | C9 | **Review bombing** a competitor with bots. | ✅ | Priced like fake praise: a 1-star counts only after a real, settled purchase, weighted by that volume and the reviewer's tier, capped per pair. A merchant's review counts only once the buyer has reviewed the same order (C17). | formula |
 | C10 | **One whale customer** makes a merchant look established. | ✅ | The pair cap again: $50,000 from one Trusted buyer earns exactly the $500 cap. | formula |
 | C11 | **Dust**: thousands of tiny orders to fake Diversity. | ✅ | A counterparty counts only once the pair has moved a tenth of the pair cap. | local (model equality) |
-| C12 | **Whitewashing**: abandon a penalised wallet for a fresh one. | 🟡 | A fresh wallet starts at 0 with the longest hold and no instant limit. Linking wallets to one operator needs attestations (open). | — |
-| C13 | **Retaliation and reciprocity** in two-sided reviews. | ⭕ | Reviews are public as they land. Commit–reveal would fix it; not built. | — |
-| C14 | **A lazy victim** never rates an instant order it was cheated on. | 🟡 | The amount frees after the review window. Buyer agents built with the SDK rate automatically when a delivery fails its hash check. | — |
+| C12 | **Whitewashing**: abandon a penalised wallet for a fresh one. | 🟡 | A fresh wallet starts at 0 with the longest hold and no instant limit. Linking wallets to one operator needs attestations (open). | none |
+| C13 | **Retaliation and reciprocity** in two-sided reviews. | ⭕ | Reviews are public as they land. Commit–reveal would fix it; not built. | none |
+| C14 | **A lazy victim** never rates an instant order it was cheated on. | 🟡 | The amount frees after the review window. Buyer agents built with the SDK rate automatically when a delivery fails its hash check. | none |
 | C15 | A site or API shows a fake score. | ✅ | The score is recomputable from public accounts; the website does so in the browser and shows both numbers. | site |
 | C16 | **Borrowed reputation**: a merchant names a Trusted wallet as the buyer and funds the order itself. The buyer never signs `open_order`, and anyone can fund a vault. | ✅ | The buyer's credit is granted at release; the merchant's credit, Diversity and active period only when the buyer reviews the order. Money moves without the buyer; reputation does not. | local: step 12; formula |
 | C17 | **Review bombing through forged orders**: the same merchant rates that buyer one star. | ✅ | A merchant's review of a released order weighs 0 until the buyer has reviewed it. | local: step 12; formula |
@@ -202,8 +198,6 @@ in [ERC-8004.md](ERC-8004.md).
 - **Order ids can be reused** once a settled or cancelled order account is closed. Reviews are keyed by
   the order's address, so a reused id cannot be reviewed again, and the buyer's SDK refuses an id that
   already has a review. Merchants pick random ids, so this only bites a merchant that reuses its own.
-- **The deployed devnet program is the old one.** Every program fix above needs the upgrade authority to
-  redeploy; until then devnet still has the order-swap hole.
 - **Rate limits and the card cache are per process.** Several API or agents instances multiply them.
 - **Quote caps are per client address.** One host with many IPv4 addresses, or a whole IPv6 range, can use up
   a merchant's open-quote cap and block quoting for others. The operator also pays non-refundable rent for the
