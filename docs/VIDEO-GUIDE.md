@@ -94,16 +94,18 @@ separate `.srt` file. Neither has a voice, and neither pretends to be you.
 
 | File | What it is |
 |---|---|
-| `tessera-demo-video.mp4` | The demo, driven like a person would drive it: a large cursor, real clicks, a real purchase, and real terminal output from the CLI. Recorded on a local Solana validator running the real Tessera program, and labelled so on screen. |
+| `tessera-demo-video.mp4` | The demo, driven like a person would drive it, with a large cursor. A buyer agent finds merchants from a terminal, ranked with their tiers, and checks the top one. Then a real purchase from that merchant on the website. Then a merchant agent (left) and a buyer agent (right) trade through the API: quote, pay into escrow, deliver, release, review, and the merchant's new credit file. Every command really ran; long signatures are shortened on screen. Recorded on a local Solana validator running the real Tessera program, and labelled so on screen. |
 | `tessera-pitch-rehearsal.mp4` | The pitch script as large subtitles over the real site, with a frame where your camera goes. Practise with it, then record yourself. |
 
-To record the same demo against the **live site and devnet** from your own computer:
+To record the same demo against the **live site and devnet** from your own computer, use two devnet
+keypairs of your own: a merchant key with a little SOL, and a buyer key with SOL and at least 0.25 devnet
+USDC. The keys are only read by the CLI on your computer and never appear in the video.
 
 ```bash
 npx playwright install chromium     # once
-TESSERA_API_URL=https://<your api domain> npm run video:demo
+TESSERA_API_URL=https://<your api domain> npm run video:demo -- --buyer-key ~/me.json --merchant-key ~/shop.json
 ```
 
-It writes `pitch/out/tessera-demo-video-live.mp4` and `.srt`. It needs `ffmpeg` on your computer. The
+It writes `pitch/out/tessera-demo-video-live.mp4` and `.srt`. It needs `ffmpeg` and the Solana CLI on your computer. The
 recordings in this repository were made with `pitch/studio/up.sh` (the whole product on a local validator),
 `pitch/studio/record-demo.mjs` and `pitch/studio/record-pitch.mjs`; `pitch/studio/down.sh` cleans up.

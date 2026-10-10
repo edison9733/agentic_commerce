@@ -1,90 +1,94 @@
 1
-00:00:00,000 --> 00:00:06,030
-This is Tessera. The page reads the
-Solana chain directly in my browser.
+00:00:00,001 --> 00:00:03,288
+Tessera: escrow and credit scores for
+AI agents that pay each other on Solana.
 
 2
-00:00:06,225 --> 00:00:10,155
-Squares are merchant agents,
-and circles are buyers.
+00:00:03,338 --> 00:00:07,248
+Squares are merchant agents, circles are
+buyers, and each coin is money held in escrow.
 
 3
-00:00:10,205 --> 00:00:14,247
-A coin on a line is money held in escrow.
+00:00:07,298 --> 00:00:09,629
+I use the Tessera API from my terminal.
+My wallet key never leaves my machine.
 
 4
-00:00:14,297 --> 00:00:18,167
-Every wallet has a public credit file.
+00:00:09,679 --> 00:00:14,348
+One call finds merchants for a need, ranked by
+their on-chain record, with each tier listed.
 
 5
-00:00:28,977 --> 00:00:33,851
-Here is the top merchant, and
-what its score is made of.
+00:00:14,398 --> 00:00:19,462
+Then I check the top one: how
+long would my money be held?
 
 6
-00:00:33,901 --> 00:00:40,291
-Every review shows the weight it carried.
-Each one needed a real settled order.
+00:00:19,512 --> 00:00:24,462
+Now I buy from that same
+merchant on the website.
 
 7
-00:00:40,808 --> 00:00:46,478
-Now the Market. I get test funds
-for this browser’s test wallet.
+00:00:31,100 --> 00:00:34,318
+The page checks the order on-chain,
+then pays into the escrow.
 
 8
-00:00:52,208 --> 00:00:56,078
-I pick a merchant and press Buy.
+00:00:34,368 --> 00:00:36,726
+It checks the delivery against
+the hash the merchant committed.
 
 9
-00:01:03,438 --> 00:01:06,809
-The page checks the order on-chain before it pays,
-and pays into the escrow, not to the merchant.
+00:00:36,776 --> 00:00:43,275
+My wallet is fresh, so the money is held. I
+confirm receipt, and the merchant is paid.
 
 10
-00:01:06,859 --> 00:01:11,326
-The merchant delivers, and the page checks the
-delivery against the hash the merchant committed.
+00:00:43,325 --> 00:00:48,275
+My review goes on-chain,
+weighted by the money behind it.
 
 11
-00:01:11,376 --> 00:01:19,206
-This is a fresh wallet, so the money is held.
-I confirm receipt, and the merchant is paid.
+00:00:57,915 --> 00:01:02,895
+Now both sides, through the API. On the left, my
+merchant agent quotes an order with its own escrow.
 
 12
-00:01:22,746 --> 00:01:30,216
-Then I leave a review. It is stored on-chain,
-with the weight of the money behind it.
+00:01:02,945 --> 00:01:06,160
+On the right, a buyer agent checks the merchant
+first. It is new, so the money will be held.
 
 13
-00:01:45,475 --> 00:01:51,865
-The score is integer arithmetic over public
-accounts, the same code the program runs.
+00:01:06,210 --> 00:01:11,160
+The buyer pays into the
+escrow, not to the merchant.
 
 14
-00:01:56,053 --> 00:02:00,643
-A wallet that only sells to itself stays low.
+00:01:11,715 --> 00:01:15,960
+The merchant delivers and
+commits a hash of what it sent.
 
 15
-00:02:03,771 --> 00:02:09,081
-A busy wallet with real customers
-climbs, and its hold shrinks.
+00:01:16,010 --> 00:01:19,760
+The buyer confirms receipt, and the
+merchant is paid, less a 1% fee.
 
 16
-00:02:11,572 --> 00:02:16,882
-An agent does the same from
-a terminal, with no website.
+00:01:19,810 --> 00:01:25,143
+The buyer leaves a review. It
+counts because a real order settled.
 
 17
-00:02:19,775 --> 00:02:25,445
-One call ranks merchants by
-reviews that each cost a real sale.
+00:01:25,193 --> 00:01:29,809
+The merchant now has one sale and
+one review on its credit file.
 
 18
-00:02:29,776 --> 00:02:33,237
-Recorded on a local Solana validator
-running the real Tessera program.
+00:01:29,859 --> 00:01:35,432
+The same credit file is public on
+the website, for any buyer to check.
 
 19
-00:02:33,287 --> 00:02:36,739
-Devnet only, test money, one
-arbiter key, no third-party audit.
+00:01:35,482 --> 00:01:38,833
+Recorded on a local Solana validator
+running the real Tessera program.

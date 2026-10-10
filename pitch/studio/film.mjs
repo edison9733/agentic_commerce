@@ -49,7 +49,7 @@ const pos = new WeakMap();
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /** Move the real mouse to an element (selector or locator), the way a hand would. */
-export async function glide(page, target, ms = 850) {
+export async function glide(page, target, ms = 520) {
   const loc = typeof target === 'string' ? page.locator(target).first() : target;
   await loc.scrollIntoViewIfNeeded({ timeout: 10_000 }).catch(() => {});
   const box = await loc.boundingBox().catch(() => null);
@@ -63,7 +63,7 @@ export async function glide(page, target, ms = 850) {
     await pause(ms / steps);
   }
   pos.set(page, to);
-  await pause(250);
+  await pause(140);
   return true;
 }
 
@@ -71,18 +71,18 @@ export async function click(page) {
   await page.mouse.down();
   await pause(90);
   await page.mouse.up();
-  await pause(400);
+  await pause(250);
 }
 
 export async function smoothScroll(page, top) {
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'smooth' }), top);
-  await pause(1400);
+  await pause(900);
 }
 
 export async function typeSlowly(page, text) {
   for (const ch of text) {
     await page.keyboard.type(ch);
-    await pause(55 + Math.random() * 45);
+    await pause(28 + Math.random() * 30);
   }
 }
 
@@ -117,43 +117,49 @@ function wrap(text, width = 48) {
   return best;
 }
 
-/** Burn the subtitles in and encode for upload. */
+/** Scale the 1600×900 recording to 1080p, burn the subtitles in, and encode for upload. */
 export function burn(input, subtitles, output, start = 0) {
-  const style = 'FontName=Inter,FontSize=15,Bold=0,PrimaryColour=&H00FFFFFF,BackColour=&H99000000,OutlineColour=&H99000000,BorderStyle=3,Outline=6,Shadow=0,MarginV=34,Alignment=2';
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(start), '-i', input, '-vf', `subtitles='${subtitles.replace(/'/g, "\\'")}':force_style='${style}'`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', output]);
+  const style = 'FontName=Inter,FontSize=15,Bold=0,PrimaryColour=&H00FFFFFF,BackColour=&H38000000,OutlineColour=&H38000000,BorderStyle=4,Outline=0,Shadow=0,MarginV=34,Alignment=2';
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-ss', String(start), '-i', input, '-vf', `scale=1920:1080:flags=lanczos,subtitles='${subtitles.replace(/'/g, "\\'")}':force_style='${style}'`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', output]);
 }
 
-const esc = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-
-/** A terminal window that types each command, then prints its real output line by line. */
-export function terminalHtml(entries) {
+/**
+ * A terminal window that types each command, then prints its real output line by line.
+ * Entries with `pane: 1` go to a second pane on the right (`titles` names both panes).
+ * `window.__step` is the index of the entry being typed, so subtitles can follow it.
+ */
+export function terminalHtml(entries, { titles } = {}) {
+  const split = Boolean(titles);
+  const panes = split ? titles : ['tessera — terminal'];
   return `<!doctype html><html><head><meta charset="utf-8"><style>
-  body{margin:0;height:100vh;background:#e9e4d6;display:grid;place-items:center;font-family:Inter,system-ui}
-  .win{width:1440px;height:780px;background:#0f110d;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column}
-  .bar{height:44px;background:#1c1f19;display:flex;align-items:center;gap:9px;padding:0 18px;color:#8b8a7c;font-size:14px}
+  body{margin:0;height:100vh;background:#e9e4d6;display:flex;gap:22px;align-items:flex-start;justify-content:center;padding-top:${split ? 34 : 50}px;box-sizing:border-box;font-family:Inter,system-ui}
+  .win{width:${split ? 760 : 1440}px;height:${split ? 700 : 690}px;background:#0f110d;border-radius:16px;box-shadow:0 30px 80px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column}
+  .bar{height:44px;background:#1c1f19;display:flex;align-items:center;gap:9px;padding:0 18px;color:#c9c6b6;font-size:15px}
   .dot{width:13px;height:13px;border-radius:50%}
-  pre{margin:0;padding:26px 30px;color:#e8e4d4;font:20px/1.55 "DejaVu Sans Mono",monospace;white-space:pre-wrap;overflow:hidden;flex:1}
-  .p{color:#b9f8da}.c{color:#ffffff}.caret{display:inline-block;width:11px;height:22px;background:#b9f8da;vertical-align:-4px;animation:b 1s steps(1) infinite}
+  pre{margin:0;padding:${split ? '20px 22px' : '26px 30px'};color:#e8e4d4;font:${split ? '15.5px/1.5' : '20px/1.55'} "DejaVu Sans Mono",monospace;white-space:pre-wrap;overflow-wrap:anywhere;overflow:hidden;flex:1}
+  .p{color:#b9f8da}.c{color:#ffffff}.k{color:#8b8a7c}.caret{display:inline-block;width:10px;height:19px;background:#b9f8da;vertical-align:-4px;animation:b 1s steps(1) infinite}
   @keyframes b{50%{opacity:0}}
-  </style></head><body><div class="win"><div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin-left:12px">tessera — terminal</span></div><pre id="t"></pre></div>
+  </style></head><body>${panes.map((t, i) => `<div class="win"><div class="bar"><span class="dot" style="background:#ff5f57"></span><span class="dot" style="background:#febc2e"></span><span class="dot" style="background:#28c840"></span><span style="margin-left:12px">${t}</span></div><pre id="t${i}"></pre></div>`).join('')}
   <script>
-  const entries = ${JSON.stringify(entries.map((e) => ({ cmd: e.cmd, out: e.out.split('\n') })))};
-  const t = document.getElementById('t');
+  const entries = ${JSON.stringify(entries.map((e) => ({ pane: e.pane ?? 0, cmd: e.cmd, out: e.out ? e.out.split("\n") : [], after: e.after })))};
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const add = (html) => { t.insertAdjacentHTML('beforeend', html); t.scrollTop = t.scrollHeight; };
+  const pre = (i) => document.getElementById('t' + i);
+  const add = (i, html) => { const t = pre(i); t.querySelector('.caret')?.remove(); t.insertAdjacentHTML('beforeend', html); t.scrollTop = t.scrollHeight; };
+  const prompt = (i) => add(i, '<span class="p">edison@tessera ~ $ </span>');
+  window.__step = -1;
   (async () => {
-    await wait(900);
-    for (const e of entries) {
-      add('<span class="p">edison@tessera ~ $ </span><span class="c"></span>');
-      const c = t.querySelectorAll('.c'); const cmd = c[c.length - 1];
-      for (const ch of e.cmd) { cmd.textContent += ch; await wait(38 + Math.random() * 40); }
-      add('\\n'); await wait(700);
-      for (const line of e.out) { add(${JSON.stringify('')} + line.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '\\n'); await wait(120); }
-      add('\\n'); await wait(2600);
+    for (let i = 0; i < ${panes.length}; i += 1) { prompt(i); add(i, '<span class="caret"></span>'); }
+    await wait(500);
+    for (const [n, e] of entries.entries()) {
+      window.__step = n;
+      add(e.pane, '<span class="c"></span>');
+      const c = pre(e.pane).querySelectorAll('.c'); const cmd = c[c.length - 1];
+      for (const ch of e.cmd) { cmd.textContent += ch; await wait(16 + Math.random() * 18); }
+      add(e.pane, '\\n'); await wait(350);
+      for (const line of e.out) { add(e.pane, (line.startsWith('#') ? '<span class="k">' : '<span>') + line.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '</span>\\n'); await wait(45); }
+      add(e.pane, '\\n'); prompt(e.pane); add(e.pane, '<span class="caret"></span>'); await wait(e.after ?? 1500);
     }
-    add('<span class="p">edison@tessera ~ $ </span><span class="caret"></span>');
     window.__typed = true;
   })();
   </script></body></html>`;
 }
-void esc;
