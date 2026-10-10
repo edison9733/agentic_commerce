@@ -90,7 +90,7 @@ already co-sign new orders, which the old program accepts as well.
 | # | Attack | Status | Defence | Test |
 |---|---|---|---|---|
 | C1 | **Wash trading** with one sock puppet to pump History. | ✅ | One counterparty can grant at most the pair cap times its tier weight. | local: "$15 of wash trades… can never earn more than the $1 pair cap"; formula |
-| C2 | **A ring** of the attacker's own wallets. | 🟡 | New wallets count for 10%, each pair is capped, and Trusted needs 30 active periods. Rings of 3 and 6 never reach Trusted in a simulated year; larger ones do, at a cost of thousands in fees and one to three months. See [SCORING.md](SCORING.md#what-faking-it-costs). | model |
+| C2 | **A ring** of the attacker's own wallets. | 🟡 | New wallets count for 10%, each pair is capped, and Trusted needs 30 active periods. Rings of 3 and 6 never reach Trusted in a simulated year; larger ones do, at a cost of hundreds to a few thousand dollars in fees and one to three months. See [SCORING.md](SCORING.md#what-faking-it-costs). | model |
 | C3 | **Burst farming** just before a scam. | ✅ | Tenure counts active periods; tiers are gated on them. Full evidence in one day does not reach Building. | formula |
 | C4 | **Aged wallets**: create wallets, wait, then use them. | ✅ | Age counts only up to three periods per active period. | formula |
 | C5 | **Exit scam** on instant settlement: earn Trusted, take orders, deliver nothing. | ✅ | Instant volume buyers have not accepted is capped at fees paid plus a base; a 1–2 star rating locks that amount. Net of the scam is at most the base per identity. | local: "a complaint locks the instant limit"; formula |
