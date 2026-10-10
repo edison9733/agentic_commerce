@@ -40,4 +40,10 @@ pub enum TesseraError {
     TextTooLong,
     #[msg("Arithmetic overflow")]
     MathOverflow,
+    #[msg("The payment window has closed")]
+    PaymentWindowClosed,
+    #[msg("The arbiter cannot be a party to the order")]
+    ArbiterIsParty,
+    #[msg("The hold asked for is longer than the maximum")]
+    HoldTooLong,
 }

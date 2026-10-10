@@ -131,6 +131,7 @@ test('friendly fraud: a buyer who loses a dispute drops a tier and loses pair tr
     const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 20n * USDC, now);
     model.deliver(o, m, P, now);
     model.settle(o, b, m, pair, P, { kind: 'release' }, now);
+    model.review(o, b, m, pair, true, 5, P, now);
   }
   const now = T0 + 130n * DAY;
   const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 20n * USDC, now);
@@ -161,6 +162,73 @@ test('a merchant cannot borrow the tier of a buyer who never took part', () => {
   assert.equal(evaluate(victim, P, T0 + 4n * DAY).score, before, 'and the victim\'s score does not move');
   model.review(o, victim, m, pair, true, 5, P, T0 + 4n * DAY);
   assert.equal(m.credit, P.pairCap, 'once the buyer reviews, the order counts in full');
+});
+
+test('a merchant cannot forge pair history to waive a buyer\'s hold', () => {
+  // Orders the merchant opens in a buyer's name and funds itself settle
+  // without the buyer, so they are not history between the two.
+  const m = establishedAgent(P, 3, T0);
+  const b = model.newAgent(T0);
+  const pair = model.newPair();
+  for (let i = 1; i <= 3; i += 1) {
+    const now = T0 + BigInt(i) * 40n * DAY;
+    const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, P.minOrder, now);
+    model.deliver(o, m, P, now);
+    model.settle(o, b, m, pair, P, { kind: 'release' }, now + BigInt(o.holdSecs));
+  }
+  const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 20n * USDC, T0 + 130n * DAY);
+  assert.equal(o.pairTrusted, false, 'forged orders are not pair history');
+  assert.equal(o.holdSecs, P.holdSecs[0], 'the New buyer keeps the longest hold');
+});
+
+test('a merchant that lost Trusted after the order opened does not settle it instantly', () => {
+  const m = establishedAgent(P, 3, T0);
+  const b = establishedAgent(P, 3, T0);
+  m.feesPaid = 1_000n * USDC;
+  const now = T0 + DAY;
+  const o = model.openOrder(b, m, model.newPair(), P, PROTOCOL_FEE_BPS, 20n * USDC, now);
+  assert.equal(o.holdSecs, 0, 'opened Trusted + Trusted');
+  // A lost dispute elsewhere before delivery.
+  const other = model.openOrder(b, m, model.newPair(), P, PROTOCOL_FEE_BPS, 20n * USDC, now);
+  model.settle(other, b, m, model.newPair(), P, { kind: 'resolve', merchantBps: 0 }, now);
+  assert.ok(m.tier < 3);
+  model.deliver(o, m, P, now);
+  assert.equal(o.instant, false);
+  assert.equal(o.releaseAt, now + BigInt(Math.max(P.holdSecs[2]!, P.holdSecs[m.tier]!)), 'it waits like an Established order');
+});
+
+test('a complaint locks the instant amount for good; a refund frees it at once', () => {
+  const m = establishedAgent(P, 3, T0);
+  const b = establishedAgent(P, 3, T0);
+  m.feesPaid = 1_000n * USDC;
+  const now = T0 + DAY;
+  const scam = model.openOrder(b, m, model.newPair(), P, PROTOCOL_FEE_BPS, 20n * USDC, now);
+  model.deliver(scam, m, P, now);
+  model.settle(scam, b, m, model.newPair(), P, { kind: 'release' }, now);
+  model.review(scam, b, m, model.newPair(), true, 1, P, now);
+  model.closeOrder(scam, m);
+  assert.equal(m.instantExposure, 20n * USDC, 'closing a complained-about order frees nothing');
+
+  const refunded = model.openOrder(b, m, model.newPair(), P, PROTOCOL_FEE_BPS, 10n * USDC, now);
+  model.deliver(refunded, m, P, now);
+  assert.equal(m.instantExposure, 30n * USDC);
+  model.settle(refunded, b, m, model.newPair(), P, { kind: 'refund', expired: false }, now);
+  assert.equal(m.instantExposure, 20n * USDC, 'a refund gives the buyer everything back, so it stops counting');
+  model.review(refunded, b, m, model.newPair(), true, 1, P, now);
+  model.closeOrder(refunded, m);
+  assert.equal(m.instantExposure, 20n * USDC, 'and is not freed twice');
+});
+
+test('an even split of an odd amount leaves both sides heard', () => {
+  const m = establishedAgent(P, 3, T0);
+  const b = establishedAgent(P, 3, T0);
+  const pair = model.newPair();
+  const o = model.openOrder(b, m, pair, P, PROTOCOL_FEE_BPS, 20n * USDC + 1n, T0 + DAY);
+  model.deliver(o, m, P, T0 + DAY);
+  model.dispute(b, m, pair);
+  model.settle(o, b, m, pair, P, { kind: 'resolve', merchantBps: 5_000 }, T0 + DAY);
+  assert.ok(model.review(o, b, m, pair, true, 3, P, T0 + DAY) > 0n);
+  assert.ok(model.review(o, m, b, pair, false, 3, P, T0 + DAY) > 0n);
 });
 
 test('the side that lost a dispute gets no weighted say on it', () => {

@@ -67,19 +67,53 @@ export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms))
  * disk to put `.keys/` on (Railway and the like): TESSERA_KEYS is base64 of a
  * JSON map from a path under `.keys/` to the key's 64 bytes, as
  * `npm run keys:export` prints it. A file on disk still wins.
+ *
+ * It is parsed once and then removed from the environment. A parse error
+ * would quote the bytes around the bad spot, so none is ever passed on.
  */
 let envKeys: Record<string, number[]> | undefined;
+const isKeyBytes = (v: unknown): v is number[] =>
+  Array.isArray(v) && v.length === 64 && v.every((b) => Number.isInteger(b) && b >= 0 && b <= 255);
+
 function keyFromEnv(path: string): number[] | undefined {
-  if (!process.env.TESSERA_KEYS || !path.startsWith('.keys/')) return undefined;
-  envKeys ??= JSON.parse(Buffer.from(process.env.TESSERA_KEYS, 'base64').toString('utf8')) as Record<string, number[]>;
+  if (!envKeys && process.env.TESSERA_KEYS) {
+    const raw = process.env.TESSERA_KEYS;
+    delete process.env.TESSERA_KEYS;
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(Buffer.from(raw, 'base64').toString('utf8'));
+    } catch {
+      parsed = undefined;
+    }
+    if (typeof parsed !== 'object' || parsed === null || !Object.values(parsed).every(isKeyBytes)) {
+      throw new Error('TESSERA_KEYS is not valid: expected base64 of a JSON map to 64-byte keys, as `npm run keys:export` prints it');
+    }
+    envKeys = parsed as Record<string, number[]>;
+  }
+  if (!envKeys || !path.startsWith('.keys/')) return undefined;
   return envKeys[path.slice('.keys/'.length)];
+}
+
+/** Drop the keys read from TESSERA_KEYS once a process has loaded what it needs. */
+export function forgetEnvKeys(): void {
+  for (const bytes of Object.values(envKeys ?? {})) bytes.fill(0);
+  envKeys = {};
 }
 
 export async function loadKeypair(path: string): Promise<KeyPairSigner> {
   const full = path.startsWith('~') ? path.replace('~', process.env.HOME ?? '') : resolve(REPO_ROOT, path);
   const fromEnv = existsSync(full) ? undefined : keyFromEnv(path);
-  const bytes = new Uint8Array(fromEnv ?? (JSON.parse(readFileSync(full, 'utf8')) as number[]));
-  return createKeyPairSignerFromBytes(bytes);
+  let fromFile: unknown;
+  if (!fromEnv) {
+    try {
+      fromFile = JSON.parse(readFileSync(full, 'utf8'));
+    } catch (e) {
+      // the parse error would quote key bytes; a missing file says only its path
+      throw new Error(`${path}: ${(e as NodeJS.ErrnoException).code === 'ENOENT' ? 'no such key file' : 'not a keypair file'}`);
+    }
+    if (!isKeyBytes(fromFile)) throw new Error(`${path}: not a keypair file`);
+  }
+  return createKeyPairSignerFromBytes(new Uint8Array(fromEnv ?? (fromFile as number[])));
 }
 
 /** A fresh keypair in the Solana CLI's 64-byte JSON format. */
@@ -102,9 +136,13 @@ export async function loadOrCreateKeypair(path: string): Promise<KeyPairSigner> 
   return signer;
 }
 
+/** How long one RPC call may take before its endpoint counts as busy and the next one is tried. */
+const RPC_TIMEOUT_MS = Number(process.env.RPC_TIMEOUT_MS ?? 8000);
+
 const isRateLimited = (e: unknown): boolean =>
   (isSolanaError(e, SOLANA_ERROR__RPC__TRANSPORT_HTTP_ERROR) &&
     [429, 502, 503, 504].includes((e.context as { statusCode: number }).statusCode)) ||
+  (e instanceof Error && e.name === 'TimeoutError') ||
   (e instanceof Error && /fetch failed|ECONNRESET|ETIMEDOUT|socket hang up|terminated/i.test(e.message));
 
 /**
@@ -128,21 +166,35 @@ function poolFor(cluster: Cluster): Endpoint[] {
   return pool;
 }
 
+/** Calls allowed to wait for budget at once. More are refused, so a flood cannot build a backlog that starves everything else. */
+const MAX_WAITING = Number(process.env.RPC_MAX_QUEUE ?? 200);
+let waiting = 0;
+
 /** The first endpoint with budget left, waiting if none has. */
 async function nextEndpoint(cluster: Cluster): Promise<Endpoint> {
   const budget = cluster.budgetPer10s ?? Infinity;
   const pool = poolFor(cluster);
-  for (;;) {
-    const now = Date.now();
-    const free = pool.find((e) => {
-      while (e.sent.length && now - e.sent[0]! > 10_000) e.sent.shift();
-      return now >= e.coolUntil && e.sent.length < budget;
-    });
-    if (free) {
-      free.sent.push(now);
-      return free;
+  let queued = false;
+  try {
+    for (;;) {
+      const now = Date.now();
+      const free = pool.find((e) => {
+        while (e.sent.length && now - e.sent[0]! > 10_000) e.sent.shift();
+        return now >= e.coolUntil && e.sent.length < budget;
+      });
+      if (free) {
+        free.sent.push(now);
+        return free;
+      }
+      if (!queued) {
+        if (waiting >= MAX_WAITING) throw new Error('RPC is busy: too many calls are waiting');
+        queued = true;
+        waiting += 1;
+      }
+      await sleep(250);
     }
-    await sleep(250);
+  } finally {
+    if (queued) waiting -= 1;
   }
 }
 
@@ -155,9 +207,11 @@ function transportFor(cluster: Cluster): RpcTransport {
     for (let attempt = 0; attempt < 30; attempt += 1) {
       const endpoint = await nextEndpoint(cluster);
       try {
-        return await endpoint.send(request);
+        // An endpoint that accepts the connection and never answers is moved past, not waited on.
+        const timeout = AbortSignal.timeout(RPC_TIMEOUT_MS);
+        return await endpoint.send({ ...request, signal: request.signal ? AbortSignal.any([request.signal, timeout]) : timeout });
       } catch (e) {
-        if (!isRateLimited(e)) throw e;
+        if (request.signal?.aborted || !isRateLimited(e)) throw e;
         lastError = e;
         endpoint.coolUntil = Date.now() + 2500;
       }
@@ -181,15 +235,27 @@ export async function localRpcProxy(cluster: Cluster = DEVNET): Promise<string> 
     req.on('end', async () => {
       const body = Buffer.concat(chunks);
       for (let attempt = 0; attempt < 30; attempt += 1) {
-        const endpoint = await nextEndpoint(cluster);
+        let endpoint: Endpoint;
         try {
-          const upstream = await fetch(endpoint.url, { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+          endpoint = await nextEndpoint(cluster);
+        } catch {
+          break; // the queue is full
+        }
+        try {
+          const upstream = await fetch(endpoint.url, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body,
+            signal: AbortSignal.timeout(RPC_TIMEOUT_MS),
+          });
           if ([429, 502, 503, 504].includes(upstream.status)) {
             endpoint.coolUntil = Date.now() + 2500;
             continue;
           }
+          // the whole body first: the timeout covers reading it, and a retry must not find headers sent
+          const text = await upstream.text();
           res.writeHead(upstream.status, { 'content-type': 'application/json' });
-          return void res.end(await upstream.text());
+          return void res.end(text);
         } catch {
           endpoint.coolUntil = Date.now() + 2500;
         }

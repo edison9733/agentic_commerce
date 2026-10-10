@@ -21,7 +21,11 @@ export const ORDER_STATE_NAMES = [
   'Refunded',
   'Disputed',
   'Resolved',
+  'Cancelled',
 ] as const;
+
+/** The longest hold a buyer may ask for (`MAX_HOLD_SECS` in the program). */
+export const MAX_HOLD_SECS = 30 * 86_400;
 
 export const PROTOCOL_FEE_BPS = 100;
 

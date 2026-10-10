@@ -15,6 +15,11 @@ export type Field =
 
 export type Checked = { ok: true; values: Record<string, unknown> } | { ok: false; message: string };
 
+/** Deepest nesting a `json` field may have. It is hashed recursively, so this bounds the work before any of it. */
+const MAX_JSON_DEPTH = 32;
+const tooDeep = (v: unknown, depth = 0): boolean =>
+  depth > MAX_JSON_DEPTH || (typeof v === 'object' && v !== null && Object.values(v).some((x) => tooDeep(x, depth + 1)));
+
 const addressRe = new RegExp(ADDRESS_PATTERN);
 const amountRe = new RegExp(AMOUNT_PATTERN);
 const hexRe = new RegExp(HEX32_PATTERN);
@@ -51,6 +56,7 @@ export function check(input: unknown, fields: Field[]): Checked {
         if (typeof v !== 'string' || Buffer.byteLength(v, 'utf8') > f.maxBytes) return { ok: false, message: `${f.name} must be text of at most ${f.maxBytes} bytes` };
         break;
       case 'json':
+        if (tooDeep(v)) return { ok: false, message: `${f.name} must be JSON nested at most ${MAX_JSON_DEPTH} levels deep` };
         break;
     }
     values[f.name] = v;

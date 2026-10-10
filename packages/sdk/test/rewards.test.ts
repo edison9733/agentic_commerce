@@ -6,7 +6,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { PROTOCOL_FEE_BPS } from '../src/constants.js';
-import { accuracy, baseReward, DEVNET_REWARD_PARAMS, MAINNET_REWARD_PARAMS, MAX_ACCURACY_BPS, maxReward, scoreEpoch, type RewardReview, type Sighting } from '../src/rewards.js';
+import { accuracy, baseReward, DEVNET_REWARD_PARAMS, MAINNET_REWARD_PARAMS, MAX_ACCURACY_BPS, MAX_SHARE_BPS, maxReward, scoreEpoch, type RewardReview, type Sighting } from '../src/rewards.js';
 import { TIER_WEIGHT } from '../src/score.js';
 
 const P = MAINNET_REWARD_PARAMS;
@@ -53,6 +53,31 @@ test('both sides of one order together never get back more than 75% of its fee',
     }
   }
   assert.equal(MAX_ACCURACY_BPS, 15_000);
+  // The same bound in basis points: two sides at the ceiling stay within 75% of the fee.
+  for (const q of [DEVNET_REWARD_PARAMS, MAINNET_REWARD_PARAMS]) assert.ok(q.shareBps <= MAX_SHARE_BPS);
+  assert.ok(2 * MAX_SHARE_BPS * MAX_ACCURACY_BPS <= 7_500 * 10_000);
+});
+
+test('a review is paid on the fee its own order paid, never on a higher fee set later', () => {
+  // The order snapshots the fee rate at open; the config can change before the review is scored.
+  const settled = 100n * USDC;
+  const feeAt = (bps: number) => (settled * BigInt(bps)) / 10_000n;
+  for (const orderFee of [0, 50, 100, 1000]) {
+    for (const configFee of [0, 50, 100, 500, 1000]) {
+      const r = review({ createdAt: 0, weight: settled, rating: 1 });
+      const seen: Sighting = { ...seenAt(r), orderFeeBps: orderFee };
+      const [row] = scoreEpoch({ reviews: [r], sightings: { [r.address]: seen }, failuresNow: {}, paid: {}, feeBps: configFee, now: 10 ** 9 }, P).rows;
+      assert.equal(row!.feeBps, Math.min(orderFee, configFee));
+      assert.equal(row!.orderFeeSeen, true);
+      assert.equal(row!.base, baseReward(settled, Math.min(orderFee, configFee), P));
+      const both = 2n * maxReward(settled, row!.feeBps, P);
+      assert.ok(both * 100n <= feeAt(orderFee) * 75n, `order at ${orderFee} bps, config at ${configFee}: ${both} vs fee ${feeAt(orderFee)}`);
+    }
+  }
+  // An order already closed when the review was first seen counts at most the default fee rate.
+  const r = review({ createdAt: 0 });
+  const [row] = scoreEpoch({ reviews: [r], sightings: { [r.address]: seenAt(r) }, failuresNow: {}, paid: {}, feeBps: 1000, now: 10 ** 9 }, P).rows;
+  assert.deepEqual([row!.feeBps, row!.orderFeeSeen], [PROTOCOL_FEE_BPS, false]);
 });
 
 test('a wash-trading ring of new wallets loses money farming rewards', () => {

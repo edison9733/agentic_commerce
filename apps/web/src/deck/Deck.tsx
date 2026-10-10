@@ -38,7 +38,10 @@ declare global {
 
 export function Deck({ slides, title }: { slides: Slide[]; title: string }) {
   const query = useMemo(() => new URLSearchParams(window.location.hash.split('?')[1] ?? ''), []);
-  const [i, setI] = useState(() => Math.min(slides.length - 1, Number(query.get('i') ?? 0)));
+  const [i, setI] = useState(() => {
+    const n = Number(query.get('i') ?? 0);
+    return Number.isFinite(n) ? Math.max(0, Math.min(slides.length - 1, Math.floor(n))) : 0;
+  });
   const [auto, setAuto] = useState(query.get('auto') === '1');
   const [notes, setNotes] = useState(false);
   const clean = query.get('clean') === '1';

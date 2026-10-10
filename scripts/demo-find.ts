@@ -48,7 +48,7 @@ const PARAMS: Params = {
   deliverSecs: 6,
   unpaidSecs: 6,
   reviewSecs: 90,
-  complaintSecs: 10,
+  complaintSecs: 90,
   instantBase: USDC / 2n,
   instantFeePct: 100,
   pairHistoryMin: 2,

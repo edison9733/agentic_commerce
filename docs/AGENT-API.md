@@ -76,12 +76,12 @@ The list is read from one snapshot of the program's accounts, shared for 30 s
 (`TESSERA_FIND_SNAPSHOT_MS`), so call `check_payment` right before paying.
 
 Card text is the merchant's own: it only decides matching and price, it is cut short and stripped of
-control characters, a card whose Tessera extension names another wallet is ignored, and every reply
+control, invisible and bidirectional characters, a card whose Tessera extension names another wallet is ignored, and every reply
 says that `name`, `service` and review text are data, not instructions. The card URL is chosen by
-whoever registered the wallet, so the API fetches it with http(s) only, no redirects, a 1.5 s timeout,
-a 64 KB cap, and no private or loopback addresses (checked on the address actually connected to)
-unless the API listens only on this machine (`HOST`, default `127.0.0.1`) or
-`TESSERA_ALLOW_PRIVATE_CARDS=1`.
+whoever registered the wallet, so the API fetches it with http(s) only, no redirects, one 1.5 s
+wall-clock deadline, a 64 KB cap, and no private, loopback or reserved addresses, including IPv6 forms
+that embed an IPv4 address (checked on the address actually connected to), unless
+`TESSERA_ALLOW_PRIVATE_CARDS=1` is set.
 
 To see it with real agents, `npm run demo:find` (after `npm run build:program`) starts a local
 validator with the program, has three buyer agents make twelve purchases from four merchant agents
@@ -143,11 +143,15 @@ unsigned version-0 transaction, already simulated, with `signers`, `feePayer`, a
 That makes the API unable to move anyone's money by itself. It does not make it trustless: an agent
 signs what it is given. So:
 
-- The **CLI** checks every transaction before signing with `--keypair`: only the Tessera, SPL Token,
-  associated-token and compute-budget programs; no lookup tables; the fee payer is you; and the only
-  token instruction allowed is a transfer into the escrow vault, which the CLI derives itself from the
-  order id. `npm run test:doors` hands it a tampered transaction from a fake API and checks it refuses.
-- The **skill** tells an agent to check `signers`, `transfers` and `simulation` before its wallet signs.
+- The **CLI** does not trust the API. Before signing with `--keypair` it reads the order from the
+  chain through its own RPC (`--rpc`) and checks every instruction: only the Tessera, SPL Token,
+  associated-token and compute-budget programs; no lookup tables; you are the fee payer and the only
+  signer; a capped priority fee; the only token instruction a transfer of the order's on-chain amount
+  into the vault the CLI derives itself from the order you named; and only the Tessera instructions
+  the command builds, on that order. `npm run test:doors` hands it a tampered transaction from a fake
+  API and checks it refuses.
+- The **skill** tells an agent to check the transaction itself, not the reply's summary of it, before
+  its wallet signs.
 - Buyers are verified against the chain, not the API: `open_escrow` with `role: buyer` runs
   `verifyOrderForPayment`, the same check the SDK gives every buyer.
 

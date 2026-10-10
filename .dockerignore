@@ -1,14 +1,25 @@
 # Keys and records never go into an image: pass keys as TESSERA_KEYS.
 .keys
+**/.keys
 .data
+**/.data
 .env
 .env.*
+**/.env
+**/.env.*
+**/*-keypair.json
+**/id.json
+**/*.pem
 node_modules
 **/node_modules
 target
 .anchor
 test-ledger
+.surfpool
 .git
-pitch/out
-pitch/assets
+.claude
+pitch
+docs
 apps/web/dist
+apps/web/public/decks
+*.log

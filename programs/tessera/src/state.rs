@@ -4,6 +4,9 @@ pub const BPS: u64 = 10_000;
 pub const MAX_NAME: usize = 32;
 pub const MAX_URI: usize = 128;
 pub const MAX_REVIEW: usize = 200;
+/// The longest hold a buyer may ask for. A disputed order's fallback is keyed
+/// on the end of the hold, so an unbounded hold could lock money for decades.
+pub const MAX_HOLD_SECS: u32 = 30 * 86_400;
 
 /// Every tunable lives on-chain so anyone can read the rules a score was
 /// computed under. Devnet runs with compressed time and amounts (see
@@ -180,6 +183,10 @@ pub enum OrderState {
     Refunded,
     Disputed,
     Resolved,
+    /// Abandoned before payment. The account stays for the payment window, so
+    /// the same order id cannot be reopened, for anyone, while a payment
+    /// signed for the old order could still land in its vault.
+    Cancelled,
 }
 
 /// One escrow. The order account is also the vault's authority, and the

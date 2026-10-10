@@ -34,8 +34,14 @@ export function useMatch(pattern: string): Record<string, string> | null {
     if (a.length !== b.length) return null;
     const out: Record<string, string> = {};
     for (let i = 0; i < a.length; i += 1) {
-      if (a[i]!.startsWith(':')) out[a[i]!.slice(1)] = decodeURIComponent(b[i]!);
-      else if (a[i] !== b[i]) return null;
+      if (a[i]!.startsWith(':')) {
+        // A malformed escape in a pasted link is no match, not a blank page.
+        try {
+          out[a[i]!.slice(1)] = decodeURIComponent(b[i]!);
+        } catch {
+          return null;
+        }
+      } else if (a[i] !== b[i]) return null;
     }
     return out;
   }, [pattern, path]);

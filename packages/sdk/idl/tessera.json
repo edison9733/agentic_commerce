@@ -64,9 +64,17 @@
     {
       "name": "cancel_unpaid",
       "docs": [
-        "Abandon an order that was never confirmed as paid and return the rent.",
-        "Either party may, any time; the rent payer may once the payment window",
-        "has passed. Anything that reached the vault goes back to the buyer."
+        "Abandon an order that was never confirmed as paid. Either party may,",
+        "any time; the rent payer may once the payment window has passed.",
+        "Anything that reached the vault goes back to the buyer and the vault's",
+        "rent to the payer.",
+        "",
+        "The order account itself stays, marked Cancelled, until `close_order`",
+        "after the payment window. Closing it at once would let the merchant",
+        "reopen the same id -- the same vault address -- for another buyer,",
+        "while a payment the real buyer signed for the old order is still in",
+        "flight. Anyone may run this again on a Cancelled order whose vault was",
+        "recreated and paid into; that money goes to the buyer too."
       ],
       "discriminator": [
         186,
@@ -241,8 +249,11 @@
       "docs": [
         "Return a settled order's rent once its review window has passed. This",
         "is also where an instant order nobody objected to stops counting",
-        "against the merchant's limit. One the buyer complained about stays",
-        "locked for the longer complaint period first."
+        "against the merchant's limit. One the buyer complained about never",
+        "does: its rent comes back after the complaint period, but the amount",
+        "stays locked for the life of the identity, so an exit scam cannot be",
+        "repeated by waiting. A cancelled order closes once its payment window",
+        "has passed."
       ],
       "discriminator": [
         90,
@@ -1253,7 +1264,7 @@
       "docs": [
         "Give the buyer everything back. The merchant may do it any time before",
         "release. Anyone may do it once the merchant has missed the delivery",
-        "deadline, and that costs the merchant score."
+        "deadline, and that costs the merchant score, whoever sends it."
       ],
       "discriminator": [
         2,
@@ -2568,6 +2579,21 @@
       "code": 6018,
       "name": "MathOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6019,
+      "name": "PaymentWindowClosed",
+      "msg": "The payment window has closed"
+    },
+    {
+      "code": 6020,
+      "name": "ArbiterIsParty",
+      "msg": "The arbiter cannot be a party to the order"
+    },
+    {
+      "code": 6021,
+      "name": "HoldTooLong",
+      "msg": "The hold asked for is longer than the maximum"
     }
   ],
   "types": [
@@ -3169,6 +3195,9 @@
           },
           {
             "name": "Resolved"
+          },
+          {
+            "name": "Cancelled"
           }
         ]
       }

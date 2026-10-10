@@ -52,20 +52,29 @@ export const TESSERA_ERROR__INVALID_RATING = 0x1780; // 6016
 export const TESSERA_ERROR__TEXT_TOO_LONG = 0x1781; // 6017
 /** MathOverflow: Arithmetic overflow */
 export const TESSERA_ERROR__MATH_OVERFLOW = 0x1782; // 6018
+/** PaymentWindowClosed: The payment window has closed */
+export const TESSERA_ERROR__PAYMENT_WINDOW_CLOSED = 0x1783; // 6019
+/** ArbiterIsParty: The arbiter cannot be a party to the order */
+export const TESSERA_ERROR__ARBITER_IS_PARTY = 0x1784; // 6020
+/** HoldTooLong: The hold asked for is longer than the maximum */
+export const TESSERA_ERROR__HOLD_TOO_LONG = 0x1785; // 6021
 
 export type TesseraError =
   | typeof TESSERA_ERROR__ALREADY_REVIEWED
   | typeof TESSERA_ERROR__AMOUNT_TOO_SMALL
+  | typeof TESSERA_ERROR__ARBITER_IS_PARTY
   | typeof TESSERA_ERROR__DELIVERY_WINDOW_CLOSED
   | typeof TESSERA_ERROR__DELIVERY_WINDOW_OPEN
   | typeof TESSERA_ERROR__DISPUTE_WINDOW_CLOSED
   | typeof TESSERA_ERROR__HOLD_NOT_ELAPSED
+  | typeof TESSERA_ERROR__HOLD_TOO_LONG
   | typeof TESSERA_ERROR__INVALID_PARAMS
   | typeof TESSERA_ERROR__INVALID_RATING
   | typeof TESSERA_ERROR__INVALID_STATE
   | typeof TESSERA_ERROR__MATH_OVERFLOW
   | typeof TESSERA_ERROR__MINT_MISMATCH
   | typeof TESSERA_ERROR__NOT_A_PARTY
+  | typeof TESSERA_ERROR__PAYMENT_WINDOW_CLOSED
   | typeof TESSERA_ERROR__REVIEW_WINDOW_CLOSED
   | typeof TESSERA_ERROR__SELF_DEALING
   | typeof TESSERA_ERROR__TEXT_TOO_LONG
@@ -79,16 +88,19 @@ if (process.env["NODE_ENV"] !== "production") {
   tesseraErrorMessages = {
     [TESSERA_ERROR__ALREADY_REVIEWED]: `This party already reviewed this order`,
     [TESSERA_ERROR__AMOUNT_TOO_SMALL]: `Order amount is below the minimum`,
+    [TESSERA_ERROR__ARBITER_IS_PARTY]: `The arbiter cannot be a party to the order`,
     [TESSERA_ERROR__DELIVERY_WINDOW_CLOSED]: `The delivery deadline has passed`,
     [TESSERA_ERROR__DELIVERY_WINDOW_OPEN]: `The delivery deadline has not passed yet`,
     [TESSERA_ERROR__DISPUTE_WINDOW_CLOSED]: `The dispute window has closed`,
     [TESSERA_ERROR__HOLD_NOT_ELAPSED]: `The settlement hold has not elapsed yet`,
+    [TESSERA_ERROR__HOLD_TOO_LONG]: `The hold asked for is longer than the maximum`,
     [TESSERA_ERROR__INVALID_PARAMS]: `A parameter is out of range`,
     [TESSERA_ERROR__INVALID_RATING]: `Rating must be between 1 and 5`,
     [TESSERA_ERROR__INVALID_STATE]: `The order is not in the state this instruction needs`,
     [TESSERA_ERROR__MATH_OVERFLOW]: `Arithmetic overflow`,
     [TESSERA_ERROR__MINT_MISMATCH]: `Wrong token mint`,
     [TESSERA_ERROR__NOT_A_PARTY]: `Signer is not a party to this order`,
+    [TESSERA_ERROR__PAYMENT_WINDOW_CLOSED]: `The payment window has closed`,
     [TESSERA_ERROR__REVIEW_WINDOW_CLOSED]: `The review window has closed`,
     [TESSERA_ERROR__SELF_DEALING]: `Buyer and merchant must be different wallets`,
     [TESSERA_ERROR__TEXT_TOO_LONG]: `Text is too long`,

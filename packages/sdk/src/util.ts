@@ -47,6 +47,19 @@ export function bytesEqual(a: ReadonlyUint8ArrayLike, b: ReadonlyUint8ArrayLike)
   return true;
 }
 
+/**
+ * Text a stranger wrote (a wallet's on-chain name, a review), made safe to
+ * show: control, bidirectional-override and invisible format characters are
+ * dropped, so one wallet's name cannot reverse or hide the row next to it.
+ */
+export function safeText(text: string, max = 280): string {
+  return text
+    .replace(/[\u0000-\u001f\u007f-\u009f]+/g, ' ')
+    .replace(/[\u00ad\u061c\u180e\u200b-\u200f\u202a-\u202e\u2060-\u206f\ufeff\ufff9-\ufffb]|[\u{e0000}-\u{e007f}]/gu, '')
+    .trim()
+    .slice(0, max);
+}
+
 export function shortAddress(a: string, n = 4): string {
   return a.length <= n * 2 + 1 ? a : `${a.slice(0, n)}…${a.slice(-n)}`;
 }

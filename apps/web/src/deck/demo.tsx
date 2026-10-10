@@ -79,9 +79,14 @@ const waitFor = async (doc: Document, test: () => boolean, ms: number) => {
   void doc;
 };
 
-/** Buy an identicon with the built-in test wallet, then confirm receipt. A real devnet purchase. */
+/**
+ * Buy an identicon with the built-in test wallet, then confirm receipt. A real
+ * devnet purchase. A visitor whose own wallet is connected is never steered
+ * through a payment: the tour only runs with the built-in test wallet.
+ */
 async function buyTour(doc: Document) {
   await waitFor(doc, () => /\$\d+\.\d\d USDC/.test(doc.body.innerText), 10_000);
+  if (!/Paying with the built-in devnet test wallet/.test(doc.body.innerText)) return;
   if (/\$0\.[01]\d USDC/.test(doc.body.innerText)) {
     press(doc, 'Get test funds');
     await waitFor(doc, () => !/\$0\.[01]\d USDC/.test(doc.body.innerText), 20_000);
@@ -335,11 +340,11 @@ let evidence = (450 * history + 300 * tenure
           </Rise>
           <div style={{ display: 'grid', gap: 26 }}>
             <Rise delay={0.7}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>294<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 294</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>393<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 393</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>checks against the real program, each account compared with a reference model</div>
             </Rise>
             <Rise delay={1.0}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>27<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 27</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>44<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 44</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>formula tests: every guarantee we state is one</div>
             </Rise>
           </div>

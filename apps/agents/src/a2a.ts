@@ -197,6 +197,8 @@ export async function handleRpc(
   m: MerchantAgent,
   body: { method?: string; params?: Record<string, unknown> },
   extensionsHeader: string | undefined,
+  /** Who is asking (a network address), for the caps on what one client may leave unpaid. */
+  client?: string,
 ): Promise<{ result: unknown } | { error: RpcError }> {
   if (body.method === 'tasks/get') {
     const id = body.params?.id;
@@ -221,7 +223,7 @@ export async function handleRpc(
     const taskId = randomUUID();
     const contextId = message.contextId ?? randomUUID();
     try {
-      const quote = await m.quote({ ...req, sku: req.skill, resourceUrl: `${config.publicUrl}/agents/${m.id}/a2a` });
+      const quote = await m.quote({ ...req, sku: req.skill, resourceUrl: `${config.publicUrl}/agents/${m.id}/a2a`, client });
       const task = paymentRequired(taskId, contextId, quote, [message]);
       tasks.set(taskId, { task, merchant: m.id, order: quote.terms.order });
       // Oldest tasks go first once the map is large: memory stays bounded.
@@ -254,7 +256,7 @@ export async function handleRpc(
 
   const quote = m.quotes.get(entry.order);
   try {
-    const f = await m.fulfil(entry.order, payload);
+    const f = await m.fulfil(entry.order, payload, client);
     const name = quote ? m.service(quote.sku).name : 'deliverable';
     entry.task = completed({ ...entry.task, history: [...(entry.task.history ?? []), message] }, f, name);
   } catch (e) {

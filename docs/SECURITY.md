@@ -3,8 +3,8 @@
 What can go wrong, what stops it, and the test that proves it. Then what is still open.
 
 Tests: `npm run test:local` runs the real program on a local validator and sends each on-chain attack
-below as a real transaction that must be rejected (294 checks). `npm run test:formula` checks the
-economic claims (18 tests). "Model" means the claim is checked by simulation through the reference
+below as a real transaction that must be rejected (393 checks). `npm run test:formula` checks the
+economic claims and the reward rules (44 tests). "Model" means the claim is checked by simulation through the reference
 model, which the local suite proves equal to the program.
 
 Status: ✅ enforced and tested · 🟡 mitigated, residual risk stated · ⭕ open.
@@ -28,7 +28,28 @@ what was done:
 | B14 | A dispute the arbiter never resolved locked the money forever. | Medium | After the complaint period, anyone may split the vault evenly. Nobody is penalised. | local: step 14 |
 | B15 | A party could close its own token account to stall a release or a refund. | Low | Anyone can recreate it; the agents' settle transactions now always do. | — |
 
-**The deployed devnet program predates these fixes.** They are in the source and pass the local suite.
+## Audit of 10 October 2026
+
+A second pass, this time over every component: the program, the SDK, the API, the agents, the CLI and MCP
+server, the rewards script, the website and the image. 110 findings; the ones that mattered, and what was
+done:
+
+| # | Finding | Severity | Fix | Test |
+|---|---|---|---|---|
+| B16 | **Order swap.** While a buyer's signed payment was in flight, the merchant cancelled the order and reopened the same order id for its own second wallet. The payment then funded the new order and the merchant took it. | Critical | `cancel_unpaid` leaves the order in a `Cancelled` state until `close_order`, after the unpaid window. The id cannot be reopened, the vault is closed, and the buyer's SDK also refuses an order id that has already been used. | local: reopen fails with "already in use"; pay into a cancelled order fails |
+| B17 | A payment could be confirmed after the payment window had closed. | Medium | `confirm_funded` fails with `PaymentWindowClosed` after `created_at + unpaid_secs`. | local |
+| B18 | A buyer could ask for a hold of any length and the merchant's server co-signed it. | Medium | `min_hold_secs` is capped at 30 days (`HoldTooLong`); the buyer's SDK and the server both check. | local |
+| B19 | The arbiter could be the buyer or the merchant of the order. | High | Rejected at `open_order` (`ArbiterIsParty`). | local |
+| C19 | **Forged pair history.** Counterparty history grew on every release, so a merchant could build it without the buyer taking part. | High | Pair history grows only from orders the buyer reviewed. | local; formula |
+| C20 | A merchant that had lost Trusted could still be paid instantly, because the tier was read when the order was opened. | High | `deliver` re-scores the merchant and settles instantly only if it is still Trusted and inside its limit. | local: step 16 |
+| C21 | A refunded instant order kept counting against the merchant's instant limit, and a complaint could be cleared by closing the order. | Medium | A refund frees the amount; a complaint locks it for good. | local; formula |
+| C22 | An even split of an odd amount gave a review the wrong weight. | Low | The half gate is exact on both sides. | local |
+| D16 | The API relayed any signed transaction, for any program. | Medium | `/v1/tx/submit` relays only Tessera, token, associated-token, compute-budget and system instructions, and at least one Tessera instruction. | doors |
+| D17 | One slow agent card could stall `find_merchants` for every caller (the timeout reset on every byte). | High | One wall-clock deadline per card, a size cap, no redirects, and an overall budget with partial results. | doors |
+| D18 | The merchant server forgot quotes on restart and delivered nothing for orders funded after it, so the merchant took the missed-delivery penalty. | High | Quotes and delivery results are written to disk atomically; funded orders are completed or refunded before the deadline; delivery fails closed if its evidence cannot be saved. | agents smoke test |
+| D19 | The review-reward airdrop could pay the same reviews twice if a later batch failed. | Critical | Each batch is recorded as pending, then paid, before the next one is sent; an exclusive lock; a missing ledger refuses to pay; payouts carry memos so a lost ledger can be rebuilt from the chain. | rewards tests; `demo:rewards` |
+
+**The deployed devnet program predates both audits' program fixes.** They are in the source and pass the local suite.
 To carry them to devnet the upgrade authority redeploys: stop `npm run agents` and `npm run swarm`,
 wait out one review window (10 minutes on devnet) so no order released under the old rules is still
 reviewable, then run `anchor build` and
@@ -61,7 +82,7 @@ already co-sign new orders, which the old program accepts as well.
 | A5 | A facilitator is down or censors. | 🟡 | Every quote offers one option per reachable facilitator; a wallet can also fund the vault directly. | devnet: both quoted on every order |
 | A6 | Someone claims an order was paid when it was not. | ✅ | `confirm_funded` only reads the vault balance. | local: "confirming an order nobody paid" → `VaultUnderfunded` |
 | A7 | Overpayment is kept by the merchant. | ✅ | The merchant is owed at most the price; any excess returns to the buyer on every outcome. | local: "an overpayment comes back with the refund" |
-| A8 | Paying into an order that was already cancelled. | ✅ | The vault account is closed on cancel, so the transfer fails. | by construction |
+| A8 | Paying into an order that was already cancelled, or into a cancelled order's id that the merchant reopened for itself (B16). | ✅ | The vault is closed on cancel and the order stays as a `Cancelled` tombstone until `close_order`, so the id cannot be reopened. | local: tombstone checks |
 | A9 | Someone watching the chain calls the website's delivery endpoint for an order another wallet paid for (D6). | ✅ | The endpoint requires the claim handed to whoever requested the quote. | server |
 | A10 | Someone pays over HTTP 402 for an order quoted to another wallet, to receive what it asked for (D7). | ✅ | The x402 payment must be signed by the order's buyer. | server |
 
@@ -72,7 +93,7 @@ already co-sign new orders, which the old program accepts as well.
 | B1 | The merchant takes the money before the hold ends. | ✅ | `release` by anyone but the buyer requires `now ≥ release_at`. | local: `HoldNotElapsed` |
 | B2 | The merchant shortens a hold the buyer asked for. | ✅ | `min_hold_secs` can only lengthen the hold; it is stored on the order and checked by the buyer before paying. | local: "the merchant cannot shorten a hold the buyer asked for" |
 | B3 | A stranger marks an order delivered, refunds it, disputes it, or cancels it. | ✅ | Each instruction checks the signer against the order's parties. | local: `NotAParty`, `Unauthorized` |
-| B4 | The merchant never delivers and keeps the buyer waiting. | ✅ | After the delivery deadline anyone may refund the buyer; the merchant takes a 10% penalty. | local: "merchant never delivered" |
+| B4 | The merchant never delivers and keeps the buyer waiting. | ✅ | After the delivery deadline anyone may refund the buyer; the merchant takes a 10% penalty. Before the deadline only the merchant may refund, without a penalty, so a merchant that cannot deliver can back out cleanly. | local: "merchant never delivered" |
 | B5 | The merchant delivers after the deadline to dodge the penalty. | ✅ | `deliver` fails with `DeliveryWindowClosed`. | local |
 | B6 | The buyer disputes after the hold has ended, to claw back a settled payment. | ✅ | `open_dispute` requires `now < release_at`. | local: `DisputeWindowClosed` |
 | B7 | The merchant releases an order that is in dispute. | ✅ | State check. | local: `InvalidState` |
@@ -90,10 +111,10 @@ already co-sign new orders, which the old program accepts as well.
 | # | Attack | Status | Defence | Test |
 |---|---|---|---|---|
 | C1 | **Wash trading** with one sock puppet to pump History. | ✅ | One counterparty can grant at most the pair cap times its tier weight. | local: "$15 of wash trades… can never earn more than the $1 pair cap"; formula |
-| C2 | **A ring** of the attacker's own wallets. | 🟡 | New wallets count for 10%, each pair is capped, and Trusted needs 30 active periods. Rings of 3 and 6 never reach Trusted in a simulated year; larger ones do, at a cost of thousands in fees and one to three months. See [SCORING.md](SCORING.md#what-faking-it-costs). | model |
+| C2 | **A ring** of the attacker's own wallets. | 🟡 | New wallets count for 10%, each pair is capped, and Trusted needs 30 active periods. Rings of 3 and 6 never reach Trusted in a simulated year; larger ones do, at a cost of hundreds to a few thousand dollars in fees and one to three months, and can then take back about those fees plus the base. See [SCORING.md](SCORING.md#what-faking-it-costs). | model |
 | C3 | **Burst farming** just before a scam. | ✅ | Tenure counts active periods; tiers are gated on them. Full evidence in one day does not reach Building. | formula |
 | C4 | **Aged wallets**: create wallets, wait, then use them. | ✅ | Age counts only up to three periods per active period. | formula |
-| C5 | **Exit scam** on instant settlement: earn Trusted, take orders, deliver nothing. | ✅ | Instant volume buyers have not accepted is capped at fees paid plus a base; a 1–2 star rating locks that amount. Net of the scam is at most the base per identity. | local: "a complaint locks the instant limit"; formula |
+| C5 | **Exit scam** on instant settlement: earn Trusted, take orders, deliver nothing. | ✅ | Instant volume buyers have not accepted is capped at fees paid plus a base; a complaint locks that amount for good (C21). A ring of 8 or more wallets does recover its fees plus the base per wallet, so it nets about $25 a wallet after a month or more. | local: "a complaint locks the instant limit"; formula |
 | C6 | **Friendly fraud**: the buyer got the goods and disputes anyway. | ✅ | The merchant committed a delivery hash on-chain before the dispute; the pair's history is on record for the arbiter. Losing costs the buyer 25%, removes Trusted, and ends pair trust for good. | local: "arbiter: buyer was wrong"; devnet |
 | C7 | **Fake praise** from wallets that bought nothing. | ✅ | Only a party to a settled order can review it, once; weight is the volume that settled. | local: `NotAParty`, `already in use` |
 | C8 | **Buy-and-refund** to mint reviews for free. | ✅ | A review of a refunded order weighs 0. | local; formula |
@@ -115,16 +136,16 @@ already co-sign new orders, which the old program accepts as well.
 | D1 | Rent-drain: flooding a merchant with quotes it pays rent for. | 🟡 | At most 3 unpaid orders per buyer wallet and 40 per merchant, and 20 order-opening requests per client per minute. The server cancels unpaid quotes after the payment window, including ones from before a restart, and the order rent returns. Residual: each invented buyer address still leaves a credit file and a pair account whose rent does not come back. Behind a tunnel or proxy set `TRUST_PROXY` so the limit sees real clients. |
 | D2 | Prompt injection through a service's output tells a buyer agent to pay someone. | 🟡 | The payment path is code, not prompt: it pays only an on-chain-verified escrow, for the advertised price, once. A budget per day and per merchant is not built. |
 | D3 | A stolen merchant-server key. | 🟡 | It fronts rent and cranks permissionless steps. It cannot move escrow or act as a party. |
-| D4 | A restart loses orders in flight. | ✅ | On start the server rebuilds its work list from the chain and refunds anything it was paid for but can no longer deliver. |
+| D4 | A restart loses orders in flight. | ✅ | Quotes and delivery results are kept on disk and reloaded; on start the server also rebuilds its work list from the chain and refunds anything it was paid for but can no longer deliver. A Railway volume at `/app/.data` is required; without it the server refuses new orders. |
 | D5 | A lying RPC fakes the reads verification depends on. | ⭕ | Use a trusted RPC or cross-check two. |
 | D6 | A watcher collects a delivery from the website's endpoint that another wallet paid for. The real buyer gets nothing and then loses the dispute, because the delivery matched its hash. | ✅ | Only the requester of the quote holds its claim, and the endpoint requires it. |
 | D7 | Someone pays over plain HTTP 402 for an order quoted to another wallet. | ✅ | The signer of the x402 payment must be the order's buyer. |
 | D8 | The arbiter's evidence is lost in a restart, so every later dispute goes to the buyer. | ✅ | Each delivery is written to `.data/deliveries.jsonl` before its hash goes on-chain and is read back on start. With no record the arbiter splits evenly. |
-| D10 | A compromised or lying Tessera API hands an agent a transaction that pays someone else. | 🟡 | The API is non-custodial: it holds no keys and cannot move money by itself, but an agent signs what it is given. The CLI refuses anything but the Tessera, SPL Token, associated-token and compute-budget programs, and any token transfer except into the escrow vault it derives itself (tested against a fake API in `npm run test:doors`). SKILL.md tells agents to check `signers`, `transfers` and `simulation`. Other clients must do the same. |
-| D11 | Flooding the API with requests that simulate transactions. | 🟡 | Per-client limits per minute: 120 reads, 30 builds, 20 submits. Set `TRUST_PROXY` behind a proxy. |
+| D10 | A compromised or lying Tessera API hands an agent a transaction that pays someone else. | 🟡 | The API is non-custodial: it holds no keys and cannot move money by itself, but an agent signs what it is given. The CLI takes the order from the user, checks it on-chain itself, and refuses anything but the Tessera, SPL Token, associated-token and compute-budget programs, any extra signer or lookup table, and any token transfer except the order's amount into the escrow vault it derives itself (tested against a fake API in `npm run test:doors`). SKILL.md tells agents to check `signers`, `transfers` and `simulation`. Other clients must do the same. |
+| D11 | Flooding the API with requests that simulate transactions. | 🟡 | Per-client limits per minute: 120 reads, 30 builds, 20 submits, keyed by IPv4 address or IPv6 /64 in a bounded table. The hosted MCP server is limited per client and passes each client's key to the API with a shared secret (`TESSERA_RELAY_SECRET`), so its users do not share one allowance. On Railway one proxy hop is trusted automatically; elsewhere set `TRUST_PROXY`. |
 | D12 | A merchant buys a top spot in `find_merchants`. | 🟡 | The rank uses only on-chain data, the same as the score, so faking it costs what faking the score costs (C1 to C3: settled volume, fees and time; large rings stay open, C2). Self-declared card text only decides whether a merchant matches a need and its price, never its rank. |
-| D13 | A merchant's card or a review carries instructions for the reading agent (prompt injection). | 🟡 | Card and review text is cut short and stripped of control and bidirectional characters, and every `find_merchants` reply says that `name`, `service` and review text are data, not instructions; SKILL.md and the MCP server's instructions say the same. An agent that obeys text it reads can still be misled. |
-| D14 | A merchant points its `uri` at an internal address so the API fetches it (SSRF). | ✅ | Cards are fetched with http(s) only, no redirects, a 1.5 s timeout and a 64 KB cap, and never from a private, loopback or link-local address, checked on the address the socket connects to, unless the API listens only on this machine (`HOST`, now `127.0.0.1` by default) or `TESSERA_ALLOW_PRIVATE_CARDS=1`. Tested in `npm run test:doors`. |
+| D13 | A merchant's card or a review carries instructions for the reading agent (prompt injection). | 🟡 | Card and review text is cut short and stripped of control, bidirectional, invisible and Unicode tag characters, and every `find_merchants` reply says that `name`, `service` and review text are data, not instructions; SKILL.md and the MCP server's instructions say the same. An agent that obeys text it reads can still be misled. |
+| D14 | A merchant points its `uri` at an internal address so the API fetches it (SSRF). | ✅ | Cards are fetched with http(s) only, no redirects, one 1.5 s wall-clock deadline and a 64 KB cap, and never from a private, loopback, link-local, carrier-grade or reserved address, including IPv6 forms that embed an IPv4 address, checked on the address the socket connects to. Private cards are allowed only with `TESSERA_ALLOW_PRIVATE_CARDS=1`, never because of `HOST`. Tested in `npm run test:doors`. |
 | D15 | A copycat's card claims another merchant's services or wallet. | ✅ | A card whose Tessera extension names a different wallet is ignored; the row keeps the copycat's own on-chain record. Tested in `npm run test:doors`. |
 | D9 | Draining the demo faucet with invented wallets. | 🟡 | Once per wallet, 3 per client per hour, 20 per hour in total. Devnet only; a real deployment has no faucet. |
 
@@ -178,9 +199,12 @@ in [ERC-8004.md](ERC-8004.md).
 - **Live parameters reach open orders.** The fee, arbiter and hold are snapshotted per order, but the
   delivery, review and complaint windows, the instant base and the hold past the instant limit are
   read from the config when used, so a config change can move them for orders already open.
-- **Order ids can be reused** once an order account is closed. Reviews are keyed by the order's
-  address, so a reused id cannot be reviewed again. Merchants pick random ids, so this only bites a
-  merchant that reuses its own.
+- **Order ids can be reused** once a settled or cancelled order account is closed. Reviews are keyed by
+  the order's address, so a reused id cannot be reviewed again, and the buyer's SDK refuses an id that
+  already has a review. Merchants pick random ids, so this only bites a merchant that reuses its own.
+- **The deployed devnet program is the old one.** Every program fix above needs the upgrade authority to
+  redeploy; until then devnet still has the order-swap hole.
+- **Rate limits and the card cache are per process.** Several API or agents instances multiply them.
 - **Unsolicited orders still touch a buyer's file.** A merchant can still open and fund an order in
   any buyer's name. The buyer gains credit and an active period from it, and its order count rises,
   but nobody gains anything from the buyer (C16, C17).

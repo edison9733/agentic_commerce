@@ -20,7 +20,7 @@ import { getCreateAccountInstruction } from '@solana-program/system';
 import { getInitializeMint2Instruction, getMintSize, getMintToInstruction, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import { configPda, fetchMaybeConfig, fromUnits, getEnsureAgentInstructionAsync, getInitializeInstructionAsync, getSetProfileInstructionAsync, programDataAddress, TESSERA_PROGRAM_ADDRESS, type Params, type RewardParams } from '@tessera/sdk';
 import { clientForSigner, generateKeypairBytes, log, REPO_ROOT, sleep, tokenHelpers, waitForChainTime, type Cluster, type ScriptClient } from './lib.js';
-import { observe, pay, readChain, saveJson, score, verify, type Ledger } from './rewards-lib.js';
+import { emptyLedger, observe, paidOnChain, pay, readChain, reconcile, saveJson, score, verify, type Ledger } from './rewards-lib.js';
 
 const PORT = 19699;
 const LOCAL: Cluster = { rpcUrl: `http://127.0.0.1:${PORT}` };
@@ -40,7 +40,7 @@ const PARAMS: Params = {
   deliverSecs: 6,
   unpaidSecs: 6,
   reviewSecs: 300,
-  complaintSecs: 10,
+  complaintSecs: 300,
   instantBase: USDC / 2n,
   instantFeePct: 100,
   pairHistoryMin: 2,
@@ -223,6 +223,18 @@ try {
   const feesCollected = cfg.exists ? cfg.data.feesCollected : 0n;
   const paidOut = treasuryBefore - treasuryAfter;
   check(`paid ${fromUnits(paidOut, 6)} USDC of ${fromUnits(feesCollected, 6)} USDC in fees: under 75%`, paidOut * 100n <= feesCollected * 75n);
+  check('every recipient had its own token account, so nothing was withheld', Object.keys(report.withheld).length === 0, report.withheld);
+  // Every payout names its reviews in a memo on chain, so a lost ledger cannot pay them again.
+  const paidReviews = report.payouts.flatMap((x) => x.reviews);
+  const onChain = await paidOnChain(ledgerClient, [treasury.identity.address], 0);
+  check('every paid review is named by a memo in its payout transaction', paidReviews.length > 0 && report.payouts.every((x) => x.reviews.every((k) => onChain.reviews.get(k) === x.signature)), { paidReviews, onChain: [...onChain.reviews] });
+  check('the ledger marks every scored review paid', report.rows.every((r) => r.review in ledger.paid) && !ledger.pending);
+  const lost: Ledger = { ...emptyLedger(), sightings: ledger.sightings };
+  const again = await readChain(ledgerClient, ledger.sightings);
+  const found = await reconcile(lost, again, ledgerClient, REWARD_PARAMS, [treasury.identity.address]);
+  const rescored = score(lost, again, REWARD_PARAMS);
+  check('with the ledger lost, the chain shows what was paid and nothing is paid again', found.recovered === new Set(paidReviews).size && rescored.payouts.length === 0, { recovered: found.recovered, payouts: rescored.payouts.length });
+  check('scoring again after the payout owes nothing', score(ledger, again, REWARD_PARAMS).rows.length === 0);
   check('anyone can recompute the payout from the report alone', verify(JSON.parse(JSON.stringify(report, (_, v) => (typeof v === 'bigint' ? v.toString() : v)))).length === 0);
 
   const file = resolve(REPO_ROOT, 'deployments/rewards-demo.json');

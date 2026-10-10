@@ -269,6 +269,28 @@ try {
       }),
     ]),
   );
+  await expectFail('the authority changes the period length under existing credit files', 'InvalidParams', async () =>
+    deployer.sendTransaction([
+      await getUpdateConfigInstructionAsync({
+        authority: deployer.identity,
+        feeBps: FEE_BPS,
+        params: { ...PARAMS, periodSecs: PARAMS.periodSecs + 1 },
+        arbiter: arbiter.identity.address,
+        treasury: treasury.identity.address,
+      }),
+    ]),
+  );
+  await expectFail('the authority sets a hold that lets a past-the-limit order settle at once', 'InvalidParams', async () =>
+    deployer.sendTransaction([
+      await getUpdateConfigInstructionAsync({
+        authority: deployer.identity,
+        feeBps: FEE_BPS,
+        params: { ...PARAMS, holdSecs: [4, 3, 0, 0] },
+        arbiter: arbiter.identity.address,
+        treasury: treasury.identity.address,
+      }),
+    ]),
+  );
   await expectFail('the authority sets a fee above 10%', 'InvalidParams', async () =>
     deployer.sendTransaction([
       await getUpdateConfigInstructionAsync({
@@ -516,10 +538,18 @@ try {
     );
     eq('review stored on-chain', [r.rating, r.text, r.weight, r.subject], [rating, text, weight, subject.identity.address]);
     await checkAgent('review: subject', subject);
+    await checkPair('review', o.buyer, o.merchant);
     return weight;
   }
 
   const waitHold = async (o: Ctx) => waitForChainTime(server, o.m.releaseAt);
+
+  const closeIx = async (o: Ctx) =>
+    getCloseOrderInstructionAsync({
+      order: o.order,
+      merchantAgent: await agentPdaOf(o.merchant.identity.address),
+      payer: server.identity.address,
+    });
 
   /** A full clean purchase: open, pay, confirm, deliver, wait, release, rate both ways. */
   async function cleanOrder(buyer: ScriptClient, merchant: ScriptClient, amount: bigint, label: string): Promise<Ctx> {
@@ -572,6 +602,13 @@ try {
     };
     return server.sendTransaction([unsigned]);
   });
+  await server.sendTransaction([await getEnsureAgentInstructionAsync({ wallet: arbiter.identity.address, payer: server.identity })]);
+  await expectFail('the arbiter is named as the buyer of an order it would judge', 'ArbiterIsParty', async () =>
+    server.sendTransaction([await openIx(arbiter.identity.address, m1.identity, newOrderId(), USDC)]),
+  );
+  await expectFail('a hold longer than thirty days', 'HoldTooLong', async () =>
+    server.sendTransaction([await openIx(b1.identity.address, m1.identity, newOrderId(), USDC, 30 * 86_400 + 1)]),
+  );
   const o1 = await open(b1, m1, USDC);
   eq('New buyer + New merchant get the longest hold', o1.m.holdSecs, PARAMS.holdSecs[0]);
 
@@ -636,12 +673,17 @@ try {
   // -------------------------------------------- 3. buyer confirms early
   log.step('3. The buyer may release early');
   const o2 = await open(b1, m1, USDC / 2n);
-  await pay(o2);
+  await pay(o2, USDC / 2n + 300_000n); // overpays by 0.30
   await confirm(o2);
   await deliver(o2);
-  await settleAndCheck('order 2 (buyer confirms receipt)', o2, { kind: 'release' }, async () =>
-    b1.sendTransaction([await releaseIx(o2, b1)]),
+  await settleAndCheck(
+    'order 2 (buyer confirms receipt)',
+    o2,
+    { kind: 'release' },
+    async () => b1.sendTransaction([await releaseIx(o2, b1)]),
+    300_000n,
   );
+  eq('a release pays the merchant the price and returns the overpayment', [o2.m.paidMerchant + o2.m.paidFee, o2.m.refunded], [USDC / 2n, 300_000n]);
 
   // ----------------------------------------------------- 4. refunds
   log.step('4. Refunds');
@@ -678,10 +720,21 @@ try {
   );
   eq('missing a delivery costs the merchant score', agentOf(m1).penaltyBps > penaltyBefore, true);
 
+  const late = await open(b2, m1, USDC / 4n);
+  await pay(late);
+  await confirm(late);
+  const dLate = (await fetchOrder(rpc, late.order)).data;
+  await waitForChainTime(server, dLate.deliverBy + 1n);
+  const expiredBefore = agentOf(m1).asMerchant.expired;
+  await settleAndCheck('late order (the merchant refunds after its deadline)', late, { kind: 'refund', expired: true }, async () =>
+    m1.sendTransaction([await refundIx(late, m1)]),
+  );
+  eq('refunding its own order after the deadline still counts as a missed delivery', agentOf(m1).asMerchant.expired, expiredBefore + 1);
+
   // ----------------------------------------------------- 5. disputes
   log.step('5. Disputes');
   const o5 = await open(b1, m1, USDC);
-  await pay(o5);
+  await pay(o5, USDC + 200_000n); // overpays by 0.20
   await confirm(o5);
   await deliver(o5);
   const pairKey = await pairPdaOf(b1.identity.address, m1.identity.address);
@@ -707,9 +760,29 @@ try {
   await expectFail('a stranger resolves the dispute', 'Unauthorized', async () =>
     stranger.sendTransaction([await resolveIx(o5, stranger, 10_000)]),
   );
-  await settleAndCheck('order 5 (arbiter: 30% to the merchant)', o5, { kind: 'resolve', merchantBps: 3000 }, async () =>
-    arbiter.sendTransaction([await resolveIx(o5, arbiter, 3000)]),
+  const appoint = async (who: ScriptClient) =>
+    deployer.sendTransaction([
+      await getUpdateConfigInstructionAsync({
+        authority: deployer.identity,
+        feeBps: FEE_BPS,
+        params: PARAMS,
+        arbiter: who.identity.address,
+        treasury: treasury.identity.address,
+      }),
+    ]);
+  await appoint(stranger);
+  await expectFail('an arbiter appointed mid-dispute resolves an order opened before', 'Unauthorized', async () =>
+    stranger.sendTransaction([await resolveIx(o5, stranger, 10_000)]),
   );
+  await appoint(arbiter);
+  await settleAndCheck(
+    'order 5 (arbiter: 30% to the merchant)',
+    o5,
+    { kind: 'resolve', merchantBps: 3000 },
+    async () => arbiter.sendTransaction([await resolveIx(o5, arbiter, 3000)]),
+    200_000n,
+  );
+  eq('a split returns the overpayment to the buyer', o5.m.refunded, USDC - o5.m.paidMerchant - o5.m.paidFee + 200_000n);
   eq('the merchant lost the dispute', agentOf(m1).asMerchant.disputesLost, 1);
   eq('a merchant that lost a dispute gets no weighted say on it', await review(o5, m1, 1, 'Unfair.'), 0n);
 
@@ -728,13 +801,15 @@ try {
   eq('the buyer who lost cannot hit back with a weighted one-star review', await review(o6, b2, 1, 'Scam merchant.'), 0n);
   eq('the merchant that won is heard', (await review(o6, m1, 1, 'Disputed a delivery that matched its hash.')) > 0n, true);
 
-  // An arbiter that never answers. Settled at the end of the run.
-  const stuck = await open(b2, m1, USDC / 4n);
+  // An arbiter that never answers. Settled at the end of the run. An odd
+  // amount, with a buyer whose pair still has review room, so the even split
+  // shows both sides are still heard.
+  const stuck = await open(b4, m1, USDC / 4n + 1n);
   await pay(stuck);
   await confirm(stuck);
   await deliver(stuck);
-  await b2.sendTransaction([await disputeIx(stuck, b2)]);
-  model.dispute(agentOf(b2), agentOf(m1), pairOf(b2, m1));
+  await b4.sendTransaction([await disputeIx(stuck, b4)]);
+  model.dispute(agentOf(b4), agentOf(m1), pairOf(b4, m1));
   await expectFail('a stranger settles a dispute while the arbiter still has time', 'Unauthorized', async () =>
     stranger.sendTransaction([await resolveIx(stuck, stranger, 5000)]),
   );
@@ -772,13 +847,34 @@ try {
   const b1Before = await tok.balance(b1.identity.address);
   await b1.sendTransaction([await cancelIx(o8, b1, true)]);
   eq('a partial payment is returned', (await tok.balance(b1.identity.address)) - b1Before, 400_000n);
-  eq('the order account is closed', (await fetchMaybeOrder(rpc, o8.order)).exists, false);
+  const d8 = (await fetchOrder(rpc, o8.order)).data;
+  eq('the order stays, marked cancelled', [d8.state, d8.refunded], [OrderState.Cancelled, 400_000n]);
+  const vault8 = await rpc.getAccountInfo(o8.vault, { encoding: 'base64' }).send();
+  eq('its vault is closed', vault8.value, null);
+  // The swap this blocks: the merchant cancels the order a buyer just checked
+  // and reopens the same id -- the same vault -- with its own wallet as the
+  // buyer, while the real buyer's signed payment is still in flight.
+  await expectFail('the merchant reopens a cancelled order id for another buyer', 'already in use', async () =>
+    server.sendTransaction([await openIx(b2.identity.address, m1.identity, o8.id, USDC)]),
+  );
+  await expectFail('confirming a cancelled order', 'AccountNotInitialized', () => confirm(o8));
+  await expectFail('closing a cancelled order inside its payment window', 'TooEarly', async () =>
+    stranger.sendTransaction([await closeIx(o8)]),
+  );
 
   const o9 = await open(b1, m1, USDC);
   const d9 = (await fetchOrder(rpc, o9.order)).data;
-  await waitForChainTime(server, d9.createdAt + BigInt(PARAMS.unpaidSecs));
-  await server.sendTransaction([await cancelIx(o9, server, false)]);
-  eq('the rent payer reclaims an abandoned order', (await fetchMaybeOrder(rpc, o9.order)).exists, false);
+  await waitForChainTime(server, d9.createdAt + BigInt(PARAMS.unpaidSecs) + 1n);
+  await pay(o9, 100_000n);
+  await expectFail('confirming a payment that came after the payment window', 'PaymentWindowClosed', () => confirm(o9));
+  const b1BeforeLate = await tok.balance(b1.identity.address);
+  await server.sendTransaction([await cancelIx(o9, server, true)]);
+  eq('the rent payer cancels an abandoned order and the late payment goes back', (await tok.balance(b1.identity.address)) - b1BeforeLate, 100_000n);
+  eq('it is cancelled', (await fetchOrder(rpc, o9.order)).data.state, OrderState.Cancelled);
+
+  await waitForChainTime(server, d8.settledAt + BigInt(PARAMS.unpaidSecs) + 1n);
+  await stranger.sendTransaction([await closeIx(o8)]);
+  eq('a cancelled order returns its rent once the payment window has passed', (await fetchMaybeOrder(rpc, o8.order)).exists, false);
 
   // ---------------------------------------- 7. earning instant settlement
   log.step('7. Two wallets earn Trusted, then settle instantly');
@@ -820,13 +916,6 @@ try {
   await review(o10, b3, 5, 'Instant and correct.');
   eq('accepted: the limit is free again', agentOf(m2).instantExposure, 0n);
   await checkAgent('after acceptance: merchant', m2);
-
-  const closeIx = async (o: Ctx) =>
-    getCloseOrderInstructionAsync({
-      order: o.order,
-      merchantAgent: await agentPdaOf(o.merchant.identity.address),
-      payer: server.identity.address,
-    });
 
   // ------------------------------------- 8. a buyer can ask for more
   log.step('8. A buyer can always ask for a longer hold');
@@ -931,6 +1020,7 @@ try {
     stranger.sendTransaction([await releaseIx(forged, stranger)]),
   );
   eq('the merchant borrows nothing from a Trusted buyer who never spoke for the order', agentOf(ring).credit, ringCredit);
+  eq('and the forged order is not pair history', (await fetchPair(rpc, await pairPdaOf(b3.identity.address, ring.identity.address))).data.orders, 0);
   eq('and its one-star review of that buyer weighs nothing', await review(forged, ring, 1, 'Terrible buyer.'), 0n);
 
   // ------------------------------------------------ 12. windows close
@@ -974,7 +1064,7 @@ try {
   await stranger.sendTransaction([await closeIx(scam)]);
   model.closeOrder(scam.m, agentOf(m2));
   await checkAgent('complaint period over', m2);
-  eq('the lock ends with the complaint period', agentOf(m2).instantExposure, 0n);
+  eq('the rent comes back, but a complaint locks the amount for good: waiting does not reopen an exit scam', agentOf(m2).instantExposure, 300_000n);
 
   // -------------------------------- 14. a silent arbiter
   log.step('14. An arbiter that never answers cannot lock the money forever');
@@ -982,11 +1072,59 @@ try {
   await expectFail('after the complaint period anyone may only split it evenly', 'InvalidParams', async () =>
     stranger.sendTransaction([await resolveIx(stuck, stranger, 10_000)]),
   );
-  const lostBefore = [agentOf(b2).asBuyer.disputesLost, agentOf(m1).asMerchant.disputesLost];
+  const lostBefore = [agentOf(b4).asBuyer.disputesLost, agentOf(m1).asMerchant.disputesLost];
   await settleAndCheck('dispute the arbiter never answered', stuck, { kind: 'resolve', merchantBps: 5000 }, async () =>
     stranger.sendTransaction([await resolveIx(stuck, stranger, 5000)]),
   );
-  eq('an even split penalises nobody', [agentOf(b2).asBuyer.disputesLost, agentOf(m1).asMerchant.disputesLost], lostBefore);
+  eq('an even split penalises nobody', [agentOf(b4).asBuyer.disputesLost, agentOf(m1).asMerchant.disputesLost], lostBefore);
+  eq('and on an odd amount leaves the merchant heard', (await review(stuck, m1, 3, 'Split down the middle.')) > 0n, true);
+
+  // ------------------------------- 15. dust does not fake a network
+  log.step('15. A counterparty counts toward Diversity only past a tenth of the pair cap');
+  const pointsBefore = [agentOf(b4).counterpartyPoints, agentOf(m1).counterpartyPoints];
+  await cleanOrder(b4, m1, PARAMS.pairCap / 10n - 50_000n, 'dust order');
+  eq('below the threshold neither side gains Diversity', [agentOf(b4).counterpartyPoints, agentOf(m1).counterpartyPoints], pointsBefore);
+  await cleanOrder(b4, m1, 60_000n, 'crossing order');
+  eq(
+    'crossing it, both sides count the other once',
+    [agentOf(b4).counterpartyPoints > pointsBefore[0]!, agentOf(m1).counterpartyPoints > pointsBefore[1]!],
+    [true, true],
+  );
+
+  // ------------------- 16. instant settlement follows the merchant's tier now
+  log.step('16. A refund frees instant capacity; a merchant that lost Trusted since opening waits');
+  await nextPeriod();
+  const refundedInstant = await open(b3, m2, 100_000n);
+  eq('opened Trusted + Trusted', refundedInstant.m.holdSecs, 0);
+  await pay(refundedInstant);
+  await confirm(refundedInstant);
+  const exposureBefore = agentOf(m2).instantExposure;
+  await deliver(refundedInstant);
+  eq('an instant delivery counts against the limit', [refundedInstant.m.instant, agentOf(m2).instantExposure], [true, exposureBefore + 100_000n]);
+  await settleAndCheck('instant order refunded by the merchant', refundedInstant, { kind: 'refund', expired: false }, async () =>
+    m2.sendTransaction([await refundIx(refundedInstant, m2)]),
+  );
+  eq('the buyer got everything back, so it stops counting at once', agentOf(m2).instantExposure, exposureBefore);
+
+  const lost = await open(b3, m2, 100_000n, 7);
+  await pay(lost);
+  await confirm(lost);
+  await deliver(lost);
+  await b3.sendTransaction([await disputeIx(lost, b3)]);
+  model.dispute(agentOf(b3), agentOf(m2), pairOf(b3, m2));
+  const pending = await open(b3, m2, 100_000n);
+  eq('opened while the merchant is still Trusted', pending.m.holdSecs, 0);
+  await pay(pending);
+  await confirm(pending);
+  await settleAndCheck('the merchant loses a dispute', lost, { kind: 'resolve', merchantBps: 0 }, async () =>
+    arbiter.sendTransaction([await resolveIx(lost, arbiter, 0)]),
+  );
+  eq('it is no longer Trusted', agentOf(m2).tier < 3, true);
+  await deliver(pending);
+  eq('an order opened before does not settle instantly on the old snapshot', [pending.m.instant, pending.m.releaseAt > 0n], [false, true]);
+  await expectFail('the merchant takes it at once anyway', 'HoldNotElapsed', async () =>
+    m2.sendTransaction([await releaseIx(pending, m2)]),
+  );
 
   const cfg = (await fetchConfig(rpc, config)).data;
   log.info(`program counters: ${cfg.ordersOpened} opened, ${cfg.ordersSettled} settled, volume ${cfg.volumeSettled}, fees ${cfg.feesCollected}`);

@@ -8,11 +8,12 @@
  * re-derives the address from the order id, reads the account from the chain,
  * and refuses unless every field is what it asked for.
  */
-import type { Address } from '@solana/kit';
+import { fetchEncodedAccount, type Address } from '@solana/kit';
+import { MAX_HOLD_SECS } from './constants.js';
 import { fetchMaybeOrder, type Order } from './generated/accounts/order.js';
 import { OrderState } from './generated/types/orderState.js';
 import { TESSERA_PROGRAM_ADDRESS } from './generated/programs/tessera.js';
-import { orderAddresses } from './pda.js';
+import { orderAddresses, reviewPdaOf } from './pda.js';
 import { bytesEqual } from './util.js';
 
 export type ExpectedOrder = {
@@ -26,6 +27,8 @@ export type ExpectedOrder = {
   requestHash?: Uint8Array;
   /** Refuse an order that would hold the money for less than this. */
   minHoldSecs?: number;
+  /** Refuse an order that would hold the money for longer than this. */
+  maxHoldSecs?: number;
 };
 
 export class OrderVerificationError extends Error {
@@ -73,6 +76,17 @@ export async function verifyOrderForPayment(
   }
   if (expected.minHoldSecs !== undefined && d.holdSecs < expected.minHoldSecs) {
     throw new OrderVerificationError('hold', `is ${d.holdSecs}s, this buyer requires ${expected.minHoldSecs}s`);
+  }
+  const maxHold = expected.maxHoldSecs ?? MAX_HOLD_SECS;
+  if (d.holdSecs > maxHold) {
+    throw new OrderVerificationError('hold', `is ${d.holdSecs}s, longer than the ${maxHold}s this buyer accepts`);
+  }
+  // Reviews are keyed by the order's address. An id the merchant already used
+  // with this buyer, and closed, would leave this buyer unable to review the
+  // new order -- and so unable to complain about an instant one.
+  const review = await fetchEncodedAccount(rpc, await reviewPdaOf(order, expected.buyer, { programAddress }));
+  if (review.exists) {
+    throw new OrderVerificationError('orderId', 'was used before, and this wallet already reviewed that order');
   }
   return { order, vault, data: d };
 }

@@ -103,7 +103,7 @@ Tessera's answer is to make the settlement delay a function of what is known abo
 What exists: an Anchor program on devnet (17 instructions), a typed SDK with a line-for-line mirror of
 the score, merchant and buyer agents (A2A + x402, two public facilitators), a demo network of 16 agents,
 six of them acting out three scripted attacks, a bridge to the Solana Agent Registry (ERC-8004), and a
-website that reads the chain directly. 294 on-chain checks and 27 formula and reward tests pass.
+website that reads the chain directly. 393 on-chain checks and 44 formula and reward tests pass.
 
 ### Blockchains and tools integrated
 
@@ -268,7 +268,7 @@ Criteria are quoted from colosseum.com/hackathon.
 |---|---|
 | Founder + market fit | ✍️ Yours to make. Your security-research interest is the honest link: the product is a threat model with a program attached. |
 | Insight | x402 payments stay small because they are final with no recourse. The settlement delay should be a function of what is known about both parties, and x402 already allows an escrow account as `payTo`, so no new standard is needed. |
-| Product + execution | Deployed program, 294 on-chain checks, live demo network, working checkout, Agent Registry bridge. For "how does it stack up against the competition", see [Competition](#competition). |
+| Product + execution | Deployed program, 393 on-chain checks, live demo network, working checkout, Agent Registry bridge. For "how does it stack up against the competition", see [Competition](#competition). |
 | Potential market size | [Market size](#market-size): McKinsey's $3 trillion to $5 trillion by 2030, against $8K a day through x402 now. |
 | Founder communication | The two videos. Record them yourself. |
 | Viability | 1% of released volume; cost base is rent that is returned. |
