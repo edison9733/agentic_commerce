@@ -1,0 +1,2 @@
+# Built slide decks are generated from apps/web/slides; keep them out of the language stats.
+apps/web/public/decks/* linguist-generated=true

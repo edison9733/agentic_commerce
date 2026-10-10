@@ -24,7 +24,6 @@
     "typecheck": "tsc -p packages/sdk/tsconfig.json --noEmit && tsc -p apps/agents/tsconfig.json --noEmit && tsc -p apps/api/tsconfig.json --noEmit && tsc -p apps/mcp/tsconfig.json --noEmit && tsc -p apps/cli/tsconfig.json --noEmit && tsc -p scripts/tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
     "snapshot": "tsx scripts/snapshot.ts",
     "buy": "npm run buy -w @tessera/agents --",
-    "video": "node pitch/render.mjs",
     "registry": "tsx scripts/registry.ts",
     "test:agents": "tsx scripts/smoke-agents.ts",
     "api": "npm run start -w @tessera/api",
@@ -35,9 +34,7 @@
     "keys:export": "tsx scripts/keys-export.ts",
     "rewards": "tsx scripts/rewards.ts",
     "demo:rewards": "tsx scripts/demo-rewards.ts",
-    "slides": "node pitch/slides/build.mjs",
-    "video:demo": "node pitch/studio/record-demo.mjs --live",
-    "video:pitch": "node pitch/studio/record-pitch.mjs --site https://agentic-commerce-two-theta.vercel.app"
+    "slides": "node apps/web/slides/build.mjs"
   },
   "devDependencies": {
     "@solana-program/compute-budget": "^0.19.0",
