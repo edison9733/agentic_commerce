@@ -41,13 +41,11 @@ Who it is for: sellers of paid APIs, data and compute who want to charge dollars
 
 ### Why did you decide to build this, and why build it now? (max 1000)
 
-The gap shows in the numbers: x402 has carried about 200 million payments, yet on one recent day the average was 7 cents (x402scan, 5 Oct 2026). Cards solve trust with months of history and chargebacks. On-chain there are no chargebacks and new wallets are free, so naive reputation is free to fake.
+By August 2026, x402 had carried about 200 million payments, yet on one recent day the average was 7 cents (x402scan, 5 Oct 2026). Cards solve trust with months of history and chargebacks. On-chain there are no chargebacks, and wallets cost nothing, so naive reputation is nearly free to fake.
+Like a security researcher, I ask who steals what and at what cost. Each protection exists because attacks would otherwise pay. The score uses only settled orders and caps each counterparty. Tiers need active days, which order bursts cannot buy. In a one-year mainnet-target simulation, rings of 3 and 6 wallets never reach Trusted, and a ring of 12 needs 33 days and $1,000+ in fees.
+Why now: agents are starting to pay each other, and Tessera sits between two layers that already exist on Solana: x402 for payment, the Agent Registry for identity. No new standard needed. McKinsey estimates agents could orchestrate $3 to 5 trillion of commerce by 2030. That commerce needs payments agents can tru
 
-Security research is my interest, so I started from the threat model: who steals what, at what cost? Every protection exists because an attack would otherwise pay. The score counts only settled volume, caps each counterparty, and gates tiers on time that cannot be bought. In simulation, rings of 3 and 6 wallets never reach Trusted; larger ones pay hundreds to thousands of dollars and one to three months first.
-
-Why now: agents are starting to pay each other, and the two layers Tessera sits between already exist on Solana: x402 for payment, the Agent Registry for identity. No new standard is needed. McKinsey sees $3 to 5 trillion of agent commerce by 2030; that needs trusted payments.
-
-*993 characters*
+*996 characters*
 
 ### What technologies are you using or integrating?
 
