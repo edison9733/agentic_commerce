@@ -4,7 +4,7 @@
  * buyer can check. They stand in for real paid APIs; the payment, escrow and
  * scoring around them are the real thing.
  */
-import type { Address } from '@solana/kit';
+import { isAddress, type Address } from '@solana/kit';
 import { agentPdaOf, canonicalJson, fetchMaybeAgent, hashJson, sha256, score, toHex, toUnits, TIER_NAMES } from '@tessera/sdk';
 import { getConfig, read, type Actor } from './chain.js';
 import { chainNow } from '../../../scripts/lib.js';
@@ -16,14 +16,27 @@ export type Service = {
   /** Price in token units. */
   price: bigint;
   example: unknown;
+  /**
+   * Why this input cannot be served, or undefined if it can. Checked before
+   * an order is opened, so nobody pays for a request with no valid answer.
+   */
+  rejects(input: unknown): string | undefined;
   run(input: unknown, ctx: { actor: Actor }): Promise<unknown>;
-  /** What the arbiter checks when a delivery is disputed. */
-  valid(output: unknown): boolean;
+  /** What the arbiter checks when a delivery is disputed: is this a valid answer to that request? */
+  valid(output: unknown, input?: unknown): boolean;
 };
 
+const MAX_TEXT = 4000;
 const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null;
 const text = (input: unknown, key: string, fallback: string): string =>
-  isRecord(input) && typeof input[key] === 'string' ? (input[key] as string).slice(0, 4000) : fallback;
+  isRecord(input) && typeof input[key] === 'string' ? (input[key] as string).slice(0, MAX_TEXT) : fallback;
+/** An optional string field: absent is fine, anything but a string of at most `max` characters is not. */
+const badString = (input: unknown, key: string, max: number): string | undefined => {
+  const v = isRecord(input) ? input[key] : undefined;
+  if (v === undefined) return undefined;
+  if (typeof v !== 'string') return `input.${key} must be a string`;
+  return v.length > max ? `input.${key} is longer than ${max} characters` : undefined;
+};
 
 const telemetry: Service = {
   sku: 'telemetry',
@@ -31,6 +44,7 @@ const telemetry: Service = {
   description: 'Current slot, epoch progress and recent throughput, read from the cluster.',
   price: toUnits('0.20'),
   example: {},
+  rejects: () => undefined,
   async run(_input, { actor }) {
     const [slot, epoch, samples] = await Promise.all([
       read(() => actor.rpc.getSlot().send()),
@@ -51,6 +65,8 @@ const telemetry: Service = {
 };
 
 const STOP = new Set('a an and are as at be by for from has have in is it its of on or that the this to was were will with not but they their there'.split(' '));
+const SUMMARY_DEFAULT = 'Escrow holds a payment until delivery. A credit score decides how long. Wallets with history settle at once.';
+const sentencesOf = (source: string) => source.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
 
 const summary: Service = {
   sku: 'summary',
@@ -58,9 +74,13 @@ const summary: Service = {
   description: 'The two sentences that carry the most of a text, picked by word frequency.',
   price: toUnits('0.25'),
   example: { text: 'Paste any paragraph here.' },
+  // A blank text has no summary, and an empty one is not a valid delivery:
+  // quoting it would hand the buyer a dispute it cannot lose.
+  rejects: (input) =>
+    badString(input, 'text', MAX_TEXT) ?? (sentencesOf(text(input, 'text', SUMMARY_DEFAULT)).length ? undefined : 'input.text has nothing to summarise'),
   async run(input) {
-    const source = text(input, 'text', 'Escrow holds a payment until delivery. A credit score decides how long. Wallets with history settle at once.');
-    const sentences = source.split(/(?<=[.!?])\s+/).filter((s) => s.trim().length > 0);
+    const source = text(input, 'text', SUMMARY_DEFAULT);
+    const sentences = sentencesOf(source);
     const freq = new Map<string, number>();
     for (const w of source.toLowerCase().match(/[a-z']+/g) ?? []) {
       if (!STOP.has(w)) freq.set(w, (freq.get(w) ?? 0) + 1);
@@ -76,7 +96,12 @@ const summary: Service = {
       .sort((a, b) => a.i - b.i);
     return { sentences: sentences.length, summary: ranked.map((r) => r.s.trim()).join(' ') };
   },
-  valid: (o) => isRecord(o) && typeof o.summary === 'string' && o.summary.length > 0,
+  // Judged against the request: an empty summary is the right answer only to
+  // a text with nothing in it (which is no longer quoted).
+  valid: (o, input) =>
+    isRecord(o) &&
+    typeof o.summary === 'string' &&
+    (o.summary.length > 0 || (input !== undefined && sentencesOf(text(input, 'text', SUMMARY_DEFAULT)).length === 0)),
 };
 
 const creditReport: Service = {
@@ -85,6 +110,11 @@ const creditReport: Service = {
   description: 'A wallet\'s score, tier and the evidence behind it, recomputed from its on-chain account.',
   price: toUnits('0.30'),
   example: { wallet: '<any Solana address>' },
+  rejects: (input) => {
+    const bad = badString(input, 'wallet', 64);
+    if (bad) return bad;
+    return isRecord(input) && typeof input.wallet === 'string' && !isAddress(input.wallet) ? 'input.wallet is not a Solana address' : undefined;
+  },
   async run(input, { actor }) {
     const wallet = text(input, 'wallet', actor.identity.address) as Address;
     const config = await getConfig(actor);
@@ -113,6 +143,7 @@ const identicon: Service = {
   description: 'A deterministic 5x5 SVG avatar for any string.',
   price: toUnits('0.15'),
   example: { seed: 'my-agent' },
+  rejects: (input) => badString(input, 'seed', 200),
   async run(input) {
     const seed = text(input, 'seed', 'tessera');
     const h = await sha256(seed);
@@ -141,6 +172,7 @@ const junk: Service = {
   description: 'Too good to be true.',
   price: toUnits('0.30'),
   example: {},
+  rejects: () => undefined,
   async run() {
     return { ok: true };
   },

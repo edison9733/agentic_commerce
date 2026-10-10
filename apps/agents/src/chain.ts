@@ -5,7 +5,7 @@
  * paid. A merchant only ever asks the program to look at the vault
  * (`confirm_funded`), and the program decides.
  */
-import { isSolanaError, type Address, type Instruction, type TransactionSigner } from '@solana/kit';
+import { getBase58Decoder, getBase64Encoder, isSolanaError, type Address, type Instruction, type TransactionSigner } from '@solana/kit';
 import { fetchMaybeToken } from '@solana-program/token';
 import {
   agentPdaOf,
@@ -14,6 +14,8 @@ import {
   fetchMaybeAgent,
   fetchMaybeOrder,
   findAta,
+  getCancelUnpaidInstructionAsync,
+  getCloseOrderInstructionAsync,
   getConfirmFundedInstructionAsync,
   getDeliverInstructionAsync,
   getEnsureAgentInstructionAsync,
@@ -22,15 +24,19 @@ import {
   getRefundInstruction,
   getReleaseInstruction,
   getResolveDisputeInstruction,
+  getOrderDecoder,
   getSubmitReviewInstructionAsync,
   newOrderId,
+  ORDER_DISCRIMINATOR,
   orderAddresses,
   OrderState,
   pairPdaOf,
   score,
   settleAccounts,
+  TESSERA_PROGRAM_ADDRESS,
   type Agent,
   type Config,
+  type Decoded,
   type Order,
 } from '@tessera/sdk';
 import { chainNow, errText, sigOf, sleep, tokenHelpers, type ScriptClient } from '../../../scripts/lib.js';
@@ -162,6 +168,41 @@ export async function openOrder(
   return { id, order, vault, data, signature };
 }
 
+/**
+ * Where a field sits in an Order account: an 8-byte discriminator, the
+ * 32-byte order id, then buyer, merchant, payer, mint and arbiter (32 bytes
+ * each), the amount (u64), the fee (u16) and the state (u8).
+ */
+const ORDER_OFFSET = { merchant: 72n, payer: 104n, state: 210n } as const;
+
+/**
+ * The orders of one merchant, or one rent payer, optionally in one state.
+ * The RPC filters them, so this does not download every order in the program
+ * (they are kept on-chain as history, and anyone can open them).
+ */
+export async function findOrders(actor: Actor, where: { merchant?: Address; payer?: Address; state?: OrderState }): Promise<Decoded<Order>[]> {
+  const b58 = (bytes: Uint8Array) => getBase58Decoder().decode(bytes);
+  const memcmp = (offset: bigint, bytes: string) => ({ memcmp: { offset, bytes, encoding: 'base58' as const } });
+  const filters = [
+    memcmp(0n, b58(ORDER_DISCRIMINATOR as Uint8Array)),
+    ...(where.merchant ? [memcmp(ORDER_OFFSET.merchant, where.merchant)] : []),
+    ...(where.payer ? [memcmp(ORDER_OFFSET.payer, where.payer)] : []),
+    ...(where.state !== undefined ? [memcmp(ORDER_OFFSET.state, b58(Uint8Array.of(where.state)))] : []),
+  ];
+  const rows = (await read(() =>
+    actor.rpc.getProgramAccounts(TESSERA_PROGRAM_ADDRESS, { encoding: 'base64', filters: filters as never }).send(),
+  )) as unknown as { pubkey: Address; account: { data: [string, string] } }[];
+  const out: Decoded<Order>[] = [];
+  for (const row of rows) {
+    try {
+      out.push({ address: row.pubkey, data: getOrderDecoder().decode(getBase64Encoder().encode(row.account.data[0])) });
+    } catch {
+      // an account this client cannot decode is skipped rather than trusted
+    }
+  }
+  return out;
+}
+
 export async function vaultBalance(actor: Actor, vault: Address): Promise<bigint> {
   const t = await read(() => fetchMaybeToken(actor.rpc, vault));
   return t.exists ? t.data.amount : 0n;
@@ -245,6 +286,42 @@ export async function refund(actor: Actor, order: Address, o: Order): Promise<st
     const now = await readOrder(actor, order);
     return now !== null && now.state === OrderState.Refunded;
   });
+}
+
+/**
+ * Abandon an unpaid order as its rent payer. Anything that reached the vault
+ * (a payment that came too late, or dust sent to block the cancel) goes back
+ * to the buyer, whose token account is created first if it has none; that
+ * costs less than the rent the cancel returns. Run again on a Cancelled order
+ * whose vault was paid into after the cancel, it returns that money too.
+ */
+export async function cancelUnpaid(payer: Actor, order: Address, o: Order): Promise<string> {
+  const tok = tokenHelpers(payer, o.mint);
+  const paidIn = await vaultBalance(payer, await tok.ata(order));
+  const again = o.state === OrderState.Cancelled;
+  return send(
+    payer,
+    [
+      ...(paidIn > 0n ? [await tok.ensureAtaIx(o.buyer)] : []),
+      await getCancelUnpaidInstructionAsync({
+        order,
+        mint: o.mint,
+        payer: o.payer,
+        authority: payer.identity,
+        ...(paidIn > 0n ? { buyerToken: await tok.ata(o.buyer) } : {}),
+      }),
+    ],
+    // The old devnet program closed the order when it cancelled it.
+    again ? undefined : async () => {
+      const now = await readOrder(payer, order);
+      return now === null || now.state === OrderState.Cancelled;
+    },
+  );
+}
+
+/** Return a settled or cancelled order's rent to whoever paid it, once the program allows. Anyone may. */
+export async function closeOrder(actor: Actor, order: Address, o: Order): Promise<string> {
+  return send(actor, [await getCloseOrderInstructionAsync({ order, merchantAgent: await agentPdaOf(o.merchant), payer: o.payer })]);
 }
 
 export async function openDispute(buyer: Actor, order: Address, o: Order, disputeHash: Uint8Array): Promise<string> {

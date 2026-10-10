@@ -12,7 +12,25 @@ import { config } from './config.js';
 
 type Known = { url: string; client: HTTPFacilitatorClient; feePayer: string };
 
-let known: Promise<Known[]> | undefined;
+/**
+ * What the facilitators said, and when. A facilitator can go down or change
+ * the fee payer it advertises, so the list is asked for again every few
+ * minutes, and within seconds while none was reachable.
+ */
+let known: { at: number; list: Known[] } | undefined;
+let probing: Promise<Known[]> | undefined;
+const FRESH_MS = 5 * 60_000;
+const RETRY_EMPTY_MS = 15_000;
+const PROBE_MS = 10_000;
+
+/** A facilitator that never answers must not hold up quoting. */
+function within<T>(ms: number, p: Promise<T>): Promise<T> {
+  let timer: NodeJS.Timeout;
+  const late = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`no answer in ${ms / 1000} s`)), ms);
+  });
+  return Promise.race([p, late]).finally(() => clearTimeout(timer));
+}
 
 /**
  * Coinbase's CDP facilitator, the most used one. It needs an API key, which
@@ -35,38 +53,48 @@ async function cdp(): Promise<{ url: string; client: HTTPFacilitatorClient } | n
 }
 
 async function probe(): Promise<Known[]> {
-  const out: Known[] = [];
   const first = await cdp();
   const candidates = [...(first ? [first] : []), ...config.facilitators.map((url) => ({ url, client: new HTTPFacilitatorClient({ url }) }))];
-  for (const { url, client } of candidates) {
-    try {
-      const supported = await client.getSupported();
-      const kind = supported.kinds.find(
-        (k) => k.x402Version === 2 && k.scheme === 'exact' && k.network === config.network,
-      );
-      const feePayer = kind?.extra?.feePayer;
-      if (typeof feePayer === 'string') out.push({ url, client, feePayer });
-      else console.warn(`[x402] ${url} does not offer exact on ${config.network}`);
-    } catch (e) {
-      console.warn(`[x402] ${url} is unreachable: ${(e as Error).message}`);
-    }
-  }
-  return out;
+  // All at once, in order of preference: one slow facilitator does not hold up the others.
+  const found = await Promise.all(
+    candidates.map(async ({ url, client }): Promise<Known | null> => {
+      try {
+        const supported = await within(PROBE_MS, client.getSupported());
+        const kind = supported.kinds.find(
+          (k) => k.x402Version === 2 && k.scheme === 'exact' && k.network === config.network,
+        );
+        const feePayer = kind?.extra?.feePayer;
+        if (typeof feePayer === 'string') return { url, client, feePayer };
+        console.warn(`[x402] ${url} does not offer exact on ${config.network}`);
+      } catch (e) {
+        console.warn(`[x402] ${url} is unreachable: ${(e as Error).message}`);
+      }
+      return null;
+    }),
+  );
+  return found.filter((k): k is Known => k !== null);
 }
 
-export function facilitators(): Promise<Known[]> {
-  known ??= probe();
-  return known;
+function refresh(): Promise<Known[]> {
+  probing ??= probe()
+    .then((list) => {
+      known = { at: Date.now(), list };
+      return list;
+    })
+    .finally(() => {
+      probing = undefined;
+    });
+  return probing;
 }
 
-/** The facilitator a new quote should name as fee payer. */
-export async function primaryFacilitator(): Promise<Known> {
-  const all = await facilitators();
-  if (!all[0]) {
-    known = undefined;
-    throw new Error('no x402 facilitator is reachable for Solana devnet');
-  }
-  return all[0];
+/** The reachable facilitators. A stale list answers at once while a fresh one is fetched; an empty one is not served stale. */
+export async function facilitators(): Promise<Known[]> {
+  if (!known) return refresh();
+  const age = Date.now() - known.at;
+  // With none reachable there is nothing to serve a stale list from: ask again.
+  if (!known.list.length && age > RETRY_EMPTY_MS) return refresh();
+  if (age > FRESH_MS) void refresh().catch(() => undefined);
+  return known.list;
 }
 
 export type Settled = { response: SettleResponse; facilitator: string; verifyMs: number; settleMs: number };
@@ -84,6 +112,8 @@ export async function verifyAndSettle(payload: PaymentPayload, requirements: Pay
   const t0 = Date.now();
   const verified = await f.client.verify(payload, requirements);
   if (!verified.isValid) {
+    // The facilitator may have moved to another fee payer: ask it again for the next quote.
+    if (/fee_payer/.test(verified.invalidReason ?? '')) void refresh().catch(() => undefined);
     throw new Error(`payment rejected by facilitator: ${verified.invalidReason ?? 'unknown'} ${verified.invalidMessage ?? ''}`);
   }
   const t1 = Date.now();
