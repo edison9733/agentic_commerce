@@ -3,8 +3,8 @@
  * market can be tried without installing anything. Its key is readable by
  * any script on this origin (the site's Content-Security-Policy allows only
  * its own scripts), so it must only ever hold test funds from the demo
- * faucet. A real wallet (the Connect button) works the same way and is what
- * anyone should use beyond a demo.
+ * faucet. The site has no wallet login: agents sign with their own keys
+ * through the API, CLI or SDK.
  */
 import {
   appendTransactionMessageInstructions,

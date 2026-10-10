@@ -116,7 +116,7 @@ number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 
 | Command | Result | What it proves |
 |---|---|---|
-| `npm run test:local` | **393 / 393** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
+| `npm run test:local` | **395 / 395** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
 | `npm run test:formula` | **44 / 44** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
 | `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the balances on chain, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
 | `npm run test:doors` | **pass** | All four doors against the real program on a local validator (94 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
@@ -172,7 +172,7 @@ npm install
 npm run build:program        # anchor build
 npm run codegen              # typed client from the IDL
 npm run test:formula         # 44 formula and reward tests, no chain needed
-npm run test:local           # 393 checks on a local validator (about 4 minutes)
+npm run test:local           # 395 checks on a local validator (about 4 minutes)
 ```
 
 To run the demo network against the deployed program you need the role keypairs in `.keys/`. They are

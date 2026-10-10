@@ -24,8 +24,8 @@ The FAQ lists nine things. All nine are covered below.
 | Where the team is located | ✍️ You fill in | [Team](#team) |
 | A product logo or graphic | Ready | `pitch/assets/` |
 | A GitHub repository link | Ready, public | https://github.com/edison9733/agentic_commerce |
-| A two-to-three-minute presentation video | Draft ready (2:50), ✍️ record in your voice | `pitch/out/tessera-pitch.mp4` |
-| A product-demo video of no more than three minutes | Draft ready (2:48), ✍️ record in your voice | `pitch/out/tessera-demo.mp4` |
+| A pitch video (up to 2 minutes) | ✍️ record yourself: [VIDEO-GUIDE.md](VIDEO-GUIDE.md) | script in the guide |
+| A product-demo video of no more than three minutes | ✍️ record the live site yourself: [VIDEO-GUIDE.md](VIDEO-GUIDE.md) | script in the guide |
 | Go-to-market, demand validation, distribution plans | Ready, ✍️ add real conversations | [Go-to-market](#go-to-market) |
 
 Also recommended by Colosseum, not strictly required: a **one-minute weekly update video**. A draft is
@@ -103,7 +103,7 @@ Tessera's answer is to make the settlement delay a function of what is known abo
 What exists: an Anchor program on devnet (17 instructions), a typed SDK with a line-for-line mirror of
 the score, merchant and buyer agents (A2A + x402, two public facilitators), a demo network of 16 agents,
 six of them acting out three scripted attacks, a bridge to the Solana Agent Registry (ERC-8004), and a
-website that reads the chain directly. 393 on-chain checks and 44 formula and reward tests pass.
+website that reads the chain directly. 395 on-chain checks and 44 formula and reward tests pass.
 
 ### Blockchains and tools integrated
 
@@ -268,7 +268,7 @@ Criteria are quoted from colosseum.com/hackathon.
 |---|---|
 | Founder + market fit | ✍️ Yours to make. Your security-research interest is the honest link: the product is a threat model with a program attached. |
 | Insight | x402 payments stay small because they are final with no recourse. The settlement delay should be a function of what is known about both parties, and x402 already allows an escrow account as `payTo`, so no new standard is needed. |
-| Product + execution | Deployed program, 393 on-chain checks, live demo network, working checkout, Agent Registry bridge. For "how does it stack up against the competition", see [Competition](#competition). |
+| Product + execution | Deployed program, 395 on-chain checks, live demo network, working checkout, Agent Registry bridge. For "how does it stack up against the competition", see [Competition](#competition). |
 | Potential market size | [Market size](#market-size): McKinsey's $3 trillion to $5 trillion by 2030, against $8K a day through x402 now. |
 | Founder communication | The two videos. Record them yourself. |
 | Viability | 1% of released volume; cost base is rent that is returned. |
@@ -278,32 +278,14 @@ Criteria are quoted from colosseum.com/hackathon.
 
 ## Recording the videos
 
-Rendered drafts (computer voice):
+The portal wants two separate videos (YouTube, Loom or Vimeo): a **demo** of the live product, up to three
+minutes, that is not a slide deck or a code walkthrough, and a **pitch**, up to two minutes, in which you
+introduce yourself, say what you are building and why you are the one to build it.
 
-```bash
-npm run web          # terminal 1
-npm run agents       # terminal 2 (the demo deck performs a real purchase)
-node pitch/render.mjs pitch     # -> pitch/out/tessera-pitch.mp4
-node pitch/render.mjs demo      # -> pitch/out/tessera-demo.mp4
-node pitch/render.mjs update    # -> pitch/out/tessera-update.mp4 (weekly update, one minute)
-```
-
-In your own voice, the simple way:
-
-1. Open `http://localhost:5173/#/deck/pitch`. Press `n` to show the narration under each slide.
-2. Start a screen recording with your microphone (QuickTime: File → New Screen Recording).
-3. Read each slide's note, press → to advance. The pitch script is 418 words, about 2:50 at a normal
-   speaking pace. Colosseum asks for two to three minutes. If you run long, drop a sentence, not a slide.
-4. Same for `#/deck/demo` (395 words). That deck's slides drive the real site, including a real devnet
-   purchase, so start `npm run agents` first and let each live slide finish.
-5. Same for `#/deck/update` (the weekly update, under one minute).
-
-The written scripts are generated into `pitch/out/pitch-script.md`, `demo-script.md` and
-`update-script.md`. Change the words in `apps/web/src/deck/*.tsx` (the `say` field), not in those files.
-
-Colosseum's guidance (blog.colosseum.com, "Perfecting your hackathon submission") is that the pitch
-video should be no more than three minutes, and warns against "overly flashy visuals with little
-substance". The deck is deliberately one idea and one sourced number per slide.
+The rendered drafts in `pitch/out/` (`tessera-demo.mp4`, `tessera-pitch.mp4`, computer voice, built from the
+decks) do not meet either rule. Record both yourself. Scripts, a shot list and a checklist are in
+[VIDEO-GUIDE.md](VIDEO-GUIDE.md). The weekly update video, if you make one, can still come from
+`node pitch/render.mjs update`.
 
 ## Hosting the site
 

@@ -19,6 +19,17 @@ function ensureDir(): void {
   mkdirSync(dataDir(), { recursive: true, mode: 0o700 });
 }
 
+/** Write every byte or throw: a short write on a full disk must not pass for success. */
+function writeAll(fd: number, text: string): void {
+  const buf = Buffer.from(text);
+  let off = 0;
+  while (off < buf.length) {
+    const n = writeSync(fd, buf, off, buf.length - off);
+    if (n <= 0) throw new Error('short write');
+    off += n;
+  }
+}
+
 /**
  * Replace a file's contents: write a new file, flush it to the disk, rename it
  * over the old one. A crash leaves the old contents or the new, never half.
@@ -28,7 +39,7 @@ export function writeFileDurable(file: string, text: string): void {
   const tmp = `${file}.${process.pid}.tmp`;
   const fd = openSync(tmp, 'w', 0o600);
   try {
-    writeSync(fd, text);
+    writeAll(fd, text);
     fsyncSync(fd);
   } finally {
     closeSync(fd);
@@ -41,7 +52,7 @@ export function appendLineDurable(file: string, line: string): void {
   ensureDir();
   const fd = openSync(file, 'a', 0o600);
   try {
-    writeSync(fd, line + '\n');
+    writeAll(fd, line + '\n');
     fsyncSync(fd);
   } finally {
     closeSync(fd);

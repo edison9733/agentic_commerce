@@ -52,6 +52,7 @@ export type CloseOrderInstruction<
   TAccountConfig extends string | AccountMeta<string> = string,
   TAccountOrder extends string | AccountMeta<string> = string,
   TAccountMerchantAgent extends string | AccountMeta<string> = string,
+  TAccountVault extends string | AccountMeta<string> = string,
   TAccountPayer extends string | AccountMeta<string> = string,
   TRemainingAccounts extends readonly AccountMeta<string>[] = [],
 > = Instruction<TProgram> &
@@ -67,6 +68,9 @@ export type CloseOrderInstruction<
       TAccountMerchantAgent extends string
         ? WritableAccount<TAccountMerchantAgent>
         : TAccountMerchantAgent,
+      TAccountVault extends string
+        ? ReadonlyAccount<TAccountVault>
+        : TAccountVault,
       TAccountPayer extends string
         ? WritableAccount<TAccountPayer>
         : TAccountPayer,
@@ -106,11 +110,14 @@ export type CloseOrderAsyncInput<
   TAccountOrder extends InstructionAccountInput = InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountPayer extends InstructionAccountInput = InstructionAccountInput,
 > = {
   config?: TAccountConfig;
   order: TAccountOrder;
   merchantAgent: TAccountMerchantAgent;
+  /** that reached a cancelled order late is refunded first and its id cannot be reused with the money in it. */
+  vault: TAccountVault;
   payer: TAccountPayer;
 };
 
@@ -118,6 +125,7 @@ export async function getCloseOrderInstructionAsync<
   TAccountConfig extends InstructionAccountInput,
   TAccountOrder extends InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput,
+  TAccountVault extends InstructionAccountInput,
   TAccountPayer extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TESSERA_PROGRAM_ADDRESS,
 >(
@@ -125,6 +133,7 @@ export async function getCloseOrderInstructionAsync<
     TAccountConfig,
     TAccountOrder,
     TAccountMerchantAgent,
+    TAccountVault,
     TAccountPayer
   >,
   config?: { programAddress?: TProgramAddress },
@@ -142,6 +151,10 @@ export async function getCloseOrderInstructionAsync<
     ResolvedInstructionAccountMeta<
       TAccountMerchantAgent,
       InstructionAccountInputAddress<TAccountMerchantAgent>
+    >,
+    ResolvedInstructionAccountMeta<
+      TAccountVault,
+      InstructionAccountInputAddress<TAccountVault>
     >,
     ResolvedInstructionAccountMeta<
       TAccountPayer,
@@ -164,6 +177,7 @@ export async function getCloseOrderInstructionAsync<
       isSigner: false,
       isWritable: true,
     },
+    vault: { value: input.vault ?? null, isSigner: false, isWritable: false },
     payer: { value: input.payer ?? null, isSigner: false, isWritable: true },
   };
   const accounts = originalAccounts as Record<
@@ -181,6 +195,7 @@ export async function getCloseOrderInstructionAsync<
       getAccountMeta("config", accounts.config),
       getAccountMeta("order", accounts.order),
       getAccountMeta("merchantAgent", accounts.merchantAgent),
+      getAccountMeta("vault", accounts.vault),
       getAccountMeta("payer", accounts.payer),
     ],
     data: getCloseOrderInstructionDataEncoder().encode({}),
@@ -200,6 +215,10 @@ export async function getCloseOrderInstructionAsync<
       InstructionAccountInputAddress<TAccountMerchantAgent>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountVault,
+      InstructionAccountInputAddress<TAccountVault>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountPayer,
       InstructionAccountInputAddress<TAccountPayer>
     >
@@ -211,11 +230,14 @@ export type CloseOrderInput<
   TAccountOrder extends InstructionAccountInput = InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput =
     InstructionAccountInput,
+  TAccountVault extends InstructionAccountInput = InstructionAccountInput,
   TAccountPayer extends InstructionAccountInput = InstructionAccountInput,
 > = {
   config: TAccountConfig;
   order: TAccountOrder;
   merchantAgent: TAccountMerchantAgent;
+  /** that reached a cancelled order late is refunded first and its id cannot be reused with the money in it. */
+  vault: TAccountVault;
   payer: TAccountPayer;
 };
 
@@ -223,6 +245,7 @@ export function getCloseOrderInstruction<
   TAccountConfig extends InstructionAccountInput,
   TAccountOrder extends InstructionAccountInput,
   TAccountMerchantAgent extends InstructionAccountInput,
+  TAccountVault extends InstructionAccountInput,
   TAccountPayer extends InstructionAccountInput,
   TProgramAddress extends Address = typeof TESSERA_PROGRAM_ADDRESS,
 >(
@@ -230,6 +253,7 @@ export function getCloseOrderInstruction<
     TAccountConfig,
     TAccountOrder,
     TAccountMerchantAgent,
+    TAccountVault,
     TAccountPayer
   >,
   config?: { programAddress?: TProgramAddress },
@@ -246,6 +270,10 @@ export function getCloseOrderInstruction<
   ResolvedInstructionAccountMeta<
     TAccountMerchantAgent,
     InstructionAccountInputAddress<TAccountMerchantAgent>
+  >,
+  ResolvedInstructionAccountMeta<
+    TAccountVault,
+    InstructionAccountInputAddress<TAccountVault>
   >,
   ResolvedInstructionAccountMeta<
     TAccountPayer,
@@ -267,6 +295,7 @@ export function getCloseOrderInstruction<
       isSigner: false,
       isWritable: true,
     },
+    vault: { value: input.vault ?? null, isSigner: false, isWritable: false },
     payer: { value: input.payer ?? null, isSigner: false, isWritable: true },
   };
   const accounts = originalAccounts as Record<
@@ -279,6 +308,7 @@ export function getCloseOrderInstruction<
       getAccountMeta("config", accounts.config),
       getAccountMeta("order", accounts.order),
       getAccountMeta("merchantAgent", accounts.merchantAgent),
+      getAccountMeta("vault", accounts.vault),
       getAccountMeta("payer", accounts.payer),
     ],
     data: getCloseOrderInstructionDataEncoder().encode({}),
@@ -298,6 +328,10 @@ export function getCloseOrderInstruction<
       InstructionAccountInputAddress<TAccountMerchantAgent>
     >,
     ResolvedInstructionAccountMeta<
+      TAccountVault,
+      InstructionAccountInputAddress<TAccountVault>
+    >,
+    ResolvedInstructionAccountMeta<
       TAccountPayer,
       InstructionAccountInputAddress<TAccountPayer>
     >
@@ -313,7 +347,9 @@ export type ParsedCloseOrderInstruction<
     config: TAccountMetas[0];
     order: TAccountMetas[1];
     merchantAgent: TAccountMetas[2];
-    payer: TAccountMetas[3];
+    /** that reached a cancelled order late is refunded first and its id cannot be reused with the money in it. */
+    vault: TAccountMetas[3];
+    payer: TAccountMetas[4];
   };
   data: CloseOrderInstructionData;
 };
@@ -326,12 +362,12 @@ export function parseCloseOrderInstruction<
     InstructionWithAccounts<TAccountMetas> &
     InstructionWithData<ReadonlyUint8Array>,
 ): ParsedCloseOrderInstruction<TProgram, TAccountMetas> {
-  if (instruction.accounts.length < 4) {
+  if (instruction.accounts.length < 5) {
     throw new SolanaError(
       SOLANA_ERROR__PROGRAM_CLIENTS__INSUFFICIENT_ACCOUNT_METAS,
       {
         actualAccountMetas: instruction.accounts.length,
-        expectedAccountMetas: 4,
+        expectedAccountMetas: 5,
       },
     );
   }
@@ -347,6 +383,7 @@ export function parseCloseOrderInstruction<
       config: getNextAccount(),
       order: getNextAccount(),
       merchantAgent: getNextAccount(),
+      vault: getNextAccount(),
       payer: getNextAccount(),
     },
     data: getCloseOrderInstructionDataDecoder().decode(instruction.data),

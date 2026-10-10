@@ -3,7 +3,7 @@
 What can go wrong, what stops it, and the test that proves it. Then what is still open.
 
 Tests: `npm run test:local` runs the real program on a local validator and sends each on-chain attack
-below as a real transaction that must be rejected (393 checks). `npm run test:formula` checks the
+below as a real transaction that must be rejected (395 checks). `npm run test:formula` checks the
 economic claims and the reward rules (44 tests). "Model" means the claim is checked by simulation through the reference
 model, which the local suite proves equal to the program.
 
@@ -36,7 +36,7 @@ done:
 
 | # | Finding | Severity | Fix | Test |
 |---|---|---|---|---|
-| B16 | **Order swap.** While a buyer's signed payment was in flight, the merchant cancelled the order and reopened the same order id for its own second wallet. The payment then funded the new order and the merchant took it. | Critical | `cancel_unpaid` leaves the order in a `Cancelled` state until `close_order`, after the unpaid window. The id cannot be reopened, the vault is closed, and the buyer's SDK also refuses an order id that has already been used. | local: reopen fails with "already in use"; pay into a cancelled order fails |
+| B16 | **Order swap.** While a buyer's signed payment was in flight, the merchant cancelled the order and reopened the same order id for its own second wallet. The payment then funded the new order and the merchant took it. | Critical | `cancel_unpaid` leaves the order in a `Cancelled` state until `close_order`, after the unpaid window. The id cannot be reopened, the vault is closed, and `close_order` refuses a cancelled order whose vault was recreated by a late payment until anyone cancels again and refunds it. The buyer's SDK also refuses an order id that has already been used. | local: reopen fails with "already in use"; pay into a cancelled order fails |
 | B17 | A payment could be confirmed after the payment window had closed. | Medium | `confirm_funded` fails with `PaymentWindowClosed` after `created_at + unpaid_secs`. | local |
 | B18 | A buyer could ask for a hold of any length and the merchant's server co-signed it. | Medium | `min_hold_secs` is capped at 30 days (`HoldTooLong`); the buyer's SDK and the server both check. | local |
 | B19 | The arbiter could be the buyer or the merchant of the order. | High | Rejected at `open_order` (`ArbiterIsParty`). | local |
@@ -205,6 +205,14 @@ in [ERC-8004.md](ERC-8004.md).
 - **The deployed devnet program is the old one.** Every program fix above needs the upgrade authority to
   redeploy; until then devnet still has the order-swap hole.
 - **Rate limits and the card cache are per process.** Several API or agents instances multiply them.
+- **Quote caps are per client address.** One host with many IPv4 addresses, or a whole IPv6 range, can use up
+  a merchant's open-quote cap and block quoting for others. The operator also pays non-refundable rent for the
+  credit files of buyer wallets an attacker names (about 0.0035 SOL each); on devnet that costs nothing, on
+  mainnet it needs a funded-buyer requirement or a deposit.
+- **A review of 1 or 2 stars still counts towards pair history.** Two complaints from one buyer can make a
+  pair trusted and waive that buyer's hold.
+- **Review accounts are keyed by order and reviewer.** Reusing an order id after it is closed can stop the
+  earlier buyer reviewing the new order; the buyer's SDK refuses such an id, other clients may not.
 - **Unsolicited orders still touch a buyer's file.** A merchant can still open and fund an order in
   any buyer's name. The buyer gains credit and an active period from it, and its order count rises,
   but nobody gains anything from the buyer (C16, C17).

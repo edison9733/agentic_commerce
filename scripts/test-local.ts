@@ -547,6 +547,7 @@ try {
   const closeIx = async (o: Ctx) =>
     getCloseOrderInstructionAsync({
       order: o.order,
+      vault: await tok.ata(o.order),
       merchantAgent: await agentPdaOf(o.merchant.identity.address),
       payer: server.identity.address,
     });
@@ -872,7 +873,16 @@ try {
   eq('the rent payer cancels an abandoned order and the late payment goes back', (await tok.balance(b1.identity.address)) - b1BeforeLate, 100_000n);
   eq('it is cancelled', (await fetchOrder(rpc, o9.order)).data.state, OrderState.Cancelled);
 
+  // A payment signed before the cancel can still land after it and recreate the vault with money in it.
+  // The order id must not come free while that money sits there.
+  await b1.sendTransaction([await tok.ensureAtaIx(o8.order, b1), await tok.transferIx(b1, o8.vault, 250_000n)]);
   await waitForChainTime(server, d8.settledAt + BigInt(PARAMS.unpaidSecs) + 1n);
+  await expectFail('closing a cancelled order whose vault got money after the cancel', 'VaultStillOpen', async () =>
+    stranger.sendTransaction([await closeIx(o8)]),
+  );
+  const b1BeforeAgain = await tok.balance(b1.identity.address);
+  await stranger.sendTransaction([await cancelIx(o8, stranger, true)]);
+  eq('anyone refunds the late money by cancelling again', (await tok.balance(b1.identity.address)) - b1BeforeAgain, 250_000n);
   await stranger.sendTransaction([await closeIx(o8)]);
   eq('a cancelled order returns its rent once the payment window has passed', (await fetchMaybeOrder(rpc, o8.order)).exists, false);
 

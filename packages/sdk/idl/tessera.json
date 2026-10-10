@@ -331,6 +331,12 @@
           }
         },
         {
+          "name": "vault",
+          "docs": [
+            "that reached a cancelled order late is refunded first and its id cannot be reused with the money in it."
+          ]
+        },
+        {
           "name": "payer",
           "writable": true,
           "relations": [
@@ -2594,6 +2600,11 @@
       "code": 6021,
       "name": "HoldTooLong",
       "msg": "The hold asked for is longer than the maximum"
+    },
+    {
+      "code": 6022,
+      "name": "VaultStillOpen",
+      "msg": "The order's vault still holds something: cancel it again to refund it first"
     }
   ],
   "types": [

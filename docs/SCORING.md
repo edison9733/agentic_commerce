@@ -200,3 +200,5 @@ Read this honestly: a large enough ring that is willing to burn hundreds to a fe
 fees over one to three months does reach Trusted. What it buys is instant settlement of roughly the fees it burned. The score
 does not stop reputation from being bought; it sets the price, and the instant limit makes what was
 bought worth about nothing for theft.
+
+One more caveat: the table assumes the fees a ring burns stay burned. If the review-reward airdrop ([REWARDS.md](REWARDS.md)) is running, a ring can earn back part of its fees as reviewer rewards (at most 75% of the fee of an order that settled), so a ring's cost is lower than shown by up to that share. The airdrop is off-chain and optional, and the on-chain instant limit does not account for it.

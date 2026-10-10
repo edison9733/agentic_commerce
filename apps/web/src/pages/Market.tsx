@@ -75,6 +75,14 @@ const claims = {
 };
 
 /** Whoever is paying: the built-in devnet test wallet, a throwaway key kept in this browser. */
+/** The program stores at most 200 bytes of review text; emoji and accents take more than one. */
+function clip200(t: string): string {
+  const enc = new TextEncoder();
+  let out = t;
+  while (enc.encode(out).length > 200) out = [...out].slice(0, -1).join('');
+  return out;
+}
+
 function usePayer() {
   const [burner, setBurner] = useState<TransactionSigner | null>(null);
   useEffect(() => {
@@ -403,7 +411,7 @@ function Checkout({ item, payer, onClose, onBalance }: { item: Item; payer: NonN
                     <button key={n} role="radio" aria-checked={rating === n} onClick={() => setRating(n)} style={{ fontSize: 26, lineHeight: 1, cursor: 'pointer', color: n <= rating ? '#14130f' : '#c9c2ac' }} aria-label={`${n} stars`}>★</button>
                   ))}
                 </div>
-                <textarea className="field" rows={2} maxLength={200} placeholder="Say what happened (stored on-chain, up to 200 characters)" value={text} onChange={(e) => setText(e.target.value)} />
+                <textarea className="field" rows={2} maxLength={200} placeholder="Say what happened (stored on-chain, up to 200 bytes)" value={text} onChange={(e) => setText(clip200(e.target.value))} />
                 <button className="btn btn-ink justify-center" disabled={busy} onClick={() => act('review')}>Post review on-chain</button>
               </div>
             ) : (

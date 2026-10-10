@@ -46,4 +46,6 @@ pub enum TesseraError {
     ArbiterIsParty,
     #[msg("The hold asked for is longer than the maximum")]
     HoldTooLong,
+    #[msg("The order's vault still holds something: cancel it again to refund it first")]
+    VaultStillOpen,
 }

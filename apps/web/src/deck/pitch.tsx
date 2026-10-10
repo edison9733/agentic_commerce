@@ -250,7 +250,7 @@ function ZkSlide() {
           ))}
         </div>
       </div>
-      <Source>Roadmap, not built. A Semaphore-style zero-knowledge proof (Groth16 over BN254, which Solana verifies with its alt_bn128 syscalls) closes the two open items in docs/SECURITY.md: large rings (C2) and whitewashing (C12).</Source>
+      <Source>Roadmap, not built. A Semaphore-style zero-knowledge proof (Groth16 over BN254, which Solana verifies with its alt_bn128 syscalls) would address two open items in docs/SECURITY.md, large rings (C2) and whitewashing (C12), but needs an issuer of operator attestations that is not designed.</Source>
     </Frame>
   );
 }
@@ -430,7 +430,7 @@ export const PITCH: Slide[] = [
   {
     id: 'cards',
     seconds: 14,
-    say: 'Cards solve this with months of history. Visa wants purchases a hundred and twenty days old. On-chain, a review costs a tenth of a cent and needs no purchase. Stars are nearly free to fake.',
+    say: 'Cards solve this with months of history. Visa wants purchases a hundred and twenty days old. On-chain, a review on the Solana registry costs a tenth of a cent and needs no purchase. Stars are nearly free to fake.',
     surface: 'paper',
     render: () => (
       <Frame>
@@ -452,13 +452,13 @@ export const PITCH: Slide[] = [
   {
     id: 'tiers',
     seconds: 13,
-    say: 'Tessera puts every x402 payment into escrow on Solana, and lets an on-chain credit score decide how long the money waits. A stranger waits three days. An agent with a record settles instantly.',
+    say: 'Tessera puts every x402 payment into escrow on Solana, and lets an on-chain credit score decide how long the money waits. On mainnet, a stranger waits three days. An agent with a record settles instantly.',
     render: () => <TierSlide />,
   },
   {
     id: 'how',
     seconds: 13,
-    say: 'It needs no new standard. The 402 response names an escrow account as the address to pay. The buyer checks it on-chain, pays through a public x402 facilitator, and never holds SOL.',
+    say: 'It needs no new standard. The 402 response names an escrow account as the address to pay. The buyer checks it on-chain, pays through a public x402 facilitator, and needs no SOL to pay.',
     render: () => (
       <Frame>
         <Kicker>No new standard</Kicker>
@@ -568,7 +568,7 @@ export const PITCH: Slide[] = [
   {
     id: 'market',
     seconds: 12,
-    say: 'McKinsey estimates agents could orchestrate three to five trillion dollars of commerce by twenty thirty. We take one percent of what settles. Sellers add one function; buyers, one check.',
+    say: 'McKinsey estimates agents could orchestrate three to five trillion dollars of global commerce by twenty thirty. We take one percent of what settles. Sellers add one function; buyers, one check.',
     surface: 'paper',
     render: () => (
       <Frame pad={88}>
@@ -576,7 +576,7 @@ export const PITCH: Slide[] = [
         <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 64, marginTop: 30 }}>
           <Rise delay={0.2}>
             <div className="display" style={{ fontSize: 168, lineHeight: 0.95 }}>$3–5<span style={{ fontSize: 76 }}> trillion</span></div>
-            <div style={{ fontSize: 27, marginTop: 18, lineHeight: 1.35, maxWidth: '25ch' }}>of commerce that AI agents could orchestrate by 2030, on McKinsey's estimate</div>
+            <div style={{ fontSize: 27, marginTop: 18, lineHeight: 1.35, maxWidth: '25ch' }}>of global commerce that AI agents could orchestrate by 2030, on McKinsey's estimate</div>
           </Rise>
           <Rise delay={0.5}>
             <div className="display" style={{ fontSize: 168, lineHeight: 0.95 }}>1<span style={{ fontSize: 76 }}>%</span></div>

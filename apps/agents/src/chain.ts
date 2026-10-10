@@ -321,7 +321,7 @@ export async function cancelUnpaid(payer: Actor, order: Address, o: Order): Prom
 
 /** Return a settled or cancelled order's rent to whoever paid it, once the program allows. Anyone may. */
 export async function closeOrder(actor: Actor, order: Address, o: Order): Promise<string> {
-  return send(actor, [await getCloseOrderInstructionAsync({ order, merchantAgent: await agentPdaOf(o.merchant), payer: o.payer })]);
+  return send(actor, [await getCloseOrderInstructionAsync({ order, vault: await findAta(order, o.mint), merchantAgent: await agentPdaOf(o.merchant), payer: o.payer })]);
 }
 
 export async function openDispute(buyer: Actor, order: Address, o: Order, disputeHash: Uint8Array): Promise<string> {
