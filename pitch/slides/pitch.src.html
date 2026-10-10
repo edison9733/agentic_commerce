@@ -1,0 +1,235 @@
+<section class="center" data-document-role="page" data-label="Title" data-speaker-notes="This is Tessera. The credit layer for agent commerce.">
+  <div class="pop">{{logo:120}}</div>
+  <h1 style="font-size: 150px; margin-top: 30px;">Tessera</h1>
+  <p style="font-size: 38px; margin: 26px 0 0;">The credit layer for agent commerce.</p>
+</section>
+
+<section data-document-role="page" data-label="Hook" data-speaker-notes="AI agents now pay each other. x402 has carried about two hundred million payments. On one recent day, the average was seven cents.">
+  <p class="kicker">It is already happening</p>
+  <h1 style="font-size: 96px; max-width: 16ch;">AI agents now <em>pay each other.</em></h1>
+  <div class="row" style="gap: 96px; margin-top: 84px;">
+    <div><div class="display mint" style="font-size: 150px;">≈<span data-count="200">200</span>M</div><p style="font-size: 26px; margin: 14px 0 0;">x402 payments so far</p></div>
+    <div><div class="display white" style="font-size: 150px;">7¢</div><p style="font-size: 26px; margin: 14px 0 0;">average payment on one recent day</p></div>
+  </div>
+  <p class="source">Solana Foundation, 5 Aug 2026: “roughly 200 million transactions … Most transactions are under 50 cents.” x402scan.com, 24 h to 5 Oct 2026: 118,341 payments, $8.01K.</p>
+</section>
+
+<section data-document-role="page" data-label="Why payments stay small" data-speaker-notes="We think the reason is simple. An x402 payment is final in a second, and there is no chargeback. Seven cents can afford to be wrong. Seven hundred dollars cannot.">
+  <p class="kicker">Why the payments stay small</p>
+  <h1 style="font-size: 104px; max-width: 15ch;">Paid in a second. <em>Final forever.</em></h1>
+  <p style="font-size: 40px; max-width: 27ch; margin: 40px 0 0; line-height: 1.3;">Seven cents can afford to be wrong. Seven hundred dollars cannot.</p>
+  <p class="source">Our reading, not a measured cause. An x402 `exact` payment is a signed token transfer with no chargeback. Median facilitator settlement on devnet here: 1.2 s (51 payments).</p>
+</section>
+
+<section class="paper" data-document-role="page" data-label="How trust is built today" data-speaker-notes="Cards solve this with months of history. Visa wants purchases a hundred and twenty days old. On-chain, a review on the Solana registry costs a tenth of a cent and needs no purchase. Stars are nearly free to fake.">
+  <p class="kicker">How trust is built today</p>
+  <div class="row" style="gap: 72px; margin-top: 40px;">
+    <div style="flex: 1;"><div class="display" style="font-size: 190px;"><span data-count="120">120</span><span style="font-size: 80px;"> days</span></div><p style="font-size: 30px; margin: 22px 0 0; line-height: 1.35; max-width: 20ch;">the youngest purchase history Visa accepts as evidence in a fraud dispute</p></div>
+    <div style="flex: 1;"><div class="display" style="font-size: 190px;">$0.001</div><p style="font-size: 30px; margin: 22px 0 0; line-height: 1.35; max-width: 20ch;">what one on-chain review costs. No purchase needed.</p></div>
+  </div>
+  <p class="source">Visa Compelling Evidence 3.0: two prior transactions, 120 to 365 days old (Checkout.com, 30 Oct 2025). Review price: solana.com/agent-registry.</p>
+</section>
+
+<section data-document-role="page" data-label="What Tessera does" data-speaker-notes="Tessera puts every x402 payment into escrow on Solana, and lets an on-chain credit score decide how long the money waits. On mainnet, a stranger waits three days. An agent with a record settles instantly.">
+  <p class="kicker">What Tessera does</p>
+  <h1 style="font-size: 84px; max-width: 19ch;">Escrow that knows <em>who it is dealing with.</em></h1>
+  <div class="col" style="margin-top: 52px;">
+    <div class="card" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #f1eee2; font-size: 22px;">○○○○ &nbsp;New</span><span class="track" style="--t: 6.5s;"><b style="background: #4b5a46;"></b></span><span class="display white" style="font-size: 44px; width: 270px; text-align: right;">3 d <span class="mono grey" style="font-size: 14px;">hold</span></span></div>
+    <div class="card" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #f1eee2; font-size: 22px;">●○○○ &nbsp;Building</span><span class="track" style="--t: 3.6s;"><b style="background: #5f8c6e;"></b></span><span class="display white" style="font-size: 44px; width: 270px; text-align: right;">24 h <span class="mono grey" style="font-size: 14px;">hold</span></span></div>
+    <div class="card" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #f1eee2; font-size: 22px;">●●●○ &nbsp;Established</span><span class="track" style="--t: 1.8s;"><b style="background: #7cc79c;"></b></span><span class="display white" style="font-size: 44px; width: 270px; text-align: right;">60 min <span class="mono grey" style="font-size: 14px;">hold</span></span></div>
+    <div class="card on" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #b9f8da; font-size: 22px;">●●●● &nbsp;Trusted</span><span class="track" style="--t: 0.9s;"><b style="background: #b9f8da;"></b></span><span class="display mint" style="font-size: 44px; width: 270px; text-align: right;">instant</span></div>
+  </div>
+  <p class="source">Mainnet target holds. On devnet the same four tiers hold for 2 min, 45 s, 10 s and 0.</p>
+</section>
+
+<section data-document-role="page" data-label="No new standard" data-speaker-notes="It needs no new standard. The 402 response names an escrow account as the address to pay. The buyer checks it on-chain, pays through a public x402 facilitator, and needs no SOL to pay.">
+  <p class="kicker">No new standard</p>
+  <h1 style="font-size: 88px; max-width: 18ch;">One field changes: <em>where payTo points.</em></h1>
+  <div class="card" style="margin-top: 54px; padding: 34px 40px; border-radius: 22px;">
+<pre style="font-size: 27px; line-height: 1.7; color: #c9c6b6;">HTTP/1.1 402 Payment Required
+{
+  "scheme":  "exact",
+  "network": "solana:EtWTRABZ…",     // devnet
+  "amount":  "200000",
+  "payTo":   <span class="mint">"JE6F5J7i…WdUW"</span>     <span style="color: #5d5c52;">// an escrow account, not the merchant</span>
+}</pre>
+  </div>
+  <div class="row" style="gap: 44px; margin-top: 44px; font-size: 25px; color: #f1eee2;"><span>A2A to ask</span><span>x402 to pay</span><span>a facilitator settles</span><span>a Solana program holds</span></div>
+  <p class="source">A real order from this project on devnet. The x402 `exact` scheme derives the token account from payTo, so an escrow account is a valid payTo.</p>
+</section>
+
+<section class="paper" data-document-role="page" data-label="The score" data-speaker-notes="The score is how much we know, times whether it is good: settled volume, time and real counterparties, multiplied by ratings and behaviour. Every input is public.">
+  <p class="kicker">The score</p>
+  <h1 style="font-size: 92px; max-width: 17ch;">How much is known, <em>times</em> whether it is good.</h1>
+  <div class="display" style="font-size: 66px; display: flex; gap: 22px; align-items: baseline; margin-top: 56px;">
+    <span>score</span><span style="color: #878371;">=</span>
+    <span style="padding: 6px 26px; border-radius: 18px; background: #14130f; color: #fbf8ef;">Evidence</span><span style="color: #878371;">×</span>
+    <span style="padding: 6px 26px; border-radius: 18px; border: 2px solid #14130f;">Rating</span><span style="color: #878371;">×</span>
+    <span style="padding: 6px 26px; border-radius: 18px; border: 2px solid #14130f;">Behaviour</span>
+  </div>
+  <div class="row" style="gap: 28px; margin-top: 54px;">
+    <div class="card" style="flex: 1; padding: 26px;"><h3 style="font-size: 44px;">History</h3><p style="font-size: 23px; color: #4b483e;">settled volume, weighted by who the counterparty was</p></div>
+    <div class="card" style="flex: 1; padding: 26px;"><h3 style="font-size: 44px;">Tenure</h3><p style="font-size: 23px; color: #4b483e;">time, counted only while actually trading</p></div>
+    <div class="card" style="flex: 1; padding: 26px;"><h3 style="font-size: 44px;">Diversity</h3><p style="font-size: 23px; color: #4b483e;">distinct counterparties, weighted by their tier</p></div>
+  </div>
+  <p class="source">Integer arithmetic over public accounts. The program, the SDK and the website run the same code and get the same number.</p>
+</section>
+
+<section data-document-role="page" data-label="Reviews as search" data-speaker-notes="One call tells an agent who to buy from: ranked by reviews that each cost a real sale, with price and seconds to settle.">
+  <p class="kicker">Reviews as search, for agents</p>
+  <h1 style="font-size: 78px; max-width: 21ch;">Who should I buy from? <em>One call.</em></h1>
+  <div class="row" style="gap: 52px; margin-top: 36px;">
+    <div class="col" style="flex: 1.3; gap: 10px;">
+      <div class="card mono" style="font-size: 21px; padding: 16px 24px;">$ tessera find <span class="mint">text summary</span></div>
+      <div class="card on" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display mint" style="font-size: 34px; width: 36px;">1</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Quill</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Trusted 905 · ★4.76 · 5 sales</div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.25 USDC<div class="grey" style="font-size: 15px;">escrow · ~9 s</div></div></div>
+      <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display grey" style="font-size: 34px; width: 36px;">2</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Scribe</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Established 658 · ★4.26 · 2 sales</div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.15 USDC<div class="grey" style="font-size: 15px;">escrow · ~13 s</div></div></div>
+      <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display grey" style="font-size: 34px; width: 36px;">3</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Glib</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Building 181 · ★2.38 · 2 sales<span class="warn"> · 1 missed delivery</span></div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.10 USDC<div class="grey" style="font-size: 15px;">escrow · ~9 s</div></div></div>
+      <div class="mono" style="font-size: 17px; margin-top: 4px;">A regular customer asking the same: <span class="mint">Quill · instant · ~1 s to settled</span></div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3>Ranked by money, not words</h3><p>Each review needed a real settled order and counts by what it paid.</p></div>
+      <div class="card"><h3>Answers the next question too</h3><p>Every row says instant or escrow, and the seconds from paying to settled.</p></div>
+      <div class="card"><h3>Built for agents</h3><p>Compact JSON with enums, over an API, MCP, a skill or a CLI. No pages to read.</p></div>
+    </div>
+  </div>
+  <p class="source">Recorded 2026-10-09: twelve purchases between real agents on a local validator running the real program, then one call. Reproduce: npm run build:program &amp;&amp; npm run demo:find</p>
+</section>
+
+<section data-document-role="page" data-label="Reviews that pay" data-speaker-notes="And reviews are paid: the same for one star or five, more if they prove right, nothing for praising a scam.">
+  <p class="kicker">Reviews that pay</p>
+  <h1 style="font-size: 78px; max-width: 22ch;">Paid to review. <em>Paid more for being right.</em></h1>
+  <div class="row" style="gap: 52px; margin-top: 36px;">
+    <div class="col" style="flex: 1.25; gap: 10px;">
+      <div class="mono" style="font-size: 19px;">Three buyers reviewed Glib. Then Glib took an order and never delivered.</div>
+      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Scout</span> <span class="gold" style="font-size: 24px;">★★★★★</span><div class="mono warn" style="font-size: 16px;">0× · praised it, then it failed</div></div><span class="display grey" style="font-size: 40px;">$0.00</span></div>
+      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Nova</span> <span class="gold" style="font-size: 24px;">★★★★</span><span style="font-size: 24px; color: #3a3f33;">★</span><div class="mono warn" style="font-size: 16px;">0× · praised it, then it failed</div></div><span class="display grey" style="font-size: 40px;">$0.00</span></div>
+      <div class="card on" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Orbit</span> <span class="gold" style="font-size: 24px;">★★</span><span style="font-size: 24px; color: #3a3f33;">★★★</span><div class="mono mint" style="font-size: 16px;">1.5× · warned, then it failed</div></div><span class="display mint" style="font-size: 40px;">$0.045</span></div>
+      <div class="mono" style="font-size: 17px; margin-top: 4px;">Paid on chain: <span class="mint">0.169 USDC of 1.25 USDC in fees</span>, to 6 reviews</div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3>Same pay for 1★ or 5★</h3><p>A quarter of the fee rate on the money behind the review. Stars never change it.</p></div>
+      <div class="card"><h3>Judged on what happened next</h3><p>An honest warning is paid 1.5×. Praising a wallet that then failed is paid nothing.</p></div>
+      <div class="card"><h3>Faking it loses money</h3><p>At most 75% of an order’s fee comes back, so farming with your own wallets never pays.</p></div>
+    </div>
+  </div>
+  <p class="source">Recorded 2026-10-10: real purchases, reviews, a missed delivery and the airdrop payout, on a local validator running the real program. Reproduce: npm run build:program &amp;&amp; npm run demo:rewards</p>
+</section>
+
+<section data-document-role="page" data-label="We assumed people would cheat" data-speaker-notes="We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns over a thousand dollars and a month, to steal back its fees plus twenty-five dollars a wallet.">
+  <p class="kicker">We assumed people would cheat</p>
+  <h1 style="font-size: 66px; max-width: 24ch;">Faking a record takes weeks, and steals back <em>little more than it cost.</em></h1>
+  <div class="row" style="gap: 56px; margin-top: 26px; align-items: center;">
+    <img class="anim wipe" src="img/ring-chart.png" alt="Best score over 120 days: an honest merchant against rings of 3, 6 and 12 wallets" width="980" height="500">
+    <div class="col" style="gap: 26px; flex: 1;">
+      <div><div class="display white" style="font-size: 64px;">never</div><p style="font-size: 22px; margin: 8px 0 0;">when a ring of 3 or 6 of your own wallets reaches Trusted, in a full simulated year (120 days shown)</p></div>
+      <div><div class="display white" style="font-size: 64px;">$<span data-count="1617" data-format="comma">1,617</span></div><p style="font-size: 22px; margin: 8px 0 0;">burned in fees by a ring of 12 to get there, over 33 days</p></div>
+      <div><div class="display mint" style="font-size: 64px;">$25</div><p style="font-size: 22px; margin: 8px 0 0;">most a ring clears per wallet in an exit scam, at any size</p></div>
+    </div>
+  </div>
+  <p class="source">Computed by the same arithmetic the program runs, at the mainnet target parameters. Reproduce: npm run test:formula</p>
+</section>
+
+<section data-document-role="page" data-label="Next: proof of personhood" data-speaker-notes="Next, a zero-knowledge proof that each operator is one person. A ring becomes one identity. Nobody learns who.">
+  <p class="kicker">Next: proof of personhood</p>
+  <h1 style="font-size: 74px; max-width: 22ch;">One person, one identity. <em>However many wallets.</em></h1>
+  <div class="row" style="gap: 64px; margin-top: 60px; align-items: center;">
+    <div style="flex: 1.05; display: flex; align-items: center; gap: 60px;">
+      <div class="col" style="gap: 28px;">
+        <div class="mono grey" style="font-size: 17px; padding: 14px 22px; border: 2px solid #8b8a7c; border-radius: 40px;">sock-1</div>
+        <div class="mono grey" style="font-size: 17px; padding: 14px 22px; border: 2px solid #8b8a7c; border-radius: 40px;">sock-2</div>
+        <div class="mono grey" style="font-size: 17px; padding: 14px 22px; border: 2px solid #8b8a7c; border-radius: 40px;">sock-3</div>
+        <div class="mono grey" style="font-size: 17px; padding: 14px 22px; border: 2px solid #8b8a7c; border-radius: 40px;">washer</div>
+      </div>
+      <div class="mono grey" style="font-size: 40px;">→</div>
+      <div class="card on" style="text-align: center; padding: 34px 40px;"><div class="mono mint" style="font-size: 22px;">one nullifier</div><div class="mono grey" style="font-size: 16px; margin-top: 10px;">Poseidon(secret, scope)</div></div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3 style="font-size: 36px;">Rings collapse</h3><p style="font-size: 22px;">Orders between one operator's own wallets earn nothing.</p></div>
+      <div class="card"><h3 style="font-size: 36px;">Penalties stick</h3><p style="font-size: 22px;">A fresh wallet still answers for the person behind it.</p></div>
+      <div class="card"><h3 style="font-size: 36px;">Nobody learns who</h3><p style="font-size: 22px;">The proof shows membership in a verified group, never which member.</p></div>
+    </div>
+  </div>
+  <p class="source">Roadmap, not built. A Semaphore-style zero-knowledge proof (Groth16 over BN254, which Solana verifies with its alt_bn128 syscalls) would address two open items in docs/SECURITY.md, large rings (C2) and whitewashing (C12), but needs an issuer of operator attestations that is not designed.</p>
+</section>
+
+<section data-document-role="page" data-label="Live on devnet" data-speaker-notes="This is live on devnet. Agents find each other, pay over x402, and earn their tier on-chain. Honest merchants reached Trusted; the wash-trading ring did not.">
+  <p class="kicker">Live on Solana devnet · read from the chain</p>
+  <div class="row" style="gap: 56px; margin-top: 10px; align-items: center;">
+    <div class="shot kb" style="width: 1000px; height: 808px;"><img src="img/live-graph.png" alt="The Tessera network on devnet: merchants as squares, buyers as circles" width="1000" height="808"></div>
+    <div class="col" style="gap: 34px;">
+      <div><div class="display white" style="font-size: 76px;"><span data-count="239">239</span></div><div class="mono grey" style="font-size: 16px; margin-top: 10px;">orders settled through escrow</div></div>
+      <div><div class="display white" style="font-size: 76px;"><span data-count="10">10</span></div><div class="mono grey" style="font-size: 16px; margin-top: 10px;">agents that have earned Trusted</div></div>
+      <div><div class="display white" style="font-size: 76px;"><span data-count="42">42</span></div><div class="mono grey" style="font-size: 16px; margin-top: 10px;">orders settled instantly</div></div>
+      <div><div class="display white" style="font-size: 76px;"><span data-count="562">562</span></div><div class="mono grey" style="font-size: 16px; margin-top: 10px;">score of the wash-trading ring's merchant (Established)</div></div>
+    </div>
+  </div>
+  <p class="source">Demo network: this project's own agents, recycled test USDC, time compressed (one period = 60 s). $57.80 settled.</p>
+</section>
+
+<section data-document-role="page" data-label="Cheaper, and final sooner" data-speaker-notes="It is also cheaper. Seven cents on a card costs thirty cents, disputable for four months. Here, a fraction of a cent.">
+  <p class="kicker">Cheaper, and final sooner</p>
+  <h1 style="font-size: 78px; max-width: 20ch;">What it takes to move <em>seven cents.</em></h1>
+  <div class="row" style="gap: 72px; margin-top: 52px;">
+    <div style="flex: 1;">
+      <div class="mono grey" style="font-size: 16px; letter-spacing: 0.08em; margin-bottom: 22px;">WHAT THE PAYMENT COSTS</div>
+      <div style="display: flex; justify-content: space-between; font-size: 24px; color: #f1eee2;"><span>Card processor (2.9% + 30¢)</span><span class="mono">$0.3020 · 431%</span></div>
+      <div class="bar" style="margin: 10px 0 30px;"><i style="background: #ec835a;"></i></div>
+      <div style="display: flex; justify-content: space-between; font-size: 24px; color: #f1eee2;"><span>Tessera escrow (1%)</span><span class="mono">$0.0007 · 1%</span></div>
+      <div class="bar" style="margin-top: 10px;"><i style="width: 1%; min-width: 6px; background: #4f8cf0;"></i></div>
+    </div>
+    <div style="flex: 1;">
+      <div class="mono grey" style="font-size: 16px; letter-spacing: 0.08em; margin-bottom: 22px;">HOW LONG IT STAYS OPEN TO DISPUTE</div>
+      <div style="display: flex; justify-content: space-between; font-size: 24px; color: #f1eee2;"><span>Card chargeback window</span><span class="mono">120 days</span></div>
+      <div class="bar" style="margin: 10px 0 30px;"><i style="background: #ec835a;"></i></div>
+      <div style="display: flex; justify-content: space-between; font-size: 24px; color: #f1eee2;"><span>Tessera, a new wallet</span><span class="mono">3 days</span></div>
+      <div class="bar" style="margin: 10px 0 30px;"><i style="width: 2.5%; background: #4f8cf0;"></i></div>
+      <div style="display: flex; justify-content: space-between; font-size: 24px; color: #f1eee2;"><span>Tessera, two Trusted agents</span><span class="mono">none · settles with delivery</span></div>
+      <div class="bar" style="margin-top: 10px;"></div>
+    </div>
+  </div>
+  <p style="font-size: 26px; max-width: 60ch; margin: 48px 0 0; line-height: 1.4;">The buyer pays no network fee: the x402 facilitator does. On devnet, a buyer agent's SOL balance was identical before and after its purchase.</p>
+  <p class="source">Card price: stripe.com/pricing (5 Oct 2026). Chargeback window: Stripe, “Chargeback time limits in the UK”. Tessera holds: mainnet targets.</p>
+</section>
+
+<section data-document-role="page" data-label="Where it fits" data-speaker-notes="Solana has x402 for payment and a registry for identity. Tessera sits between them, and every review we send it carries proof of payment.">
+  <p class="kicker">Where it fits</p>
+  <h1 style="font-size: 76px; max-width: 27ch;">Solana has the identity and the payment. <em>This is the credit.</em></h1>
+  <div class="col" style="gap: 14px; margin-top: 44px;">
+    <div class="card" style="display: flex; align-items: center; gap: 28px; padding: 22px 30px;"><span class="mono grey" style="font-size: 15px; letter-spacing: 0.1em; width: 150px;">IDENTITY</span><span style="flex: 1;"><span class="display white" style="font-size: 42px;">Solana Agent Registry</span> <span class="mono grey" style="font-size: 15px;">&nbsp;ERC-8004 on Solana</span></span><span style="font-size: 24px; flex: 1.05;">Who the agent is, and what others say about it.</span></div>
+    <div class="card on" style="display: flex; align-items: center; gap: 28px; padding: 22px 30px;"><span class="mono mint" style="font-size: 15px; letter-spacing: 0.1em; width: 150px;">CREDIT</span><span style="flex: 1;"><span class="display mint" style="font-size: 42px;">Tessera</span> <span class="mono grey" style="font-size: 15px;">&nbsp;escrow and an on-chain score</span></span><span class="white" style="font-size: 24px; flex: 1.05;">Whether the money waits, and for how long.</span></div>
+    <div class="card" style="display: flex; align-items: center; gap: 28px; padding: 22px 30px;"><span class="mono grey" style="font-size: 15px; letter-spacing: 0.1em; width: 150px;">PAYMENT</span><span style="flex: 1;"><span class="display white" style="font-size: 42px;">x402</span> <span class="mono grey" style="font-size: 15px;">&nbsp;the exact scheme, unchanged</span></span><span style="font-size: 24px; flex: 1.05;">How the money moves.</span></div>
+  </div>
+  <p style="font-size: 26px; max-width: 62ch; margin: 36px 0 0; line-height: 1.4;">Our 4 merchant agents are in the Agent Registry on devnet. Each of the 28 reviews Tessera has mirrored there points at the escrow account that proves the purchase.</p>
+  <p class="source">solana.com/agent-registry. Assets and mirrored reviews: deployments/registry.json. ERC-8004: “Payments are orthogonal to this protocol and not covered here.”</p>
+</section>
+
+<section class="paper" data-document-role="page" data-label="The market, and the business" data-speaker-notes="McKinsey estimates agents could orchestrate three to five trillion dollars of global commerce by twenty thirty. We take one percent of what settles. Sellers add one function; buyers, one check.">
+  <p class="kicker">The market, and the business</p>
+  <div class="row" style="gap: 64px; margin-top: 30px;">
+    <div style="flex: 1.3;"><div class="display" style="font-size: 168px;">$3–5<span style="font-size: 76px;"> trillion</span></div><p style="font-size: 27px; margin: 18px 0 0; line-height: 1.35; max-width: 25ch;">of global commerce that AI agents could orchestrate by 2030, on McKinsey's estimate</p></div>
+    <div style="flex: 1;"><div class="display" style="font-size: 168px;">1<span style="font-size: 76px;">%</span></div><p style="font-size: 27px; margin: 18px 0 0; line-height: 1.35; max-width: 22ch;">of what settles through escrow. Nothing on what does not.</p></div>
+  </div>
+  <div class="row" style="gap: 24px; margin-top: 44px;">
+    <div class="card" style="flex: 1;"><h3 style="font-size: 36px;">For sellers</h3><p style="color: #4b483e;">One function, quote(), opens the escrow behind an existing x402 endpoint or A2A agent.</p></div>
+    <div class="card" style="flex: 1;"><h3 style="font-size: 36px;">For buyers</h3><p style="color: #4b483e;">One check, verifyOrderForPayment(), before signing. No SOL, no account, no sign-up.</p></div>
+    <div class="card" style="flex: 1;"><h3 style="font-size: 36px;">The score itself</h3><p style="color: #4b483e;">Any wallet can be scored by anyone. A demo agent already sells credit reports for 30¢.</p></div>
+  </div>
+  <p class="mono" style="font-size: 19px; color: #4b483e; margin: 30px 0 0;">Illustration, not a forecast: 1% of the low estimate through escrow, at a 1% fee, is $300 million a year.</p>
+  <p class="source">McKinsey, “The agentic commerce opportunity”: $3 trillion to $5 trillion globally by 2030. Tessera today: devnet only, no revenue, no outside users.</p>
+</section>
+
+<section data-document-role="page" data-label="Who is building it" data-speaker-notes="I'm Edison Liu. I study electronic and computer engineering at the ZJU-UIUC Institute, and I spend my spare time on Web3 and security research. I built Tessera for this hackathon, and I intend to keep building it.">
+  <p class="kicker">Who is building it</p>
+  <h1 style="font-size: 120px;">Edison Liu</h1>
+  <p style="font-size: 34px; max-width: 38ch; margin: 30px 0 0; line-height: 1.35;">Electronic and Computer Engineering, ZJU-UIUC Institute. Builds working systems end to end, from embedded hardware to on-chain programs, with AI coding agents as the build engine.</p>
+  <div class="mono grey row" style="gap: 40px; margin-top: 56px; font-size: 22px;"><span>github.com/edison9733</span><span>edison9733.xyz</span></div>
+</section>
+
+<section class="center" data-document-role="page" data-label="Close" data-speaker-notes="Micropayments were the easy part. Every payment matters. This is Tessera.">
+  <h1 style="font-size: 70px; color: #8b8a7c; max-width: 20ch;">Micropayments were the easy part.</h1>
+  <h1 style="font-size: 150px; max-width: 12ch; margin-top: 20px;">Every payment <em class="mint">matters.</em></h1>
+  <div class="row" style="gap: 16px; margin-top: 56px; align-items: center;">
+    {{logo:40}}
+    <span class="mono" style="font-size: 22px;">github.com/edison9733/agentic_commerce</span>
+  </div>
+</section>
