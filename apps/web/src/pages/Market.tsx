@@ -2,8 +2,6 @@ import { AnimatePresence, motion } from 'motion/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { address, type Address, type Instruction, type TransactionSigner } from '@solana/kit';
 import { fetchMaybeToken, getTransferCheckedInstruction } from '@solana-program/token';
-import { useConnectedWallet } from '@solana/kit-plugin-wallet/react';
-import { useClient } from '@solana/react';
 import {
   agentPdaOf,
   bytesEqual,
@@ -28,7 +26,7 @@ import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Addr, EASE, Reveal, TierBadge } from '../components/ui';
 import { loadBurner, sendWith } from '../lib/burner';
-import { AGENTS_URL, readRpc, type AppClient } from '../lib/client';
+import { AGENTS_URL, readRpc } from '../lib/client';
 import { duration, explorerAddress, explorerTx, short, tierName, usd } from '../lib/format';
 import { refresh, useChain, useProfiles } from '../lib/store';
 
@@ -76,30 +74,16 @@ const claims = {
   },
 };
 
-/** Whoever is paying: a connected wallet, or the built-in devnet test wallet. */
+/** Whoever is paying: the built-in devnet test wallet, a throwaway key kept in this browser. */
 function usePayer() {
-  const client = useClient<AppClient>();
-  const connected = useConnectedWallet(client);
   const [burner, setBurner] = useState<TransactionSigner | null>(null);
   useEffect(() => {
     void loadBurner().then(setBurner);
   }, []);
   return useMemo(() => {
-    if (connected) {
-      const signer = (client as unknown as { payer: TransactionSigner }).payer;
-      return {
-        kind: 'wallet' as const,
-        address: connected.account.address as Address,
-        signer,
-        send: async (ixs: Instruction[]) => {
-          const out = await client.sendTransaction(ixs);
-          return (out as { context: { signature: string } }).context.signature;
-        },
-      };
-    }
     if (!burner) return null;
     return { kind: 'burner' as const, address: burner.address, signer: burner, send: (ixs: Instruction[]) => sendWith(burner, ixs) };
-  }, [client, connected, burner]);
+  }, [burner]);
 }
 
 function useBalances(owner?: Address) {
@@ -215,7 +199,7 @@ function Checkout({ item, payer, onClose, onBalance }: { item: Item; payer: NonN
       mark(1, { state: 'done', detail: `buyer is you · merchant, amount, mint and request hash match · the address to pay is the escrow derived from the order id · hold on-chain ${duration(verified.data.holdSecs)}` });
 
       at = 2;
-      mark(2, { state: 'doing', detail: payer.kind === 'wallet' ? 'Approve the transfer in your wallet…' : undefined });
+      mark(2, { state: 'doing' });
       const sig = await payer.send([
         getTransferCheckedInstruction({ source: await findAta(payer.address, USDC_DEVNET), mint: USDC_DEVNET, destination: verified.vault, authority: payer.signer, amount: BigInt(item.price), decimals: 6 }),
         await getConfirmFundedInstructionAsync({ order: verified.order, mint: USDC_DEVNET }),
@@ -345,7 +329,7 @@ function Checkout({ item, payer, onClose, onBalance }: { item: Item; payer: NonN
               Pay {usd(BigInt(item.price))} into escrow
             </button>
             <p className="mono text-[0.7rem]" style={{ color: '#878371' }}>
-              Paying as {payer.kind === 'wallet' ? 'your connected wallet' : 'the built-in devnet test wallet'} <Addr a={payer.address} />. Devnet test funds only.
+              Paying as the built-in devnet test wallet <Addr a={payer.address} />. Devnet test funds only.
             </p>
           </div>
         )}
@@ -489,14 +473,14 @@ export function Market() {
         <Reveal delay={0.1}>
           <div className="card mt-8 flex flex-wrap items-center justify-between gap-4 p-5">
             <div>
-              <div className="eyebrow" style={{ color: '#878371' }}>{payer?.kind === 'wallet' ? 'Paying with your wallet' : 'Paying with the built-in devnet test wallet'}</div>
+              <div className="eyebrow" style={{ color: '#878371' }}>Paying with the built-in devnet test wallet</div>
               <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
                 {payer ? <Addr a={payer.address} n={6} className="text-[0.95rem]" /> : <span className="mono">…</span>}
                 <span className="mono text-[0.84rem]">{balances ? `${usd(balances.usdc)} USDC · ${(Number(balances.sol) / 1e9).toFixed(3)} SOL` : 'reading balances…'}</span>
                 {me && <TierBadge tier={me.eval.tier} />}
                 {me && <span className="mono text-[0.78rem]" style={{ color: '#878371' }}>score {me.eval.score}</span>}
               </div>
-              {payer?.kind === 'burner' && <div className="mt-1.5 text-[0.8rem]" style={{ color: '#878371' }}>A throwaway key kept in this browser, for trying the flow. Connect a real wallet (set to devnet) to use your own.</div>}
+              <div className="mt-1.5 text-[0.8rem]" style={{ color: '#878371' }}>A throwaway key kept in this browser, for trying the flow. Agents sign with their own keys through the API, CLI or SDK.</div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               {faucet && <span className="mono text-[0.76rem]" style={{ color: '#4b483e' }}>{faucet}</span>}

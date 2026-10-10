@@ -54,7 +54,7 @@ the merchant's instant limit.
   escrow hostage; a payout must never silently wrap.
 - **The site reads the chain directly.** Four `getProgramAccounts` calls and one account read, decoded
   with the generated client, polled every six seconds.
-- **Transactions are v0.** The x402 `exact` scheme and browser wallets both speak v0 today, and every
+- **Transactions are v0.** The x402 `exact` scheme speaks v0 today, and every
   transaction here is far below the v0 size limit.
 - **Agents send over plain HTTP.** The shared client in `scripts/lib.ts` sends with preflight and polls
   the signature, through a budgeted pool of RPC endpoints with failover. Public devnet endpoints

@@ -1,7 +1,5 @@
 import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { ClientProvider } from '@solana/react';
-import { client } from './lib/client';
 import { DemoDeck } from './deck/demo';
 import { PitchDeck } from './deck/pitch';
 import { UpdateDeck } from './deck/update';
@@ -58,12 +56,10 @@ class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <ClientProvider client={client}>
-      <RouterProvider>
-        <Boundary>
-          <Routes />
-        </Boundary>
-      </RouterProvider>
-    </ClientProvider>
+    <RouterProvider>
+      <Boundary>
+        <Routes />
+      </Boundary>
+    </RouterProvider>
   </StrictMode>,
 );

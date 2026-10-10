@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react';
 import { Link, usePath } from '../lib/router';
 import { useChain } from '../lib/store';
 import { Logo } from './ui';
-import { Wallet } from './Wallet';
 
 const LINKS: [string, string][] = [
   ['/network', 'Live network'],
@@ -66,7 +65,6 @@ export function Nav({ dark = false }: { dark?: boolean }) {
             />
             {status === 'live' ? 'devnet · live' : status === 'error' ? 'devnet · unreachable' : 'devnet · loading'}
           </span>
-          <Wallet dark={dark} />
           <button
             className="rounded-full border px-3.5 py-2 text-[0.88rem] lg:hidden"
             style={{ borderColor: dark ? '#3a3f33' : '#cfc8b2', cursor: 'pointer' }}

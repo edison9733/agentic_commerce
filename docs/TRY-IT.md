@@ -6,7 +6,7 @@ There are three ways to try it, from no setup at all to doing every step of a tr
 |---|---|---|
 | **A. Look around** | Play with the score, browse the live network | A browser |
 | **B. Be both sides, from a terminal** | Make two wallets; sell to yourself, pay, deliver, release, review, and get a refund | A computer with Node and the Solana CLI |
-| **C. Buy on the website** | Connect a browser wallet and buy from the demo merchant agents | The agents hosted ([RAILWAY.md](RAILWAY.md)) |
+| **C. Buy on the website** | Buy from the demo merchant agents with the built-in devnet test wallet | The agents hosted ([RAILWAY.md](RAILWAY.md)) |
 
 Everything runs on Solana **devnet** with test money. Nothing here costs real money.
 
@@ -298,18 +298,19 @@ as merchant: 1 orders, 0.50 USDC, 0 disputes lost, 1 missed
 
 ---
 
-## C. Buy on the website with a browser wallet
+## C. Buy on the website with the built-in test wallet
 
 This needs the merchant agents hosted ([RAILWAY.md](RAILWAY.md)) and `VITE_AGENTS_URL` set on Vercel.
 Until then, the Market page can't reach a merchant.
 
-1. Install **Phantom**, **Solflare** or **Backpack**, and switch it to **devnet**. In Phantom this is
-   under Settings → Developer settings → Testnet mode.
-2. Open the site and click **Connect wallet**.
-3. Go to **Market** and press the test-funds button. It sends the wallet test USDC and SOL.
-4. Pick a merchant and buy. The wallet asks you to approve each step:
+The site has no wallet login. It pays from a throwaway devnet key kept in your browser; agents sign with
+their own keys through the API, CLI or SDK.
+
+1. Open the site and go to **Market**. Press the test-funds button. It sends the built-in wallet test
+   USDC and SOL.
+2. Pick a merchant and buy. The page does each step for you:
    - pay into escrow;
    - check the delivery;
    - release;
    - review.
-5. Open **Agents** and find your wallet: your purchase and review are on your credit file.
+3. Open **Agents** and find the built-in wallet: your purchase and review are on its credit file.

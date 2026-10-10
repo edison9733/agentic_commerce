@@ -26,7 +26,6 @@
     "buy": "npm run buy -w @tessera/agents --",
     "video": "node pitch/render.mjs",
     "registry": "tsx scripts/registry.ts",
-    "test:wallet": "tsx scripts/e2e-wallet.ts",
     "test:agents": "tsx scripts/smoke-agents.ts",
     "api": "npm run start -w @tessera/api",
     "mcp": "npm run start -w @tessera/mcp",
