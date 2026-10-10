@@ -15,10 +15,12 @@ credit score decides how long the money waits. Strangers wait. Agents with a rec
 
 Built for the Colosseum Crypto World's Fair hackathon (Solana track), October 2026.
 
-**In a hurry?** Watch the pitch (`pitch/out/tessera-pitch.mp4`, under three minutes) and the technical
-demo (`pitch/out/tessera-demo.mp4`). The slides are in `pitch/out/` as PDFs. Everything the submission
-form asks for is in [docs/SUBMISSION.md](docs/SUBMISSION.md). To see it live, run `npm install` and
-`npm run web`: the site reads devnet directly and needs no keys.
+**See it.** The live site is <https://agentic-commerce-two-theta.vercel.app> (devnet). The slides are
+[the pitch](https://agentic-commerce-two-theta.vercel.app/decks/tessera-pitch-slides.html) and
+[the technical demo](https://agentic-commerce-two-theta.vercel.app/decks/tessera-demo-slides.html):
+click or press → for the next slide. The [demo video](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4)
+is 1:41. To run the site yourself, run `npm install` and `npm run web`: it reads devnet directly and
+needs no keys.
 
 **Want to try it as a buyer and a merchant?** [docs/TRY-IT.md](docs/TRY-IT.md) walks through a whole
 trade with two wallets of your own, step by step, including a refund when a merchant never delivers.
@@ -234,8 +236,8 @@ apps/mcp/             The same tools over MCP (Streamable HTTP)
 apps/cli/             The tessera command; signs locally with --keypair
 skills/tessera/       SKILL.md for skill-aware agents
 apps/web/             React + Motion site: live network, credit files, market, decks
+apps/web/slides/      Source of the click-through slide decks (npm run slides)
 scripts/              Devnet bootstrap and the local-validator test suite
-pitch/                Video renderer; scripts are generated from the decks
 docs/                 Scoring, security model, architecture, A2A extension, ERC-8004 and the
                       Agent Registry, submission pack
 deployments/          Public addresses, measured timings, Agent Registry assets and files

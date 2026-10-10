@@ -18,8 +18,9 @@ test-ledger
 .surfpool
 .git
 .claude
-pitch
 docs
 apps/web/dist
 apps/web/public/decks
+apps/web/public/videos
+apps/web/slides
 *.log

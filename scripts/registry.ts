@@ -100,7 +100,7 @@ function registrationFile(id: string, title: string, wallet: string, tesseraAcco
     description:
       `${what}. A demo merchant agent on Solana devnet. It sells over A2A and x402, and every payment goes into a Tessera escrow ` +
       `(program ${TESSERA_PROGRAM_ADDRESS}). Its credit file is the account ${tesseraAccount}. It runs from the repository: npm run agents.`,
-    image: `${REPO_RAW}/pitch/assets/tessera-logo.png`,
+    image: `${REPO_RAW}/deployments/registry/tessera-logo.png`,
     services: [
       { type: ServiceType.A2A, value: agentCardUrl(id) },
       { type: ServiceType.WALLET, value: wallet },
