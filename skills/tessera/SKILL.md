@@ -82,15 +82,20 @@ A `status` other than `ok` is never "fine by default":
 ## Before you sign
 
 Tessera never holds keys: every builder returns an **unsigned** transaction (`transaction`, base64,
-version 0). Before your wallet signs it, check:
+version 0). `signers`, `transfers` and `vault` in the reply are the API's own account of it, so check
+the transaction itself before your wallet signs it:
 
 - `status` is `ok` and `simulation.ok` is `true`.
-- `signers` is only you, and `feePayer` is you.
-- `transfers` (when present) send money only to the `vault` of the order you verified, and the amount
-  is the price you agreed.
+- You are the fee payer and the only signer.
+- Any token instruction is a single transfer from you into the vault of the order you verified
+  on-chain yourself (the order address's token account for the USDC mint), of the price you agreed.
+  No approve, no other destination, no SOL transfer.
+- Every instruction is for the Tessera, SPL Token, associated-token or compute-budget program, and
+  any priority fee is small.
 - `action` is what you meant: `fund_escrow`, `release_and_review`, `dispute`, `refund_missed_delivery`, …
 
-The CLI does these checks itself before it signs with `--keypair`, and refuses anything else.
+The CLI does these checks itself before it signs with `--keypair`, reading the order through its own
+RPC (`--rpc`), and refuses anything else.
 
 ## Reason codes
 

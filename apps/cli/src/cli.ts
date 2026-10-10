@@ -1,29 +1,65 @@
 /**
  * tessera: the Tessera API from a terminal. Every command is one call to the
  * HTTP API. With --keypair the CLI signs the returned transaction locally,
- * after checking it only touches the programs it should and only pays into
- * the order's own escrow vault; the key never leaves this machine.
+ * after reading the order from the chain itself and checking every
+ * instruction against what was asked; the API is not trusted, and the key
+ * never leaves this machine.
  *
  *   npm run tessera -- check <merchant> 0.25 --buyer <wallet>
  *   npm run tessera -- help
  */
-import { readFileSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { parseArgs } from 'node:util';
 import {
+  AccountRole,
+  address,
   createKeyPairSignerFromBytes,
+  createSolanaRpc,
   getBase64EncodedWireTransaction,
   getBase64Encoder,
   getCompiledTransactionMessageDecoder,
   getTransactionDecoder,
-  isFullySignedTransaction,
-  partiallySignTransaction,
+  signTransaction,
   type Address,
   type KeyPairSigner,
 } from '@solana/kit';
-import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
-import { ASSOCIATED_TOKEN_PROGRAM_ADDRESS, identifyTokenInstruction, TOKEN_PROGRAM_ADDRESS, TokenInstruction } from '@solana-program/token';
-import { fromHex, orderAddresses, TESSERA_PROGRAM_ADDRESS } from '@tessera/sdk';
+import {
+  COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  ComputeBudgetInstruction,
+  identifyComputeBudgetInstruction,
+  parseSetComputeUnitPriceInstruction,
+} from '@solana-program/compute-budget';
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  AssociatedTokenInstruction,
+  fetchMint,
+  identifyAssociatedTokenInstruction,
+  identifyTokenInstruction,
+  parseCreateAssociatedTokenIdempotentInstruction,
+  parseTransferCheckedInstruction,
+  TOKEN_PROGRAM_ADDRESS,
+  TokenInstruction,
+} from '@solana-program/token';
+import {
+  bytesEqual,
+  configPda,
+  fetchMaybeConfig,
+  fetchMaybeOrder,
+  findAta,
+  fromHex,
+  fromUnits,
+  hashJson,
+  newOrderId,
+  orderAddresses,
+  OrderVerificationError,
+  parseTesseraInstruction,
+  TESSERA_PROGRAM_ADDRESS,
+  TesseraInstruction,
+  toHex,
+  toUnits,
+  verifyOrderForPayment,
+} from '@tessera/sdk';
 import { OUTCOMES, ROLES, TOOLS, type ToolName } from '@tessera/api/contract';
 
 const HELP = `tessera: credit checks and non-custodial escrow for agent payments on Solana
@@ -47,6 +83,9 @@ After payment
 
 Options
   --api URL        Tessera API (default $TESSERA_API_URL or http://127.0.0.1:4030)
+  --rpc URL        Solana RPC the CLI reads the order from itself before it signs
+                   (default the first of $TESSERA_RPC_URLS or https://api.devnet.solana.com)
+                   Both must be https:// unless on this machine.
   --keypair PATH   sign locally with this Solana keypair file (~ allowed); its address
                    fills in --buyer, --merchant, --signer or --reporter when omitted
   --send           with --keypair: send the signed transaction through the API
@@ -60,6 +99,7 @@ const { values: flags, positionals } = parseArgs({
   allowPositionals: true,
   options: {
     api: { type: 'string' },
+    rpc: { type: 'string' },
     keypair: { type: 'string' },
     send: { type: 'boolean' },
     json: { type: 'boolean' },
@@ -85,12 +125,35 @@ const { values: flags, positionals } = parseArgs({
   },
 }) as { values: Flags; positionals: string[] };
 
-const API = String(flags.api ?? process.env.TESSERA_API_URL ?? 'http://127.0.0.1:4030').replace(/\/$/, '');
-
 function die(message: string): never {
   console.error(`tessera: ${message}`);
   process.exit(1);
 }
+
+/** Plain http only to this machine: anywhere else an on-path attacker could rewrite what comes back. */
+function endpoint(url: string, what: string): string {
+  let u: URL;
+  try {
+    u = new URL(url);
+  } catch {
+    return die(`${what} is not a URL: ${url}`);
+  }
+  const local = ['localhost', '127.0.0.1', '[::1]'].includes(u.hostname);
+  if (u.protocol !== 'https:' && !(u.protocol === 'http:' && local)) die(`${what} must be https:// (http:// only for localhost, 127.0.0.1 or ::1): ${url}`);
+  return url.replace(/\/$/, '');
+}
+
+const API = endpoint(String(flags.api ?? process.env.TESSERA_API_URL ?? 'http://127.0.0.1:4030'), flags.api ? '--api' : 'TESSERA_API_URL');
+
+/** Every string the API sends, without control or bidirectional characters, so a name or a review cannot move the cursor or reorder a line. */
+const scrub = (v: unknown): unknown =>
+  typeof v === 'string'
+    ? v.replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u202a-\u202e\u2066-\u2069]/g, ' ')
+    : Array.isArray(v)
+      ? v.map(scrub)
+      : v && typeof v === 'object'
+        ? Object.fromEntries(Object.entries(v).map(([k, x]) => [scrub(k), scrub(x)]))
+        : v;
 
 const json = (s: string | undefined, what: string): unknown => {
   if (s === undefined) return undefined;
@@ -126,7 +189,7 @@ async function call(tool: ToolName, args: Record<string, unknown>): Promise<{ ht
   } catch (e) {
     return die(`the API at ${API} is unreachable (${(e as Error).message}). Start it with: npm run api`);
   }
-  const body = (await res.json().catch(() => ({ status: 'internal_error', message: `HTTP ${res.status} without JSON` }))) as Record<string, unknown>;
+  const body = scrub(await res.json().catch(() => ({ status: 'internal_error', message: `HTTP ${res.status} without JSON` }))) as Record<string, unknown>;
   return { http: res.status, body };
 }
 
@@ -134,53 +197,222 @@ async function call(tool: ToolName, args: Record<string, unknown>): Promise<{ ht
 
 async function loadKeypair(path: string): Promise<KeyPairSigner> {
   const full = path.replace(/^~(?=\/|$)/, homedir());
-  let bytes: number[];
+  let bytes: unknown;
   try {
-    bytes = JSON.parse(readFileSync(full, 'utf8')) as number[];
+    // Like ssh: say so when other users can read the key.
+    if (process.platform !== 'win32' && statSync(full).mode & 0o044) console.error(`tessera: warning: ${full} is readable by other users (chmod 600 it)`);
+    bytes = JSON.parse(readFileSync(full, 'utf8'));
   } catch (e) {
-    return die(`cannot read keypair ${full}: ${(e as Error).message}`);
+    // Never the parse error: it quotes the file, and the file is the secret key.
+    return die(`cannot read keypair ${full}: ${(e as NodeJS.ErrnoException).code ?? 'expected a JSON array of 64 bytes'}`);
   }
-  return createKeyPairSignerFromBytes(Uint8Array.from(bytes));
+  const ok = Array.isArray(bytes) && bytes.length === 64 && bytes.every((b) => Number.isInteger(b) && b >= 0 && b <= 255);
+  if (!ok) die(`cannot read keypair ${full}: expected a JSON array of 64 bytes`);
+  return createKeyPairSignerFromBytes(Uint8Array.from(bytes as number[])).catch(() => die(`cannot read keypair ${full}: not a valid key pair`));
 }
 
 const ALLOWED_PROGRAMS = new Set<string>([TESSERA_PROGRAM_ADDRESS, TOKEN_PROGRAM_ADDRESS, ASSOCIATED_TOKEN_PROGRAM_ADDRESS, COMPUTE_BUDGET_PROGRAM_ADDRESS]);
+const SYSTEM_PROGRAM_ADDRESS = address('11111111111111111111111111111111');
+/** The highest priority fee signed, in micro-lamports per compute unit: at most 0.0014 SOL at 1.4M units. */
+const MAX_CU_PRICE = 1_000_000n;
 
-/**
- * Refuse to sign anything but what the API said it built: only the Tessera,
- * SPL Token, associated-token and compute-budget programs, no lookup tables,
- * and the only token instruction a transfer into the escrow vault that this
- * machine derives itself from the order id.
- */
-async function guard(b64: string, reply: Record<string, unknown>, me: Address): Promise<void> {
-  const tx = getTransactionDecoder().decode(getBase64Encoder().encode(b64));
-  const msg = getCompiledTransactionMessageDecoder().decode(tx.messageBytes);
-  if (msg.version !== 0 && msg.version !== 'legacy') return die('refusing to sign: only legacy and version-0 transactions can be checked');
-  if ('addressTableLookups' in msg && (msg.addressTableLookups?.length ?? 0) > 0) die('refusing to sign: the transaction uses address lookup tables');
-  const keys = msg.staticAccounts;
-  if (keys[0] !== me) die(`refusing to sign: the fee payer is ${keys[0]}, not your wallet ${me}`);
-  for (const ix of msg.instructions) {
-    const program = keys[ix.programAddressIndex]!;
-    if (!ALLOWED_PROGRAMS.has(program)) die(`refusing to sign: the transaction calls ${program}`);
-    if (program !== TOKEN_PROGRAM_ADDRESS) continue;
-    if (identifyTokenInstruction(ix.data ?? new Uint8Array()) !== TokenInstruction.TransferChecked) die('refusing to sign: a token instruction other than a transfer');
-    const [, mintIdx, destIdx] = ix.accountIndices ?? [];
-    const mint = keys[mintIdx!]!;
-    const destination = keys[destIdx!]!;
-    if (typeof reply.orderId !== 'string') die('refusing to sign: a token transfer without an order id to check it against');
-    const { vault } = await orderAddresses(fromHex(reply.orderId), mint);
-    if (destination !== vault) die(`refusing to sign: the transfer goes to ${destination}, not the escrow vault ${vault}`);
+/** The Tessera instructions each command that acts on an existing order may build. */
+const SETTLES: Record<string, TesseraInstruction[] | undefined> = {
+  deliver: [TesseraInstruction.ConfirmFunded, TesseraInstruction.Deliver, TesseraInstruction.Release],
+  release: [TesseraInstruction.Release],
+  reclaim: [TesseraInstruction.Refund, TesseraInstruction.CancelUnpaid, TesseraInstruction.ResolveDispute],
+  report: [TesseraInstruction.Release, TesseraInstruction.SubmitReview, TesseraInstruction.OpenDispute, TesseraInstruction.Refund],
+};
+
+/** What a transaction may do, from the command line and this machine's own reads of the chain; nothing from the API's reply. */
+type Expected = {
+  order: Address;
+  vault: Address;
+  mint: Address;
+  decimals: number;
+  tessera: TesseraInstruction[];
+  /** Besides the signer and the order's vault, whose token accounts the signer may pay to recreate. */
+  payees: Address[];
+  /** open buyer: the one transfer, from the signer's token account, of the order's on-chain amount. */
+  pay?: { source: Address; amount: bigint };
+  open?: { orderId: Uint8Array; buyer: Address; amount: bigint; requestHash: Uint8Array; minHoldSecs: number };
+  deliveryHash?: Uint8Array;
+  review?: { rating: number; text?: string };
+};
+
+async function expected(cmd: string, args: Record<string, unknown>, me: Address): Promise<Expected> {
+  const url = endpoint(String(flags.rpc ?? ((process.env.TESSERA_RPC_URLS ?? '').split(',')[0]!.trim() || 'https://api.devnet.solana.com')), flags.rpc ? '--rpc' : 'TESSERA_RPC_URLS');
+  const rpc = createSolanaRpc(url);
+  const read = <T>(p: Promise<T>): Promise<T> => p.catch((e: Error) => die(`cannot read the chain at ${url}: ${e.message}`));
+  const cfg = await read(fetchMaybeConfig(rpc, await configPda()));
+  if (!cfg.exists) return die(`no Tessera program is set up at ${url}; pass --rpc for the cluster the API serves`);
+  const mint = cfg.data.mint;
+  const { decimals } = (await read(fetchMint(rpc, mint))).data;
+  const hex = (k: string) => (args[k] === undefined ? undefined : fromHex(String(args[k])));
+
+  if (cmd === 'open' && args.role === 'merchant') {
+    // The order id is the user's --order-id or one this machine chose, never the API's.
+    const orderId = hex('orderId')!;
+    const open = {
+      orderId,
+      buyer: args.buyer as Address,
+      amount: toUnits(String(args.amount), decimals),
+      requestHash: hex('requestHash') ?? (await hashJson(args.request ?? {})),
+      minHoldSecs: (args.minHoldSecs as number | undefined) ?? 0,
+    };
+    return { ...(await orderAddresses(orderId, mint)), mint, decimals, tessera: [TesseraInstruction.EnsureAgent, TesseraInstruction.OpenOrder], payees: [], open };
+  }
+  if (cmd === 'open') {
+    // The order id is the user's --order-id, or read here from the order account the user named.
+    let orderId = hex('orderId');
+    if (!orderId) {
+      const o = await read(fetchMaybeOrder(rpc, args.order as Address));
+      if (!o.exists) return die(`refusing to pay: order ${args.order} does not exist on-chain`);
+      orderId = Uint8Array.from(o.data.orderId);
+    }
+    const v = await verifyOrderForPayment(rpc, {
+      orderId,
+      buyer: me,
+      merchant: args.merchant as Address,
+      amount: toUnits(String(args.amount), decimals),
+      mint,
+      payTo: (args.order as Address | undefined) ?? (await orderAddresses(orderId, mint)).order,
+      requestHash: hex('requestHash') ?? (args.request !== undefined ? await hashJson(args.request) : undefined),
+      minHoldSecs: args.minHoldSecs as number | undefined,
+    }).catch((e: Error) => die(e instanceof OrderVerificationError ? e.message : `cannot read the chain at ${url}: ${e.message}`));
+    return { order: v.order, vault: v.vault, mint, decimals, tessera: [TesseraInstruction.ConfirmFunded], payees: [], pay: { source: await findAta(me, mint), amount: v.data.amount } };
+  }
+  const tessera = SETTLES[cmd];
+  if (!tessera) return die(`refusing to sign: "${cmd}" does not build a transaction`);
+  // The order the user named, as the chain has it. Its payout recreates its payees' token accounts.
+  const order = args.order as Address;
+  const o = await read(fetchMaybeOrder(rpc, order));
+  if (!o.exists || o.programAddress !== TESSERA_PROGRAM_ADDRESS) return die(`refusing to sign: order ${order} is not a Tessera order on-chain`);
+  return {
+    order,
+    vault: await findAta(order, o.data.mint),
+    mint: o.data.mint,
+    decimals,
+    tessera,
+    payees: [o.data.buyer, o.data.merchant, cfg.data.treasury],
+    ...(cmd === 'deliver' ? { deliveryHash: hex('deliveryHash') ?? (await hashJson(args.deliverable)) } : {}),
+    ...(cmd === 'report' ? { review: { rating: (args.rating as number | undefined) ?? (args.outcome === 'satisfied' ? 5 : 1), text: (args.comment as string | undefined) || undefined } } : {}),
+  };
+}
+
+function refuse(why: string): never {
+  return die(`refusing to sign: ${why}`);
+}
+
+/** A parser's answer, or undefined for data it cannot read. */
+function attempt<T>(f: () => T): T | undefined {
+  try {
+    return f();
+  } catch {
+    return undefined;
   }
 }
 
-async function signAndMaybeSend(reply: Record<string, unknown>, kp: KeyPairSigner): Promise<void> {
-  const b64 = String(reply.transaction);
-  await guard(b64, reply, kp.address);
-  const tx = getTransactionDecoder().decode(getBase64Encoder().encode(b64));
-  const signed = await partiallySignTransaction([kp.keyPair], tx);
-  if (!isFullySignedTransaction(signed)) {
-    const missing = Object.entries(signed.signatures).filter(([, s]) => !s).map(([a]) => a);
-    console.log(`signed by you; still needs: ${missing.join(', ')}`);
+/**
+ * Refuse to sign anything but what was asked. This wallet is the fee payer and
+ * the only signer; no lookup tables; only the Tessera, SPL Token,
+ * associated-token and compute-budget programs, so no System instruction (no
+ * SOL transfer, no durable nonce). Every instruction is read in full:
+ * - compute budget: a unit limit, and a unit price of at most MAX_CU_PRICE;
+ * - associated token: create-if-missing only, paid by this wallet, for its own
+ *   account, the order's vault or the order's payees;
+ * - SPL Token: one TransferChecked from this wallet into the vault derived
+ *   here, of the order's on-chain amount (open buyer only);
+ * - Tessera: only the instructions this command builds, on the order the user
+ *   named, with this wallet where the signer goes.
+ * Returns the transfers it found, for display in place of the API's.
+ */
+function guard(b64: string, cmd: string, me: Address, e: Expected): { transfers: { from: Address; to: Address; amount: { usdc: string } }[] } {
+  const tx = attempt(() => getTransactionDecoder().decode(getBase64Encoder().encode(b64))) ?? refuse('a transaction it cannot read');
+  const msg = attempt(() => getCompiledTransactionMessageDecoder().decode(tx.messageBytes)) ?? refuse('a transaction it cannot read');
+  if (msg.version !== 0 && msg.version !== 'legacy') return refuse('only legacy and version-0 transactions can be checked');
+  if ('addressTableLookups' in msg && (msg.addressTableLookups?.length ?? 0) > 0) refuse('the transaction uses address lookup tables');
+  const keys = msg.staticAccounts;
+  if (keys[0] !== me) refuse(`the fee payer is ${keys[0]}, not your wallet ${me}`);
+  if (msg.header.numSignerAccounts !== 1 || Object.keys(tx.signatures).length !== 1) refuse(`it wants ${msg.header.numSignerAccounts} signers; only your wallet may sign`);
+  const transfers: { from: Address; to: Address; amount: { usdc: string } }[] = [];
+  for (const c of msg.instructions) {
+    const program = keys[c.programAddressIndex];
+    if (!program || !ALLOWED_PROGRAMS.has(program)) refuse(`the transaction calls ${program}`);
+    const accounts = (c.accountIndices ?? []).map((i) => ({ address: keys[i] ?? refuse('an instruction names an account the transaction does not carry'), role: AccountRole.READONLY }));
+    const ix = { programAddress: program, accounts, data: c.data ?? new Uint8Array() };
+
+    if (program === COMPUTE_BUDGET_PROGRAM_ADDRESS) {
+      const kind = attempt(() => identifyComputeBudgetInstruction(ix));
+      if (kind === ComputeBudgetInstruction.SetComputeUnitLimit) continue;
+      if (kind !== ComputeBudgetInstruction.SetComputeUnitPrice) refuse('a compute-budget instruction other than a unit limit or price');
+      const price = attempt(() => parseSetComputeUnitPriceInstruction(ix).data.microLamports) ?? refuse('a unit price it cannot read');
+      if (price > MAX_CU_PRICE) refuse(`a priority fee of ${price} micro-lamports per unit (at most ${MAX_CU_PRICE})`);
+    } else if (program === ASSOCIATED_TOKEN_PROGRAM_ADDRESS) {
+      const a = attempt(() =>
+        identifyAssociatedTokenInstruction(ix) === AssociatedTokenInstruction.CreateAssociatedTokenIdempotent ? parseCreateAssociatedTokenIdempotentInstruction(ix).accounts : undefined,
+      );
+      if (!a || a.payer.address !== me || a.mint.address !== e.mint || a.systemProgram.address !== SYSTEM_PROGRAM_ADDRESS || a.tokenProgram.address !== TOKEN_PROGRAM_ADDRESS) {
+        refuse('an associated-token instruction other than creating a missing token account, paid by you');
+      }
+      if (![me, e.order, ...e.payees].includes(a.owner.address)) refuse(`it creates a token account for ${a.owner.address}, who is not a party to order ${e.order}`);
+    } else if (program === TOKEN_PROGRAM_ADDRESS) {
+      const t = attempt(() => (identifyTokenInstruction(ix) === TokenInstruction.TransferChecked ? parseTransferCheckedInstruction(ix) : undefined));
+      if (!t) return refuse('a token instruction other than a transfer');
+      if (t.accounts.destination.address !== e.vault) refuse(`the transfer goes to ${t.accounts.destination.address}, not the escrow vault ${e.vault}`);
+      if (!e.pay || transfers.length || accounts.length !== 4 || t.accounts.source.address !== e.pay.source || t.accounts.authority.address !== me || t.accounts.mint.address !== e.mint) {
+        refuse('a token transfer other than one payment from your wallet into the vault');
+      }
+      if (t.data.amount !== e.pay.amount) refuse(`the transfer is ${fromUnits(t.data.amount, e.decimals)}, the order is ${fromUnits(e.pay.amount, e.decimals)}`);
+      transfers.push({ from: e.pay.source, to: e.vault, amount: { usdc: fromUnits(t.data.amount, e.decimals) } });
+    } else {
+      const p = attempt(() => parseTesseraInstruction(ix));
+      if (!p || !e.tessera.includes(p.instructionType)) return refuse(`a Tessera ${p ? TesseraInstruction[p.instructionType] : 'instruction it cannot read'}, which ${cmd} does not build`);
+      const name = TesseraInstruction[p.instructionType];
+      const on = (p.accounts as { order?: { address: Address } }).order?.address;
+      if (p.instructionType !== TesseraInstruction.EnsureAgent && on !== e.order) refuse(`${name} on order ${on}, not ${e.order}`);
+      let fits: boolean;
+      switch (p.instructionType) {
+        case TesseraInstruction.EnsureAgent:
+          fits = p.accounts.payer.address === me && [me, e.open?.buyer].includes(p.accounts.wallet.address);
+          break;
+        case TesseraInstruction.OpenOrder: {
+          const { accounts: a, data: d } = p;
+          const o = e.open!;
+          fits = a.merchant.address === me && a.payer.address === me && a.buyer.address === o.buyer && a.mint.address === e.mint && bytesEqual(d.orderId, o.orderId) && d.amount === o.amount && bytesEqual(d.requestHash, o.requestHash) && d.minHoldSecs === o.minHoldSecs;
+          break;
+        }
+        case TesseraInstruction.ConfirmFunded:
+          fits = true;
+          break;
+        case TesseraInstruction.Deliver:
+          fits = p.accounts.merchant.address === me && bytesEqual(p.data.deliveryHash, e.deliveryHash!);
+          break;
+        case TesseraInstruction.Release:
+        case TesseraInstruction.Refund:
+        case TesseraInstruction.CancelUnpaid:
+          fits = p.accounts.authority.address === me;
+          break;
+        case TesseraInstruction.ResolveDispute:
+          fits = p.accounts.authority.address === me && p.data.merchantBps === 5_000;
+          break;
+        case TesseraInstruction.SubmitReview:
+          fits = p.accounts.reviewer.address === me && p.accounts.payer.address === me && p.data.rating === e.review!.rating && (e.review!.text === undefined || p.data.text === e.review!.text);
+          break;
+        case TesseraInstruction.OpenDispute:
+          fits = p.accounts.buyer.address === me;
+          break;
+        default:
+          fits = false;
+      }
+      if (!fits) refuse(`${name} is not what you asked for`);
+    }
   }
+  return { transfers };
+}
+
+async function signAndMaybeSend(b64: string, kp: KeyPairSigner): Promise<void> {
+  const signed = await signTransaction([kp.keyPair], getTransactionDecoder().decode(getBase64Encoder().encode(b64)));
   const wire = getBase64EncodedWireTransaction(signed);
   if (!flags.send) {
     console.log(flags.json ? JSON.stringify({ signed: wire }) : `signed transaction (send with --send or any RPC):\n${wire}`);
@@ -314,7 +546,8 @@ switch (cmd) {
       buyer: need(role === 'buyer' ? me('buyer') : flags.buyer, '--buyer'),
       amount: need(flags.amount, '--amount'),
       order: flags.order,
-      orderId: flags['order-id'],
+      // A merchant's order id is chosen here, so the order signed for is never the API's pick.
+      orderId: flags['order-id'] ?? (role === 'merchant' ? toHex(newOrderId()) : undefined),
       request: json(flags.request as string, '--request'),
       requestHash: flags['request-hash'],
       minHoldSecs: int(flags['min-hold'] as string, '--min-hold'),
@@ -355,7 +588,12 @@ switch (cmd) {
 
 const out = await call(tool, args);
 const built = out.http < 400 && typeof out.body.transaction === 'string';
+if (built && kp) {
+  // Checked before anything of the reply is shown or signed; what is shown is what was checked.
+  const e = await expected(cmd, args, kp.address).catch((err: Error) => die(err.message));
+  Object.assign(out.body, { order: e.order, vault: e.vault, signers: [kp.address], ...guard(String(out.body.transaction), cmd, kp.address, e) });
+}
 if (!(built && kp && flags.json)) show(tool, out);
-if (built && kp) await signAndMaybeSend(out.body, kp);
+if (built && kp) await signAndMaybeSend(String(out.body.transaction), kp);
 if (out.http >= 400) process.exit(1);
 if (tool === 'check_payment' && out.body.decision === 'block') process.exit(3);

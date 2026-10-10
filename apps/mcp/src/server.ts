@@ -9,9 +9,11 @@
  * role or an outcome. Nothing here signs: transactions come back unsigned for
  * the agent's own wallet.
  */
+import { isIPv4, isIPv6 } from 'node:net';
 import { fileURLToPath } from 'node:url';
+import express, { type NextFunction, type Request, type Response } from 'express';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { createMcpExpressApp } from '@modelcontextprotocol/sdk/server/express.js';
+import { hostHeaderValidation, localhostHostValidation } from '@modelcontextprotocol/sdk/server/middleware/hostHeaderValidation.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 import {
@@ -30,6 +32,14 @@ import {
 } from '@tessera/api/contract';
 
 const API = (process.env.TESSERA_API_URL ?? 'http://127.0.0.1:4030').replace(/\/$/, '');
+/** Shared with the API: with it, the API counts each MCP client on its own instead of all of them as this server. */
+const RELAY_SECRET = process.env.TESSERA_RELAY_SECRET;
+// Checked here: fetch quotes a header value it refuses in its error, and that error reaches the client.
+if (RELAY_SECRET && !/^[\x21-\x7e]+$/.test(RELAY_SECRET)) throw new Error('TESSERA_RELAY_SECRET must be printable ASCII without spaces');
+/** JSON-RPC messages per client per minute. */
+const MESSAGES_PER_MIN = Number(process.env.TESSERA_MCP_PER_MIN ?? 120);
+/** JSON-RPC messages per request. */
+const MAX_BATCH = 10;
 
 const address = (what: string) => z.string().regex(new RegExp(ADDRESS_PATTERN)).describe(`${what} (Solana address, base58)`);
 const amount = z.string().regex(new RegExp(AMOUNT_PATTERN)).describe('USDC as a decimal string, e.g. "0.25"');
@@ -44,14 +54,51 @@ Rule: before any paid tool call or x402 payment, call check_payment with the mer
 - decision "escrow": pay only into a Tessera escrow (open_escrow with role "buyer" on the order the merchant quoted). Never pay the merchant's wallet directly.
 - decision "instant": the payment settles on delivery with no dispute window.
 - status "unknown_merchant" means nobody has settled an order with that wallet: treat it as a stranger.
-Transactions come back unsigned. Check "signers", "transfers" and "simulation" before your wallet signs; then send it yourself or with submit_transaction.
+Transactions come back unsigned. Before your wallet signs, check "simulation" and the transaction itself, not just the reply's "signers" and "transfers": you are the fee payer and the only signer, and any token transfer goes from you into the vault of the order you verified, for the agreed amount. Then send it yourself or with submit_transaction.
 After delivery, call report_outcome. If the merchant missed its deadline, call reclaim_after_timeout.
 Reviews are paid: a share of the fee, the same for 1 or 5 stars, more if the rating proves accurate and nothing for praising a wallet that then fails. Rate what you actually got.`;
 
 type Args = Record<string, unknown>;
 
+/** The key a client is counted under: its IPv4 address, or the /64 its IPv6 address is in (one subscriber's usual allocation). */
+export function clientKey(ip: string | undefined): string {
+  const a = (ip ?? '').split('%')[0]!.replace(/^::ffff:(?=\d+\.)/i, '');
+  if (isIPv4(a)) return a;
+  if (!isIPv6(a)) return 'unknown';
+  const [head = '', tail = ''] = a.split('::');
+  const h = head ? head.split(':') : [];
+  const t = tail ? tail.split(':') : [];
+  // A dotted IPv4 tail fills two groups.
+  const missing = 8 - h.length - t.length - (t.at(-1)?.includes('.') ? 1 : 0);
+  const groups = [...h, ...Array<string>(Math.max(0, missing)).fill('0'), ...t];
+  return `${groups.slice(0, 4).map((g) => parseInt(g, 16).toString(16)).join(':')}::/64`;
+}
+
+/** A fixed one-minute window per client, as in the API, counting JSON-RPC messages rather than requests. */
+function limiter() {
+  const hits = new Map<string, { n: number; until: number }>();
+  // Expired windows are dropped every minute, and past 50,000 clients the oldest go first, so the map stays bounded.
+  setInterval(() => {
+    const now = Date.now();
+    for (const [k, h] of hits) if (h.until < now) hits.delete(k);
+  }, 60_000).unref();
+  return (key: string, n: number): number | null => {
+    const now = Date.now();
+    const h = hits.get(key);
+    if (!h || h.until < now) {
+      hits.delete(key);
+      if (hits.size >= 50_000) hits.delete(hits.keys().next().value!);
+      hits.set(key, { n, until: now + 60_000 });
+      return null;
+    }
+    if (h.n + n > MESSAGES_PER_MIN) return Math.ceil((h.until - now) / 1000);
+    h.n += n;
+    return null;
+  };
+}
+
 /** Call the API for one tool. Path parameters come out of the arguments; the rest is the JSON body. */
-export async function callApi(tool: ToolName, args: Args) {
+export async function callApi(tool: ToolName, args: Args, client = 'unknown') {
   const spec = TOOLS[tool];
   const rest: Args = { ...args };
   const path = spec.path.replace(/\{(\w+)\}/g, (_, k: string) => {
@@ -69,8 +116,12 @@ export async function callApi(tool: ToolName, args: Args) {
         : '';
     const res = await fetch(`${API}${path}${qs}`, {
       method: spec.method,
-      headers: { 'content-type': 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        ...(RELAY_SECRET ? { 'X-Tessera-Relay': RELAY_SECRET, 'X-Tessera-Client': client.slice(0, 64) } : {}),
+      },
       ...(spec.method === 'POST' ? { body: JSON.stringify(rest) } : {}),
+      signal: AbortSignal.timeout(30_000),
     });
     http = res.status;
     body = (await res.json().catch(() => ({ status: 'internal_error', message: `the API answered ${res.status} without JSON` }))) as Record<string, unknown>;
@@ -88,13 +139,14 @@ const READ = { readOnlyHint: true, openWorldHint: true } as const;
 /** Builders change nothing themselves: they return a transaction for the agent to sign. */
 const BUILD = { readOnlyHint: true, destructiveHint: false, openWorldHint: true } as const;
 
-export function buildServer(): McpServer {
+/** `client` is the rate-limit key of the caller, passed on to the API when the relay secret is set. */
+export function buildServer(client?: string): McpServer {
   const server = new McpServer({ name: 'tessera', version: '0.1.0' }, { instructions: INSTRUCTIONS });
   const tool = (name: ToolName, title: string, extra: string, inputSchema: z.ZodRawShape, annotations: Record<string, boolean>) =>
     server.registerTool(
       name,
       { title, description: `${TOOLS[name].summary} ${extra}`.trim(), inputSchema, annotations },
-      async (args: Args) => callApi(name, args),
+      async (args: Args) => callApi(name, args, client),
     );
 
   tool(
@@ -201,11 +253,29 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ...(process.env.ALLOWED_HOSTS ?? '').split(',').map((h) => h.trim()).filter(Boolean),
     ...(process.env.RAILWAY_PUBLIC_DOMAIN ? [process.env.RAILWAY_PUBLIC_DOMAIN, 'healthcheck.railway.app'] : []),
   ];
-  const app = createMcpExpressApp({ host, ...(allowedHosts.length ? { allowedHosts } : {}) });
+  // What createMcpExpressApp sets up, with a smaller body limit than its 100 KB.
+  const app = express();
+  app.disable('x-powered-by');
+  // X-Forwarded-For is believed only behind a proxy: TRUST_PROXY, or one hop on Railway.
+  // A number is a hop count; anything else, addresses or names.
+  const tp = process.env.TRUST_PROXY ?? (process.env.RAILWAY_ENVIRONMENT ? '1' : undefined);
+  if (tp) app.set('trust proxy', /^\d+$/.test(tp) ? Number(tp) : tp);
+  if (allowedHosts.length) app.use(hostHeaderValidation(allowedHosts));
+  else if (['127.0.0.1', 'localhost', '::1'].includes(host)) app.use(localhostHostValidation());
+  else console.warn(`Warning: serving ${host} without ALLOWED_HOSTS, so with no DNS-rebinding protection.`);
+  app.use(express.json({ limit: '64kb' }));
+  const limited = limiter();
+  const rpcError = (code: number, message: string) => ({ jsonrpc: '2.0', error: { code, message }, id: null });
 
   // Stateless: a fresh server and transport per request, so nothing is shared between callers.
   app.post('/mcp', async (req, res) => {
-    const server = buildServer();
+    const client = clientKey(req.ip);
+    // One batch can carry many tool calls, each a call to the API: every message counts.
+    const messages = Array.isArray(req.body) ? req.body.length : 1;
+    if (messages > MAX_BATCH) return void res.status(400).json(rpcError(-32600, `A batch may hold at most ${MAX_BATCH} messages.`));
+    const wait = limited(client, Math.max(1, messages));
+    if (wait !== null) return void res.status(429).set('retry-after', String(wait)).json(rpcError(-32000, `Too many requests; try again in ${wait} s.`));
+    const server = buildServer(client);
     const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined, enableJsonResponse: true });
     res.on('close', () => {
       void transport.close();
@@ -216,14 +286,25 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
       await transport.handleRequest(req, res, req.body);
     } catch (e) {
       console.error('[mcp]', e);
-      if (!res.headersSent) res.status(500).json({ jsonrpc: '2.0', error: { code: -32603, message: 'Internal error' }, id: null });
+      if (!res.headersSent) res.status(500).json(rpcError(-32603, 'Internal error'));
     }
   });
   const notAllowed = (_req: unknown, res: { status: (n: number) => { json: (b: unknown) => void } }) =>
-    res.status(405).json({ jsonrpc: '2.0', error: { code: -32000, message: 'Method not allowed: this server is stateless, POST /mcp' }, id: null });
+    res.status(405).json(rpcError(-32000, 'Method not allowed: this server is stateless, POST /mcp'));
   app.get('/mcp', notAllowed);
   app.delete('/mcp', notAllowed);
   app.get('/health', (_req, res) => res.json({ status: 'ok', api: API }));
+  app.use((_req: Request, res: Response) => res.status(404).json(rpcError(-32000, 'Not found: POST /mcp')));
+  // A body that is not JSON or too large, or anything else that throws: a JSON-RPC error, never a stack trace.
+  app.use((err: Error & { status?: number }, _req: Request, res: Response, _next: NextFunction) => {
+    if (res.headersSent) return;
+    const status = err.status && err.status >= 400 && err.status < 500 ? err.status : 500;
+    if (status === 500) console.error('[mcp]', err);
+    res.status(status).json(status === 413 ? rpcError(-32600, 'Request body too large.') : status === 500 ? rpcError(-32603, 'Internal error') : rpcError(-32700, 'Parse error'));
+  });
 
-  app.listen(port, host, () => console.log(`Tessera MCP (Streamable HTTP) on http://${host}:${port}/mcp  -> API ${API}`));
+  const listener = app.listen(port, host, () => console.log(`Tessera MCP (Streamable HTTP) on http://${host}:${port}/mcp  -> API ${API}`));
+  // A slow client cannot hold a connection open: headers within 10 s, the whole request within 30 s.
+  listener.headersTimeout = 10_000;
+  listener.requestTimeout = 30_000;
 }

@@ -143,11 +143,15 @@ unsigned version-0 transaction, already simulated, with `signers`, `feePayer`, a
 That makes the API unable to move anyone's money by itself. It does not make it trustless: an agent
 signs what it is given. So:
 
-- The **CLI** checks every transaction before signing with `--keypair`: only the Tessera, SPL Token,
-  associated-token and compute-budget programs; no lookup tables; the fee payer is you; and the only
-  token instruction allowed is a transfer into the escrow vault, which the CLI derives itself from the
-  order id. `npm run test:doors` hands it a tampered transaction from a fake API and checks it refuses.
-- The **skill** tells an agent to check `signers`, `transfers` and `simulation` before its wallet signs.
+- The **CLI** does not trust the API. Before signing with `--keypair` it reads the order from the
+  chain through its own RPC (`--rpc`) and checks every instruction: only the Tessera, SPL Token,
+  associated-token and compute-budget programs; no lookup tables; you are the fee payer and the only
+  signer; a capped priority fee; the only token instruction a transfer of the order's on-chain amount
+  into the vault the CLI derives itself from the order you named; and only the Tessera instructions
+  the command builds, on that order. `npm run test:doors` hands it a tampered transaction from a fake
+  API and checks it refuses.
+- The **skill** tells an agent to check the transaction itself, not the reply's summary of it, before
+  its wallet signs.
 - Buyers are verified against the chain, not the API: `open_escrow` with `role: buyer` runs
   `verifyOrderForPayment`, the same check the SDK gives every buyer.
 
