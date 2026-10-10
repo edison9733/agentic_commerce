@@ -34,7 +34,9 @@
     "demo:find": "tsx scripts/demo-find.ts",
     "keys:export": "tsx scripts/keys-export.ts",
     "rewards": "tsx scripts/rewards.ts",
-    "demo:rewards": "tsx scripts/demo-rewards.ts"
+    "demo:rewards": "tsx scripts/demo-rewards.ts",
+    "video:demo": "node pitch/studio/record-demo.mjs --live",
+    "video:pitch": "node pitch/studio/record-pitch.mjs --site https://agentic-commerce-two-theta.vercel.app"
   },
   "devDependencies": {
     "@solana-program/compute-budget": "^0.19.0",

@@ -30,3 +30,6 @@ pitch/out/frames/
 
 # The merchant server's delivery records (the arbiter's evidence)
 .data/
+
+# video studio scratch (throwaway keys, ledger)
+pitch/studio/.run/
