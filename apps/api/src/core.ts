@@ -5,15 +5,24 @@
  * `status` from the contract; nothing is answered with an empty 200.
  */
 import {
+  address,
   createNoopSigner,
   getBase64Encoder,
+  getCompiledTransactionMessageDecoder,
   getSignatureFromTransaction,
   getTransactionDecoder,
   isFullySignedTransaction,
   type Address,
   type Instruction,
+  type ReadonlyUint8Array,
 } from '@solana/kit';
-import { getCreateAssociatedTokenIdempotentInstructionAsync, getTransferCheckedInstruction } from '@solana-program/token';
+import { COMPUTE_BUDGET_PROGRAM_ADDRESS } from '@solana-program/compute-budget';
+import {
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  getCreateAssociatedTokenIdempotentInstructionAsync,
+  getTransferCheckedInstruction,
+  TOKEN_PROGRAM_ADDRESS,
+} from '@solana-program/token';
 import {
   agentPdaOf,
   findAta,
@@ -49,7 +58,8 @@ import {
   type Order,
   type Pair,
 } from '@tessera/sdk';
-import { chainNow, explorerAddress, explorerTx, getConfig, NETWORK, readAgent, readOrder, readPair, rpc, tokenBalance } from './chain.js';
+import { clean } from './cards.js';
+import { chainNow, explorerAddress, explorerTx, getConfig, NETWORK, readAgent, readOrder, readPair, rpc, RpcUnavailable, tokenBalance } from './chain.js';
 import { HTTP_CODE, ORDER_STATES, type Action, type Decision, type Outcome, type Reason, type Status } from './contract.js';
 import { buildUnsigned, type Unsigned } from './tx.js';
 
@@ -112,7 +122,7 @@ function summarize(wallet: Address, a: Agent | null, cfg: Cfg, now: bigint) {
     wallet,
     known: true,
     /** Self-declared and not unique. Identify a party by its wallet, never by this. */
-    name: a.name || null,
+    name: clean(a.name, 32) || null,
     score: e.score,
     tier: TIER_NAMES[e.tier],
     components: { history: e.history, tenure: e.tenure, diversity: e.diversity, evidence: e.evidence, rating: e.rating, behaviourBps: e.behaviour },
@@ -324,10 +334,22 @@ async function txReply(action: Action, feePayer: Address, ixs: Instruction[], fi
   return reply('ok', { action, ...tx, ...fields });
 }
 
+/**
+ * The order at an address, or the reply for there being none. A cancelled
+ * order is still returned (state Cancelled): the program keeps it until its
+ * payment window has passed so its id cannot be reopened, and every caller
+ * decides what that state means for it. The first devnet program closed it at once.
+ */
 async function loadOrder(orderAddr: Address): Promise<Order | Reply> {
   const o = await readOrder(orderAddr);
-  return o ?? reply('unknown_order', { order: orderAddr, message: 'No Tessera order account at this address.' });
+  return o ?? reply('unknown_order', { order: orderAddr, message: 'No Tessera order account at this address: it never existed, or it was cancelled or closed.' });
 }
+
+const CANCELLED = 'This order was cancelled before it was paid. Do not pay into it; ask the merchant for a new order.';
+const cancelledReply = (order: Address) => reply('wrong_state', { order, state: 'Cancelled', message: CANCELLED });
+
+/** The end of the window in which the order can be confirmed as funded (`confirm_funded` refuses after it). */
+const paymentDeadline = (o: Order, cfg: Cfg) => o.createdAt + BigInt(cfg.data.params.unpaidSecs);
 
 // ------------------------------------------------------------ open_escrow
 
@@ -345,10 +367,12 @@ export async function openAsMerchant(i: {
   const units = toUnits(i.amount, cfg.decimals);
   if (i.buyer === i.merchant) return reply('invalid_request', { message: 'buyer and merchant must be different wallets' });
   if (units < cfg.data.params.minOrder) return reply('invalid_request', { message: `amount is below the minimum order of ${fromUnits(cfg.data.params.minOrder, cfg.decimals, 0)} USDC` });
+  if (cfg.data.arbiter === i.buyer || cfg.data.arbiter === i.merchant) return reply('invalid_request', { message: 'the arbiter cannot be a party to an order' });
 
   const id = i.orderId ? fromHex(i.orderId) : newOrderId();
   const { order, vault } = await orderAddresses(id, cfg.data.mint);
-  if (await readOrder(order)) return reply('wrong_state', { order, message: 'An order with this id already exists.' });
+  const existing = await readOrder(order);
+  if (existing) return reply('wrong_state', { order, state: stateName(existing.state), message: 'An order with this id already exists (a cancelled one too, until its payment window has passed). Use a new id.' });
   const requestHash = i.requestHash ? fromHex(i.requestHash) : await hashJson(i.request ?? {});
   const now = await chainNow();
   const { a } = await assess(cfg, i.merchant, i.buyer, units, i.minHoldSecs ?? 0, now);
@@ -419,7 +443,15 @@ export async function openAsBuyer(i: {
   } catch (e) {
     if (!(e instanceof OrderVerificationError)) throw e;
     if (e.field === 'order' && /does not exist/.test(e.message)) return reply('unknown_order', { order: derived.order, message: e.message });
+    if (e.field === 'state' && /Cancelled/.test(e.message)) return cancelledReply(derived.order);
     return reply('verification_failed', { field: e.field, message: e.message, order: derived.order });
+  }
+  if ((await chainNow()) > paymentDeadline(verified.data, cfg)) {
+    return reply('wrong_state', {
+      order: verified.order,
+      state: stateName(verified.data.state),
+      message: 'The payment window for this order has closed, so it can no longer be funded. Do not pay into it; ask the merchant for a new order.',
+    });
   }
   const balance = await tokenBalance(i.buyer, cfg.data.mint);
   if (balance < units) {
@@ -456,9 +488,16 @@ export async function deliverOrder(i: { order: Address; merchant: Address; deliv
   const o = await loadOrder(i.order);
   if (isReply(o)) return o;
   if (o.merchant !== i.merchant) return reply('not_a_party', { message: 'Only the order’s merchant can deliver it.' });
+  if (o.state === OrderState.Cancelled) return cancelledReply(i.order);
   const now = await chainNow();
   const ixs: Instruction[] = [];
   if (o.state === OrderState.AwaitingPayment) {
+    if (now > paymentDeadline(o, cfg)) {
+      return reply('wrong_state', {
+        state: stateName(o.state),
+        message: 'The payment window closed before the order was confirmed as funded, so it cannot be delivered. Cancel it with reclaim_after_timeout: anything paid in goes back to the buyer.',
+      });
+    }
     const vault = await tokenBalance(i.order, o.mint);
     if (vault < o.amount) return reply('not_yet', { message: `The vault holds ${fromUnits(vault, cfg.decimals)} of ${fromUnits(o.amount, cfg.decimals)} USDC. Deliver once it is funded.` });
     ixs.push(await getConfirmFundedInstructionAsync({ order: i.order, mint: o.mint }));
@@ -471,10 +510,11 @@ export async function deliverOrder(i: { order: Address; merchant: Address; deliv
   ixs.push(await getDeliverInstructionAsync({ order: i.order, merchant: signer(i.merchant), deliveryHash }));
 
   // Between two Trusted parties, inside the instant limit, take the money in the same transaction.
+  // The program re-scores the merchant at delivery: one that is no longer Trusted waits out a hold instead.
   let action: Action = 'deliver';
   if (o.holdSecs === 0) {
     const m = await readAgent(i.merchant);
-    if (m && m.instantExposure + o.amount <= score.instantLimit(m, cfg.data.params)) {
+    if (m && score.evaluate(m, cfg.data.params, now).tier === 3 && m.instantExposure + o.amount <= score.instantLimit(m, cfg.data.params)) {
       ixs.unshift(...(await payeeAccounts(i.merchant, o, cfg.data.treasury)));
       ixs.push(getReleaseInstruction(await settleInput(i.order, o, cfg, i.merchant)));
       action = 'deliver_and_release';
@@ -498,6 +538,7 @@ export async function releaseEscrow(i: { order: Address; signer: Address }): Pro
   if (isReply(cfg)) return cfg;
   const o = await loadOrder(i.order);
   if (isReply(o)) return o;
+  if (o.state === OrderState.Cancelled) return cancelledReply(i.order);
   if (o.state !== OrderState.Delivered) {
     return reply('wrong_state', { state: stateName(o.state), message: 'Only a delivered order can be released.' });
   }
@@ -526,14 +567,21 @@ export async function reclaim(i: { order: Address; signer: Address }): Promise<R
 
   if (o.state === OrderState.Funded) {
     const isMerchant = i.signer === o.merchant;
-    if (!isMerchant && now <= o.deliverBy) {
+    // Past the deadline a refund is a missed delivery, whoever sends it; the merchant carries the penalty.
+    const missed = now > o.deliverBy;
+    if (!isMerchant && !missed) {
       return reply('not_yet', { state, availableAt: seconds(o.deliverBy) + 1, message: 'The merchant still has time to deliver.' });
     }
     return txReply(
-      isMerchant ? 'refund' : 'refund_missed_delivery',
+      missed ? 'refund_missed_delivery' : 'refund',
       i.signer,
       [...(await payeeAccounts(i.signer, o, cfg.data.treasury)), getRefundInstruction(await settleInput(i.order, o, cfg, i.signer))],
-      { order: i.order, payouts: await payouts(i.order, o, cfg, 0), next: 'Sign and send. The buyer gets everything back.' },
+      {
+        order: i.order,
+        payouts: await payouts(i.order, o, cfg, 0),
+        ...(missed && isMerchant ? { note: 'The delivery deadline has passed, so this refund counts as a missed delivery and carries its penalty.' } : {}),
+        next: 'Sign and send. The buyer gets everything back.',
+      },
     );
   }
 
@@ -562,6 +610,21 @@ export async function reclaim(i: { order: Address; signer: Address }): Promise<R
       returnedToBuyer: money(paidIn, cfg.decimals),
       next: 'Sign and send. Anything paid in goes back to the buyer; the rent goes back to whoever paid it.',
     });
+  }
+
+  if (o.state === OrderState.Cancelled) {
+    // Cancelled, but someone has since recreated the vault and paid into it: anyone may send that to the buyer.
+    const paidIn = await tokenBalance(i.order, o.mint);
+    if (paidIn === 0n) return reply('wrong_state', { state, message: 'This order was cancelled and nothing is left in its vault.' });
+    return txReply(
+      'cancel_unpaid',
+      i.signer,
+      [
+        await getCreateAssociatedTokenIdempotentInstructionAsync({ payer: signer(i.signer), owner: o.buyer, mint: o.mint }),
+        await getCancelUnpaidInstructionAsync({ order: i.order, mint: o.mint, payer: o.payer, authority: signer(i.signer), buyerToken: await findAta(o.buyer, o.mint) }),
+      ],
+      { order: i.order, returnedToBuyer: money(paidIn, cfg.decimals), next: 'Sign and send. What was paid in after the cancel goes back to the buyer.' },
+    );
   }
 
   if (o.state === OrderState.Disputed) {
@@ -594,8 +657,10 @@ function reviewCounts(o: Order, reviewerIsBuyer: boolean, state: OrderState): { 
   if (state === OrderState.Refunded) return { counts: false, why: 'a refunded order settled nothing, so its review weighs nothing' };
   const settled = o.paidMerchant + o.paidFee;
   if (state === OrderState.Resolved) {
-    const lost = reviewerIsBuyer ? settled * 2n > o.amount : settled * 2n < o.amount;
-    return lost ? { counts: false, why: 'the side that lost a dispute gets no weight on it' } : { counts: true, why: 'weighted by what settled' };
+    // The program's rounding: an even split of an odd amount leaves both sides heard.
+    const half = (o.amount * 5_000n) / 10_000n;
+    const heard = reviewerIsBuyer ? settled <= half : settled >= half;
+    return heard ? { counts: true, why: 'weighted by what settled' } : { counts: false, why: 'the side that lost a dispute gets no weight on it' };
   }
   if (!reviewerIsBuyer && !o.buyerReviewed) return { counts: false, why: 'a merchant’s review counts once the buyer has reviewed the same order' };
   return { counts: true, why: 'weighted by what settled' };
@@ -604,20 +669,28 @@ function reviewCounts(o: Order, reviewerIsBuyer: boolean, state: OrderState): { 
 /**
  * What this review can earn in the review-reward airdrop (docs/REWARDS.md): a
  * share of the fee, the same whatever the stars, scaled by how accurate the
- * review proves to be. An estimate: the program sets the exact weight.
+ * review proves to be. An estimate: the program sets the exact weight, as
+ * here: what settled at the reviewer's tier weight, but no more than this
+ * side of the pair has left of its review cap (the pair cap at that weight).
  */
-async function rewardFor(cfg: Cfg, reviewer: Address, settled: bigint, counts: boolean, now: bigint) {
+async function rewardFor(cfg: Cfg, o: Order, reviewerIsBuyer: boolean, settled: bigint, counts: boolean, now: bigint) {
   const p = cfg.data.params;
   const rp = p.periodSecs >= 86_400 ? rewards.MAINNET_REWARD_PARAMS : rewards.DEVNET_REWARD_PARAMS;
-  const agent = await readAgent(reviewer);
+  const [agent, pair] = await Promise.all([readAgent(reviewerIsBuyer ? o.buyer : o.merchant), readPair(o.buyer, o.merchant)]);
   const q = score.TIER_WEIGHT[agent ? score.evaluate(agent, p, now).tier : 0];
-  const capped = settled < p.pairCap ? settled : p.pairCap;
-  const weight = counts ? (capped * q) / 100n : 0n;
+  const full = (settled * q) / 100n;
+  const cap = (p.pairCap * q) / 100n;
+  const spent = pair ? (reviewerIsBuyer ? pair.ratedByBuyer : pair.ratedByMerchant) : 0n;
+  const room = cap > spent ? cap - spent : 0n;
+  const weight = counts ? (full < room ? full : room) : 0n;
+  const weighs = weight === 0n ? 'nothing' : weight < full ? 'partial' : 'full';
   return {
+    weighs,
+    ...(counts && weighs !== 'full' ? { why: weight === 0n ? 'this side of the pair has used its review cap' : 'only what is left of this side’s review cap on the pair counts' } : {}),
     atOneTimes: money(rewards.baseReward(weight, cfg.data.feeBps, rp), cfg.decimals),
     upTo: money(rewards.maxReward(weight, cfg.data.feeBps, rp), cfg.decimals),
     judgedAfterSecs: rp.maturitySecs,
-    note: 'An estimate from your tier now. The program sets the exact weight when the review lands, and settling this order can raise your tier first.',
+    note: 'An estimate from your tier and this pair’s reviews now. The program sets the exact weight when the review lands, and settling this order can raise your tier first.',
     rule: 'The same whatever the stars. After judgedAfterSecs it is paid x1.5 if you warned others about a wallet that then failed, x1.2 if you agree with other reviewers, x0.5 if far from them, and nothing for 4-5 stars to a wallet that then failed.',
   };
 }
@@ -629,6 +702,7 @@ export async function reportOutcome(i: { order: Address; reporter: Address; outc
   if (isReply(o)) return o;
   const isBuyer = i.reporter === o.buyer;
   if (!isBuyer && i.reporter !== o.merchant) return reply('not_a_party', { message: 'Only the buyer or the merchant can report on this order.' });
+  if (o.state === OrderState.Cancelled) return reply('wrong_state', { order: i.order, state: 'Cancelled', message: 'This order was cancelled before it was paid: there is nothing to report or review.' });
   const p = cfg.data.params;
   const now = await chainNow();
   const state = stateName(o.state);
@@ -651,8 +725,8 @@ export async function reportOutcome(i: { order: Address; reporter: Address; outc
     if (isBuyer ? o.buyerReviewed : o.merchantReviewed) return reply('already_reported', { state, message: 'This party has already reviewed this order.' });
     if (now > o.settledAt + BigInt(p.reviewSecs)) return reply('review_window_closed', { state, message: 'Reviews are accepted for a limited time after settlement.' });
     const w = reviewCounts(o, isBuyer, o.state);
-    const reward = await rewardFor(cfg, i.reporter, o.paidMerchant + o.paidFee, w.counts, now);
-    return txReply('review', i.reporter, [await reviewIx()], { order: i.order, rating, reviewWeighs: w.counts ? 'full' : 'nothing', because: w.why, reward });
+    const { weighs, why, ...reward } = await rewardFor(cfg, o, isBuyer, o.paidMerchant + o.paidFee, w.counts, now);
+    return txReply('review', i.reporter, [await reviewIx()], { order: i.order, rating, reviewWeighs: weighs, because: why ?? w.why, reward });
   }
 
   if (!isBuyer) return reply('wrong_state', { state, message: 'A merchant can report on an order once it has settled.' });
@@ -660,6 +734,7 @@ export async function reportOutcome(i: { order: Address; reporter: Address; outc
   if (o.state === OrderState.Delivered) {
     if (i.outcome === 'satisfied' || now >= o.releaseAt) {
       // Release and review in one transaction. Past the hold, the money goes to the merchant either way.
+      const { weighs, why, ...reward } = await rewardFor(cfg, o, true, o.amount, true, now);
       return txReply(
         'release_and_review',
         i.reporter,
@@ -667,8 +742,9 @@ export async function reportOutcome(i: { order: Address; reporter: Address; outc
         {
           order: i.order,
           rating,
-          reviewWeighs: 'full',
-          reward: await rewardFor(cfg, i.reporter, o.amount, true, now),
+          reviewWeighs: weighs,
+          ...(why ? { because: why } : {}),
+          reward,
           payouts: await payouts(i.order, o, cfg, 10_000),
           ...(i.outcome === 'satisfied' ? {} : { note: 'The hold is over, so it is too late to dispute. This releases the money and records your rating.' }),
         },
@@ -718,10 +794,15 @@ export async function getEscrow(orderAddr: Address): Promise<Reply> {
   const p = cfg.data.params;
   const now = await chainNow();
   const next: { who: 'buyer' | 'merchant' | 'anyone'; tool: string; what: string; from?: number; until?: number }[] = [];
+  const vaultBalance = await tokenBalance(orderAddr, o.mint);
   switch (o.state) {
     case OrderState.AwaitingPayment:
-      next.push({ who: 'buyer', tool: 'open_escrow', what: 'fund it (role buyer)' });
+      if (now <= paymentDeadline(o, cfg)) next.push({ who: 'buyer', tool: 'open_escrow', what: 'fund it (role buyer)', until: seconds(paymentDeadline(o, cfg)) });
       next.push({ who: 'buyer', tool: 'reclaim_after_timeout', what: 'cancel it' });
+      break;
+    case OrderState.Cancelled:
+      // Nothing to pay, deliver or review. Only money that reached a recreated vault afterwards, which goes to the buyer.
+      if (vaultBalance > 0n) next.push({ who: 'anyone', tool: 'reclaim_after_timeout', what: 'return what was paid in after the cancel to the buyer' });
       break;
     case OrderState.Funded:
       next.push({ who: 'merchant', tool: 'deliver_order', what: 'deliver', until: seconds(o.deliverBy) });
@@ -744,10 +825,11 @@ export async function getEscrow(orderAddr: Address): Promise<Reply> {
     order: orderAddr,
     orderId: toHex(o.orderId),
     state: stateName(o.state),
+    ...(o.state === OrderState.Cancelled ? { message: CANCELLED } : {}),
     buyer: o.buyer,
     merchant: o.merchant,
     amount: money(o.amount, cfg.decimals),
-    vaultBalance: money(await tokenBalance(orderAddr, o.mint), cfg.decimals),
+    vaultBalance: money(vaultBalance, cfg.decimals),
     holdSecs: o.holdSecs,
     instant: o.instant,
     pairTrusted: o.pairTrusted,
@@ -788,6 +870,39 @@ function errorText(e: unknown): { message: string; logs: string[] } {
   return { message: parts.join(': ').slice(0, 400), logs: logs.filter((l) => /Error|failed|AnchorError/.test(l)).slice(-8) };
 }
 
+/** The programs a relayed transaction may call at the top level, as the CLI allows (plus the system program). */
+const RELAYED_PROGRAMS = new Set<Address>([
+  TESSERA_PROGRAM_ADDRESS,
+  TOKEN_PROGRAM_ADDRESS,
+  ASSOCIATED_TOKEN_PROGRAM_ADDRESS,
+  COMPUTE_BUDGET_PROGRAM_ADDRESS,
+  address('11111111111111111111111111111111'),
+]);
+/** How long submit waits for confirmation before it answers `confirmed: false`. */
+const SUBMIT_WAIT_MS = 20_000;
+
+/**
+ * Why this API will not relay `messageBytes`, or null if it will: it relays
+ * Tessera transactions, not anyone's, through the operator's RPC.
+ */
+function notRelayed(messageBytes: ReadonlyUint8Array): string | null {
+  const rule =
+    'Only Tessera transactions are relayed: every instruction must call the Tessera, SPL Token, associated-token, compute-budget or system program, ' +
+    'at least one must call Tessera, and address lookup tables are not accepted. Send anything else through any RPC.';
+  let msg;
+  try {
+    msg = getCompiledTransactionMessageDecoder().decode(messageBytes);
+  } catch {
+    return 'transaction has a message this API cannot read';
+  }
+  if ('addressTableLookups' in msg && msg.addressTableLookups?.length) return rule;
+  const programs = ('instructions' in msg ? msg.instructions.map((x) => x.programAddressIndex) : msg.instructionHeaders.map((x) => x.programAccountIndex)).map(
+    (k) => msg.staticAccounts[k],
+  );
+  if (!programs.every((a) => a !== undefined && RELAYED_PROGRAMS.has(a)) || !programs.includes(TESSERA_PROGRAM_ADDRESS)) return rule;
+  return null;
+}
+
 export async function submit(i: { transaction: string }): Promise<Reply> {
   let tx;
   try {
@@ -795,6 +910,8 @@ export async function submit(i: { transaction: string }): Promise<Reply> {
   } catch {
     return reply('invalid_request', { message: 'transaction is not a base64 wire transaction' });
   }
+  const refused = notRelayed(tx.messageBytes);
+  if (refused) return reply('invalid_request', { message: refused });
   if (!isFullySignedTransaction(tx)) {
     const missing = Object.entries(tx.signatures).filter(([, s]) => !s).map(([a]) => a);
     return reply('invalid_request', { message: 'transaction is not fully signed', missing });
@@ -803,17 +920,27 @@ export async function submit(i: { transaction: string }): Promise<Reply> {
   try {
     await rpc.sendTransaction(i.transaction as never, { encoding: 'base64', preflightCommitment: 'confirmed' }).send();
   } catch (e) {
+    if (e instanceof RpcUnavailable) throw e;
     return reply('rejected', { signature, ...errorText(e) });
   }
   const started = Date.now();
-  while (Date.now() - started < 60_000) {
+  while (Date.now() - started < SUBMIT_WAIT_MS) {
     await new Promise((r) => setTimeout(r, 800));
-    const { value } = await rpc.getSignatureStatuses([signature]).send();
-    const st = value[0];
+    let st;
+    try {
+      st = (await rpc.getSignatureStatuses([signature]).send()).value[0];
+    } catch {
+      break; // It was sent; whether it landed is for the caller to look up.
+    }
     if (st?.err) return reply('rejected', { signature, message: JSON.stringify(st.err, (_, v) => (typeof v === 'bigint' ? Number(v) : v)) });
     if (st && (st.confirmationStatus === 'confirmed' || st.confirmationStatus === 'finalized')) {
       return reply('ok', { signature, confirmed: true, explorer: explorerTx(signature) });
     }
   }
-  return reply('ok', { signature, confirmed: false, explorer: explorerTx(signature), message: 'Sent, but not confirmed within 60 s. Look the signature up before sending again.' });
+  return reply('ok', {
+    signature,
+    confirmed: false,
+    explorer: explorerTx(signature),
+    message: `Sent, but not confirmed within ${SUBMIT_WAIT_MS / 1000} s. Look the signature up before sending again.`,
+  });
 }

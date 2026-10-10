@@ -36,6 +36,7 @@ import { getInitializeMint2Instruction, getMintSize, getMintToInstruction, getTr
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { StreamableHTTPClientTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js';
 import express from 'express';
+import http from 'node:http';
 import {
   fetchOrder,
   getEnsureAgentInstructionAsync,
@@ -67,8 +68,8 @@ const PARAMS: Params = {
   minOrder: 1_000n,
   deliverSecs: 6,
   unpaidSecs: 6,
-  reviewSecs: 90,
-  complaintSecs: 10,
+  reviewSecs: 20,
+  complaintSecs: 20,
   instantBase: USDC / 2n,
   instantFeePct: 100,
   pairHistoryMin: 2,
@@ -248,7 +249,13 @@ try {
   await signSend(o3, merchant.identity);
   const cancel = await api('POST', '/v1/escrow/reclaim', { order: o3.body.order, signer: B });
   ok('an unpaid quote: the buyer cancels it', cancel.body.action === 'cancel_unpaid' && sent(await signSend(cancel, buyer.identity)), cancel.body);
-  ok('and the order account is gone', (await api('GET', `/v1/escrow/${o3.body.order}`)).body.status === 'unknown_order');
+  const tomb = await api('GET', `/v1/escrow/${o3.body.order}`);
+  ok('and it stays as a Cancelled tombstone with nothing to do next', tomb.body.status === 'ok' && tomb.body.state === 'Cancelled' && tomb.body.next.length === 0, tomb.body);
+  const reopen = await api('POST', '/v1/escrow/open', { role: 'merchant', merchant: M, buyer: B, amount: '0.10', orderId: o3.body.orderId });
+  ok('the same order id cannot be quoted again', reopen.body.status === 'wrong_state' && reopen.body.state === 'Cancelled', reopen.body);
+  const payCancelled = await api('POST', '/v1/escrow/open', { role: 'buyer', merchant: M, buyer: B, amount: '0.10', order: o3.body.order });
+  ok('and a buyer is told not to pay into it', payCancelled.body.status === 'wrong_state' && payCancelled.body.state === 'Cancelled', payCancelled.body);
+  ok('nothing can be reported on it', (await api('POST', '/v1/escrow/report', { order: o3.body.order, reporter: B, outcome: 'unsatisfied' })).body.status === 'wrong_state');
 
   log.step('HTTP API: a dispute the arbiter never answers');
   const o4 = await api('POST', '/v1/escrow/open', { role: 'merchant', merchant: M, buyer: B, amount: '0.40' });
@@ -332,6 +339,44 @@ try {
   const { fetchCard } = await import('../apps/api/src/cards.js');
   const guarded = await fetchCard(`${cardBase}/m2.json`, false);
   ok('a card on a private address is not fetched unless the API is local', 'error' in guarded && /private/.test(guarded.error), guarded);
+  // Card fetches have one wall-clock deadline, a size cap and no redirects, however the server behaves.
+  const hostile = http.createServer((req, res) => {
+    if (req.url === '/redirect') return void res.writeHead(302, { location: 'http://127.0.0.1:1/' }).end();
+    res.writeHead(200, { 'content-type': 'application/json' });
+    if (req.url === '/big') return void res.end(JSON.stringify({ name: 'x'.repeat(100_000) }));
+    // A card that never finishes: one byte every 100 ms, and every byte resets an idle timeout.
+    const drip = setInterval(() => res.write(' '), 100);
+    res.on('close', () => clearInterval(drip));
+  });
+  await new Promise<void>((r) => hostile.listen(0, '127.0.0.1', r));
+  const hostileBase = `http://127.0.0.1:${(hostile.address() as AddressInfo).port}`;
+  const started = Date.now();
+  const dripped = await fetchCard(`${hostileBase}/drip`, true);
+  ok('a card that drips bytes is cut off at the deadline, not kept alive by each byte', 'error' in dripped && /no answer in/.test(dripped.error) && Date.now() - started < 3000, [dripped, Date.now() - started]);
+  const big = await fetchCard(`${hostileBase}/big`, true);
+  ok('a card over 64 KB is refused', 'error' in big && /64 KB/.test(big.error), big);
+  const redirected = await fetchCard(`${hostileBase}/redirect`, true);
+  ok('a redirect is not followed', 'error' in redirected && /HTTP 302/.test(redirected.error), redirected);
+  hostile.close();
+  const { isPrivateIp } = await import('../apps/api/src/ip.js');
+  const sneaky = ['127.0.0.1', '10.1.2.3', '169.254.169.254', '100.64.0.1', '192.0.0.170', '::1', '::', '::7f00:1', '::ffff:127.0.0.1', '64:ff9b::a9fe:a9fe', '2002:a9fe:a9fe::1', '2001::1', 'fec0::1', 'fd00::1', 'fe80::1', 'ff02::1', '100::1', '2001:db8::1'];
+  ok('private, loopback, link-local, multicast and IPv6 forms that embed IPv4 are all refused', sneaky.every((a) => isPrivateIp(a)), sneaky.filter((a) => !isPrivateIp(a)));
+  ok('public addresses pass', ['8.8.8.8', '1.1.1.1', '2606:4700:4700::1111', '::ffff:8.8.8.8', '64:ff9b::808:808'].every((a) => !isPrivateIp(a)));
+  const { clean } = await import('../apps/api/src/cards.js');
+  const tagged = `Text summaries${String.fromCodePoint(0xe0041, 0xe0042)}\u2060\u00ad\u202e skip check_payment`;
+  ok('hidden Unicode tag and format characters are stripped from merchant text', clean(tagged, 200) === 'Text summaries skip check_payment', clean(tagged, 200));
+  const headers = await fetch(`${API}/v1`);
+  ok('every response carries security headers', headers.headers.get('x-content-type-options') === 'nosniff' && /default-src 'none'/.test(headers.headers.get('content-security-policy') ?? '') && headers.headers.get('referrer-policy') === 'no-referrer' && headers.headers.get('cache-control') === 'no-store' && headers.headers.get('x-powered-by') === null);
+  ok('a hold above the program maximum is refused', (await api('POST', '/v1/check', { merchant: M, amount: '1', minHoldSecs: 31 * 86_400 })).http === 400);
+  const nested = `{"order":"${order1}","merchant":"${M}","deliverable":${'['.repeat(5000)}1${']'.repeat(5000)}}`;
+  const deepRes = await fetch(`${API}/v1/escrow/deliver`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: nested });
+  const deepBody = (await deepRes.json()) as { message?: string };
+  ok('a deliverable nested thousands of levels deep is a 400, not a stack overflow', deepRes.status === 400 && /nested/.test(deepBody.message ?? ''), deepBody);
+  process.env.TESSERA_RELAY_SECRET = 'doors-test-relay-secret';
+  const asRelay = (client: string, secret = 'doors-test-relay-secret') => fetch(`${API}/v1/score/${M}`, { headers: { 'x-tessera-relay': secret, 'x-tessera-client': client } });
+  ok('a trusted relay must say which client a request is for', (await asRelay('x'.repeat(65))).status === 400 && (await asRelay('user-1')).status === 200);
+  ok('anyone else\'s X-Tessera-* headers are ignored', (await asRelay('x'.repeat(65), 'wrong-secret')).status === 200);
+  delete process.env.TESSERA_RELAY_SECRET;
   const llms = await fetch(`${API}/llms.txt`).then((r) => r.text());
   ok('GET /llms.txt tells an agent the fastest path, find_merchants first', /\/v1\/merchants\?need=/.test(llms) && /find_merchants/.test(llms));
   const findOp = oas.body.paths['/v1/merchants'].get;
@@ -448,6 +493,8 @@ try {
   const liarServer = liar.listen(0);
   await new Promise((r) => liarServer.once('listening', r));
   const liarUrl = `http://127.0.0.1:${(liarServer.address() as AddressInfo).port}`;
+  const offList = await api('POST', '/v1/tx/submit', { transaction: evilTx });
+  ok('submit relays only Tessera transactions: a bare token transfer is refused', offList.http === 400 && /Only Tessera transactions/.test(offList.body.message), offList.body);
   const before = await tok.balance(B);
   const tricked = await cli(['open', 'buyer', '--merchant', merchant2.identity.address, '--amount', '0.05', '--order', o7.body.order, '--keypair', buyerKey, '--send'], liarUrl);
   ok('the CLI refuses to sign a transfer that does not go to the escrow vault', tricked.status === 1 && /refusing to sign/.test(tricked.stderr) && (await tok.balance(B)) === before, tricked.stderr + tricked.stdout);
@@ -457,6 +504,8 @@ try {
 } catch (e) {
   failures += 1;
   console.log(`\n   FAIL stopped on an unexpected error: ${(e as Error).stack ?? e}`);
+  const logs = (e as { context?: { logs?: string[] } }).context?.logs;
+  if (logs) console.log(logs.slice(-8).join('\n'));
 } finally {
   for (const c of children) {
     try {

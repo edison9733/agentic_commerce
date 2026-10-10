@@ -125,7 +125,8 @@ export const ACTIONS = [
 export type Action = (typeof ACTIONS)[number];
 
 export const TIERS = ['New', 'Building', 'Established', 'Trusted'] as const;
-export const ORDER_STATES = ['AwaitingPayment', 'Funded', 'Delivered', 'Released', 'Refunded', 'Disputed', 'Resolved'] as const;
+/** `Cancelled`: abandoned before payment. The account stays until its payment window has passed, so the id cannot be reopened. */
+export const ORDER_STATES = ['AwaitingPayment', 'Funded', 'Delivered', 'Released', 'Refunded', 'Disputed', 'Resolved', 'Cancelled'] as const;
 
 /** Base58, 32 to 44 characters. The API also checks it decodes to 32 bytes. */
 export const ADDRESS_PATTERN = '^[1-9A-HJ-NP-Za-km-z]{32,44}$';
@@ -135,8 +136,8 @@ export const AMOUNT_PATTERN = '^(0|[1-9][0-9]{0,11})(\\.[0-9]{1,6})?$';
 export const HEX32_PATTERN = '^[0-9a-f]{64}$';
 /** Longest review text the program stores, in bytes. */
 export const MAX_COMMENT_BYTES = 200;
-/** Longest hold a buyer may ask for: 90 days. */
-export const MAX_MIN_HOLD_SECS = 90 * 86_400;
+/** Longest hold a buyer may ask for: 30 days, the program's MAX_HOLD_SECS (open_order refuses more). */
+export const MAX_MIN_HOLD_SECS = 30 * 86_400;
 
 /**
  * The tools, as the MCP server and the docs describe them. Grouped by the
@@ -207,7 +208,8 @@ export const TOOLS = {
     phase: 'after',
     method: 'POST',
     path: '/v1/tx/submit',
-    summary: 'Relays a transaction your own wallet has signed, and waits for confirmation. Optional: any RPC will do.',
+    summary:
+      'Relays a Tessera transaction your own wallet has signed (every instruction calling Tessera, SPL Token, associated-token, compute-budget or system; no lookup tables), and waits up to 20 s for confirmation. Optional: any RPC will do.',
   },
 } as const;
 export type ToolName = keyof typeof TOOLS;

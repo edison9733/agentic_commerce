@@ -6,22 +6,37 @@
  *
  * The URI is chosen by whoever registered the wallet, so fetching it is a
  * server-side request to an address someone else picked. Hence: http(s) only,
- * no redirects, a short timeout, a size cap, and no private or loopback
- * addresses (checked on the address actually connected to, so a DNS answer
- * cannot be swapped between the check and the connection) unless the API is
- * only listening on this machine or TESSERA_ALLOW_PRIVATE_CARDS=1.
+ * no redirects, one deadline for the whole fetch (DNS, connect and body), a
+ * size cap, and no private, loopback or otherwise non-public address (checked
+ * on the address actually connected to, so a DNS answer cannot be swapped
+ * between the check and the connection) unless TESSERA_ALLOW_PRIVATE_CARDS=1.
  */
-import { lookup as dnsLookup, type LookupAddress } from 'node:dns';
+import { promises as dns, type LookupAddress } from 'node:dns';
 import http from 'node:http';
 import https from 'node:https';
 import { isIP } from 'node:net';
+import { isPrivateIp } from './ip.js';
+
+export { isPrivateIp };
 
 export const TESSERA_EXTENSION_URI = 'https://github.com/edison9733/agentic_commerce/blob/main/docs/A2A-EXTENSION.md';
 
-const TIMEOUT_MS = Number(process.env.TESSERA_CARD_TIMEOUT_MS ?? 1500);
+const envMs = (v: string | undefined, fallback: number) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : fallback);
+/** From the first DNS query to the last byte: a card that drips slowly is cut off here, not kept alive by each byte. */
+const TIMEOUT_MS = envMs(process.env.TESSERA_CARD_TIMEOUT_MS, 1500);
 const MAX_BYTES = 64 * 1024;
 const TTL_MS = 5 * 60_000;
 const FAIL_TTL_MS = 60_000;
+const MAX_CACHED = 2_000;
+/** Cards fetched at once, and how many may wait for a turn. Past that a card is reported busy and tried again on a later call. */
+const MAX_PARALLEL = 32;
+const MAX_WAITING = 512;
+/**
+ * Asks the DNS servers directly (c-ares) instead of getaddrinfo, which runs on
+ * libuv's four shared threads: a card domain that answers slowly must not hold
+ * a thread the rest of the API needs. It does not read /etc/hosts.
+ */
+const resolver = new dns.Resolver({ timeout: Math.min(1000, TIMEOUT_MS), tries: 1 });
 
 export type Skill = {
   id: string;
@@ -46,72 +61,89 @@ export type Card = {
 
 export type CardResult = { card: Card } | { error: string };
 
-const loopbackHost = (h: string) => /^(127\.|::1$|localhost$)/.test(h);
-/** True when the API only listens on this machine, so the cards it can reach are this machine's own. */
-export const allowPrivateCards = () =>
-  process.env.TESSERA_ALLOW_PRIVATE_CARDS === '1' || (process.env.TESSERA_ALLOW_PRIVATE_CARDS !== '0' && loopbackHost(process.env.HOST ?? '127.0.0.1'));
+/**
+ * Cards on private addresses are only for running everything on one machine,
+ * and only when asked for. Listening on loopback is not enough: a tunnel or a
+ * reverse proxy in front makes such an API public.
+ */
+export const allowPrivateCards = () => process.env.TESSERA_ALLOW_PRIVATE_CARDS === '1';
 
-/** Loopback, private, link-local, CGNAT, unspecified, multicast and the like. */
-export function isPrivateIp(ip: string): boolean {
-  const v = isIP(ip);
-  if (v === 4) {
-    const [a, b] = ip.split('.').map(Number) as [number, number];
-    return (
-      a === 0 ||
-      a === 10 ||
-      a === 127 ||
-      (a === 100 && b >= 64 && b <= 127) ||
-      (a === 169 && b === 254) ||
-      (a === 172 && b >= 16 && b <= 31) ||
-      (a === 192 && b === 168) ||
-      (a === 198 && (b === 18 || b === 19)) ||
-      a >= 224
-    );
-  }
-  if (v === 6) {
-    const x = ip.toLowerCase();
-    if (x.startsWith('::ffff:')) return isPrivateIp(x.slice(7));
-    return x === '::' || x === '::1' || x.startsWith('fc') || x.startsWith('fd') || x.startsWith('fe8') || x.startsWith('fe9') || x.startsWith('fea') || x.startsWith('feb') || x.startsWith('ff');
-  }
-  return true;
-}
-
-/** Strip control characters, collapse whitespace, cut to `n` characters. */
+/**
+ * Text written by someone else, made safe to hand to an agent: control
+ * characters become spaces; invisible ones are dropped (format characters
+ * such as zero-width, soft hyphen, BOM and bidirectional controls, the
+ * Unicode tag characters that can spell out hidden text, private-use,
+ * unassigned and lone surrogates, Hangul fillers, and variation selectors
+ * beyond the first). Whitespace is collapsed and the result cut to `n`
+ * characters, never in the middle of one.
+ */
 export const clean = (v: unknown, n: number): string =>
   typeof v === 'string'
-    ? v
-        .replace(/[\u0000-\u001f\u007f-\u009f​-‏‪-‮⁦-⁩]/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
+    ? Array.from(
+        v
+          .replace(/\p{Cc}/gu, ' ')
+          .replace(/[\p{Cf}\p{Co}\p{Cn}\p{Cs}\u{e0000}-\u{e007f}\u{e0100}-\u{e01ef}\u034f\u115f\u1160\u3164\uffa0]/gu, '')
+          .replace(/([\ufe00-\ufe0f])[\ufe00-\ufe0f]+/gu, '$1')
+          .replace(/\s+/g, ' ')
+          .trim(),
+      )
         .slice(0, n)
+        .join('')
+        .trim()
     : '';
 
+/** Every address `host` resolves to, IPv4 first. `localhost` is this machine, as RFC 6761 has it. */
+async function resolveHost(host: string): Promise<LookupAddress[]> {
+  if (host === 'localhost' || host.endsWith('.localhost')) return [{ address: '127.0.0.1', family: 4 }, { address: '::1', family: 6 }];
+  const [a, aaaa] = await Promise.allSettled([resolver.resolve4(host), resolver.resolve6(host)]);
+  return [
+    ...(a.status === 'fulfilled' ? a.value.map((address) => ({ address, family: 4 })) : []),
+    ...(aaaa.status === 'fulfilled' ? aaaa.value.map((address) => ({ address, family: 6 })) : []),
+  ];
+}
+
 function getJson(url: string, allowPrivate: boolean): Promise<unknown> {
-  return new Promise((resolve, reject) => {
+  return new Promise((settle, fail) => {
     let u: URL;
     try {
       u = new URL(url);
     } catch {
-      return reject(new Error('not a URL'));
+      return fail(new Error('not a URL'));
     }
-    if (u.protocol !== 'https:' && u.protocol !== 'http:') return reject(new Error('only http(s) cards are read'));
-    if (u.username || u.password) return reject(new Error('credentials in the URL'));
-    // Checked on the address the socket really connects to.
-    const lookup = (host: string, opts: { all?: boolean }, cb: (e: Error | null, a: string | LookupAddress[], f?: number) => void) =>
-      dnsLookup(host, { ...opts, all: true }, (e, addrs) => {
-        if (e) return cb(e, '');
-        const list = addrs as LookupAddress[];
-        if (!list.length) return cb(new Error('the card host does not resolve'), '');
-        if (!allowPrivate && list.some((x) => isPrivateIp(x.address))) return cb(new Error('the card is on a private address'), '');
-        if (opts.all) cb(null, list);
-        else cb(null, list[0]!.address, list[0]!.family);
-      });
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return fail(new Error('only http(s) cards are read'));
+    if (u.username || u.password) return fail(new Error('credentials in the URL'));
     const host = u.hostname.replace(/^\[|\]$/g, '');
-    if (isIP(host) && !allowPrivate && isPrivateIp(host)) return reject(new Error('the card is on a private address'));
+    if (isIP(host) && !allowPrivate && isPrivateIp(host)) return fail(new Error('the card is on a private address'));
+    // One deadline for everything, armed once: unlike a socket timeout, data arriving does not push it back.
+    const deadline = new AbortController();
+    const timer = setTimeout(() => deadline.abort(), TIMEOUT_MS);
+    // The request is destroyed on abort, but a half-read body need not report it: settle here too (a second settle is a no-op).
+    deadline.signal.addEventListener('abort', () => fail(new Error(`no answer in ${TIMEOUT_MS} ms`)), { once: true });
+    const resolve = (v: unknown) => {
+      clearTimeout(timer);
+      settle(v);
+    };
+    const reject = (e: Error) => {
+      clearTimeout(timer);
+      fail(deadline.signal.aborted ? new Error(`no answer in ${TIMEOUT_MS} ms`) : e);
+    };
+    // Checked on the address the socket really connects to: the socket is only ever given addresses that passed.
+    const lookup = (name: string, opts: { all?: boolean; family?: number }, cb: (e: Error | null, a: string | LookupAddress[], f?: number) => void) =>
+      void resolveHost(name).then(
+        (found) => {
+          const list = found.filter((x) => !opts.family || x.family === opts.family);
+          if (!list.length) return cb(new Error('the card host does not resolve'), '');
+          if (!allowPrivate && list.some((x) => isPrivateIp(x.address))) return cb(new Error('the card is on a private address'), '');
+          if (opts.all) cb(null, list);
+          else cb(null, list[0]!.address, list[0]!.family);
+        },
+        (e: Error) => cb(e, ''),
+      );
     const mod = u.protocol === 'https:' ? https : http;
-    const req = mod.get(u, { lookup: lookup as never, timeout: TIMEOUT_MS, headers: { accept: 'application/json' } }, (res) => {
+    // http(s).get never follows a redirect: a 3xx is just another status that is not 200.
+    const req = mod.get(u, { lookup: lookup as never, signal: deadline.signal, headers: { accept: 'application/json' } }, (res) => {
       if (res.statusCode !== 200) {
-        res.resume();
+        req.destroy();
         return reject(new Error(`the card answered HTTP ${res.statusCode}`));
       }
       let size = 0;
@@ -133,7 +165,6 @@ function getJson(url: string, allowPrivate: boolean): Promise<unknown> {
       });
       res.on('error', reject);
     });
-    req.on('timeout', () => req.destroy(new Error(`no answer in ${TIMEOUT_MS} ms`)));
     req.on('error', reject);
   });
 }
@@ -174,16 +205,49 @@ export function parseCard(raw: unknown): Card {
   };
 }
 
+let running = 0;
+const waiting: (() => void)[] = [];
+/** Runs `job` once fewer than MAX_PARALLEL others are running. Null if too many are already waiting. */
+function inTurn<T>(job: () => Promise<T>): Promise<T> | null {
+  if (running >= MAX_PARALLEL && waiting.length >= MAX_WAITING) return null;
+  // A finishing job hands its place straight to the next waiting one, so the count never exceeds MAX_PARALLEL.
+  const run = async () => {
+    try {
+      return await job();
+    } finally {
+      const next = waiting.shift();
+      if (next) next();
+      else running -= 1;
+    }
+  };
+  if (running < MAX_PARALLEL) {
+    running += 1;
+    return run();
+  }
+  return new Promise<void>((turn) => waiting.push(turn)).then(run);
+}
+
+/** Least recently used first: a Map keeps insertion order, and a hit is moved to the end. */
 const cache = new Map<string, { at: number; ttl: number; value: Promise<CardResult> }>();
 
-/** The card at `url`, cached for five minutes (a failure for one). Never throws. */
+/**
+ * The card at `url`, cached for five minutes (a failure for one). Never
+ * throws, and settles within TIMEOUT_MS of the first call, so callers sharing
+ * a fetch in flight wait no longer than its deadline.
+ */
 export function fetchCard(url: string, allowPrivate = allowPrivateCards()): Promise<CardResult> {
   const key = `${allowPrivate ? 'p' : 'n'}:${url}`;
   const hit = cache.get(key);
-  if (hit && Date.now() - hit.at < hit.ttl) return hit.value;
-  if (cache.size > 2_000) cache.clear();
+  cache.delete(key);
+  if (hit && Date.now() - hit.at < hit.ttl) {
+    cache.set(key, hit);
+    return hit.value;
+  }
+  while (cache.size >= MAX_CACHED) cache.delete(cache.keys().next().value!);
+  const turn = inTurn(() => getJson(url, allowPrivate));
+  if (!turn) return Promise.resolve({ error: 'too many cards are being fetched; try again shortly' });
   const entry = { at: Date.now(), ttl: TTL_MS, value: Promise.resolve<CardResult>({ error: 'pending' }) };
-  entry.value = getJson(url, allowPrivate)
+  entry.value = turn
     .then((raw) => ({ card: parseCard(raw) }))
     .catch((e: Error) => {
       entry.ttl = FAIL_TTL_MS;
