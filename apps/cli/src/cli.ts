@@ -55,6 +55,7 @@ import {
   OrderVerificationError,
   parseTesseraInstruction,
   TESSERA_PROGRAM_ADDRESS,
+  OrderState,
   TesseraInstruction,
   toHex,
   toUnits,
@@ -243,9 +244,9 @@ type Expected = {
 async function expected(cmd: string, args: Record<string, unknown>, me: Address): Promise<Expected> {
   const url = endpoint(String(flags.rpc ?? ((process.env.TESSERA_RPC_URLS ?? '').split(',')[0]!.trim() || 'https://api.devnet.solana.com')), flags.rpc ? '--rpc' : 'TESSERA_RPC_URLS');
   const rpc = createSolanaRpc(url);
-  const read = <T>(p: Promise<T>): Promise<T> => p.catch((e: Error) => die(`cannot read the chain at ${url}: ${e.message}`));
+  const read = <T>(p: Promise<T>): Promise<T> => p.catch((e: Error) => die(`cannot read the chain at ${new URL(url).host}: ${e.message}`));
   const cfg = await read(fetchMaybeConfig(rpc, await configPda()));
-  if (!cfg.exists) return die(`no Tessera program is set up at ${url}; pass --rpc for the cluster the API serves`);
+  if (!cfg.exists) return die(`no Tessera program is set up at ${new URL(url).host}; pass --rpc for the cluster the API serves`);
   const mint = cfg.data.mint;
   const { decimals } = (await read(fetchMint(rpc, mint))).data;
   const hex = (k: string) => (args[k] === undefined ? undefined : fromHex(String(args[k])));
@@ -279,7 +280,7 @@ async function expected(cmd: string, args: Record<string, unknown>, me: Address)
       payTo: (args.order as Address | undefined) ?? (await orderAddresses(orderId, mint)).order,
       requestHash: hex('requestHash') ?? (args.request !== undefined ? await hashJson(args.request) : undefined),
       minHoldSecs: args.minHoldSecs as number | undefined,
-    }).catch((e: Error) => die(e instanceof OrderVerificationError ? e.message : `cannot read the chain at ${url}: ${e.message}`));
+    }).catch((e: Error) => die(e instanceof OrderVerificationError ? e.message : `cannot read the chain at ${new URL(url).host}: ${e.message}`));
     return { order: v.order, vault: v.vault, mint, decimals, tessera: [TesseraInstruction.ConfirmFunded], payees: [], pay: { source: await findAta(me, mint), amount: v.data.amount } };
   }
   const tessera = SETTLES[cmd];
@@ -288,16 +289,38 @@ async function expected(cmd: string, args: Record<string, unknown>, me: Address)
   const order = args.order as Address;
   const o = await read(fetchMaybeOrder(rpc, order));
   if (!o.exists || o.programAddress !== TESSERA_PROGRAM_ADDRESS) return die(`refusing to sign: order ${order} is not a Tessera order on-chain`);
+  // `report` builds different transactions for different outcomes; only the one that fits this outcome and
+  // the order's state on-chain is allowed, so an API cannot answer "unsatisfied" with a release.
+  const allowed = cmd === 'report' ? reportAllowed(String(args.outcome), o.data.state, o.data.releaseAt) : tessera;
   return {
     order,
     vault: await findAta(order, o.data.mint),
     mint: o.data.mint,
     decimals,
-    tessera,
+    tessera: allowed,
     payees: [o.data.buyer, o.data.merchant, cfg.data.treasury],
     ...(cmd === 'deliver' ? { deliveryHash: hex('deliveryHash') ?? (await hashJson(args.deliverable)) } : {}),
     ...(cmd === 'report' ? { review: { rating: (args.rating as number | undefined) ?? (args.outcome === 'satisfied' ? 5 : 1), text: (args.comment as string | undefined) || undefined } } : {}),
   };
+}
+
+/** The Tessera instructions a `report` may build for this outcome, from the order's state on-chain. */
+function reportAllowed(outcome: string, state: OrderState, releaseAt: bigint): TesseraInstruction[] {
+  const review = [TesseraInstruction.SubmitReview];
+  switch (state) {
+    case OrderState.Delivered: {
+      const holdOver = BigInt(Math.floor(Date.now() / 1000)) >= releaseAt;
+      return outcome === 'satisfied' || holdOver ? [TesseraInstruction.Release, ...review] : [TesseraInstruction.OpenDispute];
+    }
+    case OrderState.Released:
+    case OrderState.Refunded:
+    case OrderState.Resolved:
+      return review;
+    case OrderState.Funded:
+      return outcome === 'satisfied' ? [] : [TesseraInstruction.Refund];
+    default:
+      return [];
+  }
 }
 
 function refuse(why: string): never {

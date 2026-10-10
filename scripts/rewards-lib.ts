@@ -33,7 +33,7 @@ import {
   type Signature,
 } from '@solana/kit';
 import { getSetComputeUnitLimitInstruction } from '@solana-program/compute-budget';
-import { AccountState, fetchAllMaybeToken, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
+import { AccountState, fetchAllMaybeToken, fetchMaybeToken, TOKEN_PROGRAM_ADDRESS } from '@solana-program/token';
 import {
   configPda,
   decodeOrder,
@@ -464,10 +464,17 @@ export async function withhold(report: Report, c: ScriptClient, mint: Address, d
   const wallets = [...new Set(report.payouts.map((x) => x.wallet))];
   const atas = await Promise.all(wallets.map((w) => tok.ata(w as Address)));
   for (let i = 0; i < wallets.length; i += 100) {
-    const accounts = await fetchAllMaybeToken(c.rpc, atas.slice(i, i + 100));
+    // One account that is not a token account makes the batch decode throw; look at them one by one then,
+    // so a single recipient cannot stop the whole airdrop.
+    const batch = atas.slice(i, i + 100);
+    const accounts = await fetchAllMaybeToken(c.rpc, batch).catch(() =>
+      Promise.all(batch.map((ata) => fetchMaybeToken(c.rpc, ata).catch(() => null))),
+    );
     accounts.forEach((a, j) => {
       const w = wallets[i + j]!;
-      const why = !a.exists
+      const why = !a
+        ? 'its USDC token account address holds something that is not a token account'
+        : !a.exists
         ? 'no USDC token account'
         : a.programAddress !== TOKEN_PROGRAM_ADDRESS || a.data.mint !== mint || a.data.owner !== w
           ? 'its USDC token account is no longer its own'
