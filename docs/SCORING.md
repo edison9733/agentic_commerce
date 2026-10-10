@@ -62,9 +62,10 @@ points and the merchant's active period follow the same rule.
 Tenure = min(1, min(age, 3 × active periods) ÷ tenure_full)
 ```
 
-`age` is periods since the wallet's credit file was created. An active period is one in which the
-wallet had at least one order released. A wallet left to age earns nothing; a thousand orders in one
-day are one active period.
+`age` is periods since the wallet's credit file was created. For a buyer, an active period is one in
+which it had at least one order released; for a merchant, one in which a buyer reviewed one of its
+released orders (the buyer's review is what shows the buyer took part). A wallet left to age earns
+nothing; a thousand orders in one day are one active period.
 
 ### Diversity
 
@@ -115,8 +116,10 @@ A tier needs its score **and** its number of active periods. Trusted also needs 
 
 **The hold.** `hold = max(hold[merchant tier], hold[buyer tier], hold the buyer asked for)`.
 
-**Pair history.** A buyer with at least 2 released, undisputed orders from a merchant, the first of
-them at least `pair_age` old, and no standing penalty, is treated as Trusted *for that merchant*. This is
+**Pair history.** A buyer with at least 2 released, undisputed orders from a merchant that it reviewed
+itself, the first of them at least `pair_age` old, and no standing penalty, is treated as Trusted *for
+that merchant*. Only reviewed orders count: a merchant can open and fund orders in any buyer's name, and
+must not be able to waive that buyer's protection that way. This is
 the on-chain form of what Visa's Compelling Evidence 3.0 accepts in a card dispute: earlier undisputed
 purchases as evidence that the next one is legitimate. One dispute between the pair ends it for good.
 
@@ -127,9 +130,11 @@ delivery, but only while
 instant volume buyers have not accepted yet  ≤  instant_base + protocol fees the merchant has paid
 ```
 
-A buyer rating an instant order 3 stars or more frees that amount at once. An order nobody rates frees
-when its review window ends. An order rated 1 or 2 stars stays locked for the much longer complaint
-period. Past the limit, an order waits like an Established one.
+A buyer rating an instant order 3 stars or more frees that amount at once, and so does a refund. An
+order nobody rates frees when its review window ends. An order rated 1 or 2 stars never frees: its rent
+comes back after the complaint period, but the amount stays locked for the life of the identity, so an
+exit scam cannot be repeated by waiting. Past the limit, an order waits like an Established one, and so
+does an order whose merchant has lost Trusted since the order was opened.
 
 ## Parameters
 
@@ -147,7 +152,7 @@ compressed so a whole journey can be watched in under an hour.
 | Review prior | 0.5 USDC at 3 stars | 250 USDC at 3 stars |
 | Instant base | 0.25 USDC | 25 USDC |
 | Pair history | 2 orders, first ≥ 5 min old | 2 orders, first ≥ 30 days old |
-| Review window / complaint lock | 10 min / 30 min | 14 days / 90 days |
+| Review window / complaint period (rent of a complained-about order) | 10 min / 30 min | 14 days / 90 days |
 | Protocol fee | 1% | 1% |
 
 ## What it guarantees
@@ -177,16 +182,21 @@ the one-year figures come from `attacks.simulateRing`):
 
 | Wallets in the ring | Reaches Trusted | Fees burned | Can then take instantly, all wallets together | Net of taking it |
 |---|---|---|---|---|
-| 3 | never (one year simulated) | $2,190 over the year | $0 | −$2,190 |
-| 6 | never (one year simulated) | $10,950 over the year | $0 | −$10,950 |
-| 8 | day 83 | $4,648 | $4,848 | $200 ($25 per wallet) |
-| 12 | day 33 | $4,356 | $4,656 | $300 ($25 per wallet) |
-| 21 | day 30 | $12,600 | $13,145 | $525 ($25 per wallet) |
+| 3 | never (one year simulated) | $53 over the year | $0 | −$53 |
+| 6 | never (one year simulated) | $338 over the year | $0 | −$338 |
+| 8 | day 83 | $686 | $886 | $200 ($25 per wallet) |
+| 12 | day 33 | $1,617 | $1,917 | $300 ($25 per wallet) |
+| 21 | day 30 | $4,868 | $5,393 | $525 ($25 per wallet) |
+
+The ring trades as cheaply as it can: each order is only as large as it needs to be to fill what the
+pair can still grant (credit and review weight are capped per pair at the counterparty's tier weight,
+and Diversity needs a tenth of the pair cap), and never less than the minimum order, which keeps every
+period active.
 
 An honest merchant with 25 Trusted customers reaches Trusted on day 30, where the only wait is the
 time gate. The same merchant with 25 customers nobody knows never does.
 
-Read this honestly: a large enough ring that is willing to burn thousands in fees over one to three
-months does reach Trusted. What it buys is instant settlement of roughly the fees it burned. The score
+Read this honestly: a large enough ring that is willing to burn hundreds to a few thousand dollars in
+fees over one to three months does reach Trusted. What it buys is instant settlement of roughly the fees it burned. The score
 does not stop reputation from being bought; it sets the price, and the instant limit makes what was
 bought worth about nothing for theft.

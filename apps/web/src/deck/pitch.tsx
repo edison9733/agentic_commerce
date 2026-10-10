@@ -538,7 +538,7 @@ export const PITCH: Slide[] = [
   {
     id: 'ring',
     seconds: 13,
-    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns thousands in fees first. An exit scam nets twenty-five dollars, at any size.',
+    say: 'We assumed people would cheat. A small ring of your own wallets never reaches Trusted. A big one burns over a thousand dollars in fees and a month first. An exit scam nets twenty-five dollars, at any size.',
     render: () => <RingSlide />,
   },
   {
