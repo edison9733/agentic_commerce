@@ -213,9 +213,11 @@ The site is static files (`npm run build -w @tessera/web` writes `apps/web/dist`
 GitHub repo and choose the **web** app ("Import single project"): Root Directory `apps/web`, framework
 Vite, default build and output settings. Each push to `main` redeploys. Do not add a `vercel.json` at
 the repo root: Vercel applies it to the `apps/web` project too, and its paths would be wrong there.
+`apps/web/vercel.json` is fine: it sets security headers only (a strict Content-Security-Policy, framing
+and referrer rules).
 Optional environment variables, set in the Vercel project:
 
-- `VITE_RPC_URLS`: comma-separated devnet RPC URLs, tried in order (defaults to two public ones).
+- `VITE_RPC_URLS`: comma-separated devnet RPC URLs, tried in order (defaults to two public ones). Public: it is compiled into the site, so never put a URL with an API key here.
 - `VITE_AGENTS_URL`: the public `https://` address of `npm run agents`, for the Market page and the demo
   deck's checkout. The agents server is not on Vercel; without it the Market page says it is unreachable.
 

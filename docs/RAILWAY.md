@@ -19,8 +19,13 @@ Each service works out its own public address from Railway's `RAILWAY_PUBLIC_DOM
    - Rename it to `api`.
    - Set **Config as code → Railway config file** to `railway/api.json`.
 3. **Settings → Networking → Generate Domain.**
-4. **Variables**: `TRUST_PROXY` = `1`.
-5. Optional: `TESSERA_RPC_URLS` = your own devnet RPC URL. The public one rate-limits.
+4. **Variables**: `TRUST_PROXY` is set to one proxy hop automatically on Railway, so it needs no setting.
+   If you also run the MCP service, set `TESSERA_RELAY_SECRET` to a long random string (printable
+   characters, no spaces) and set the same value on the MCP service, so each MCP user gets their own
+   rate limit instead of sharing one.
+5. Optional: `TESSERA_RPC_URLS` = your own devnet RPC URL. The public one rate-limits. A URL with an API
+   key belongs here, never in `VITE_RPC_URLS`: anything starting with `VITE_` is compiled into the
+   public website.
 
 Check: `https://<api domain>/v1/merchants?need=text%20summary` answers with a `status`.
 
@@ -42,10 +47,15 @@ Railway has no `.keys/` folder; the keys go in one secret variable instead.
 3. **Variables**:
    - `TESSERA_KEYS` = the line from step 1
    - `WEB_ORIGINS` = `https://agentic-commerce-two-theta.vercel.app` (add other site addresses, comma-separated)
-   - `TRUST_PROXY` = `1`
    - Recommended: `SOLANA_RPC_URL` = your own devnet RPC URL
-4. Optional: **New → Volume**, mounted at `/app/.data`, so the arbiter's delivery records survive a
-   redeploy.
+   - `TRUST_PROXY` is one hop automatically on Railway; set it only for another number of proxies.
+4. **New → Volume**, mounted at `/app/.data`. This is required: the server keeps its quotes, delivery
+   results and the arbiter's evidence there, and without a volume it refuses new orders
+   (`TESSERA_ALLOW_EPHEMERAL_STATE=1` overrides that for a throwaway test). The image runs as the
+   non-root `node` user; if Railway mounts the volume as root and the server cannot write to it, set
+   `RAILWAY_RUN_UID` = `0` on the service.
+5. Optional limits: `QUOTES_PER_MINUTE` (20), `MAX_UNPAID_PER_BUYER` (3), `MAX_UNPAID_PER_CLIENT` (5),
+   `MAX_OPEN_QUOTES` (40), `REQUESTS_PER_MINUTE` (120), `RPC_TIMEOUT_MS` (8000).
 
 Check: `https://<agents domain>/health` lists the facilitators, and
 `https://<agents domain>/agents` lists the merchants.
@@ -74,7 +84,8 @@ hosted agents.
    - Set its config file to `railway/mcp.json`.
    - **Generate Domain**.
 2. **Variables**: `TESSERA_API_URL` = `https://${{api.RAILWAY_PUBLIC_DOMAIN}}`. This is a Railway
-   reference to the API service.
+   reference to the API service. Also `TESSERA_RELAY_SECRET` = the same value as on the API. Optional:
+   `TESSERA_MCP_PER_MIN` (default 120 requests per client per minute).
 3. Connect a client:
    ```bash
    claude mcp add --transport http tessera https://<mcp domain>/mcp
@@ -88,8 +99,8 @@ Only its own domain is answered (DNS-rebinding protection). Add more host names 
   fixes: redeploy it first (see [SECURITY.md](SECURITY.md)).
 - **The arbiter key is on the agents server.** That is fine for a demo. For real money the arbiter
   should be a separate, better-guarded service.
-- **Cards on private addresses are not read** when the API is public. That's on purpose; see D14 in
-  [SECURITY.md](SECURITY.md). The hosted agents' cards are public, so this does not get in the way.
+- **Cards on private addresses are not read** unless `TESSERA_ALLOW_PRIVATE_CARDS=1` is set. That's on
+  purpose; see D14 in [SECURITY.md](SECURITY.md). The hosted agents' cards are public, so this does not get in the way.
 - **What was tested before this was written:**
   - The image's contents were installed and each server started the way Railway starts it.
   - The API served `/v1` and `llms.txt` with its public domain.
