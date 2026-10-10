@@ -5,7 +5,11 @@
  */
 import type { Params } from './generated/types/params.js';
 import * as model from './model.js';
-import { evaluate, instantLimit } from './score.js';
+import { evaluate, instantLimit, TIER_WEIGHT } from './score.js';
+
+const weighted = (value: bigint, pct: bigint) => (value * pct) / 100n;
+/** The settled volume that earns `room` at weight `pct`, rounded up. */
+const volumeFor = (room: bigint, pct: bigint) => (room <= 0n ? 0n : (room * 100n + pct - 1n) / pct);
 
 export type RingSnapshot = {
   period: number;
@@ -33,9 +37,13 @@ export type RingResult = {
 
 /**
  * A closed ring of brand-new wallets that only trade with each other. Every
- * period each wallet buys `orderSize` from every other wallet and both sides
- * leave each other five stars. This is the strongest version of reputation
- * farming that needs no outside help.
+ * period each wallet buys from every other wallet and both sides leave each
+ * other five stars. Each order is only as large as it needs to be: enough to
+ * fill whatever room the pair still has (credit and review weight, both
+ * capped per pair at the counterparty's tier weight, and the Diversity dust
+ * threshold), and never less than the minimum order, which keeps the period
+ * active. That is the cheapest version of reputation farming that needs no
+ * outside help. `orderSize` caps any one order.
  */
 export function simulateRing(opts: {
   params: Params;
@@ -67,15 +75,31 @@ export function simulateRing(opts: {
       for (let m = 0; m < n; m += 1) {
         if (b === m) continue;
         const pair = pairOf(b, m);
-        // A pair that can grant nothing more is not worth the fee.
-        const cap = p.pairCap;
-        if (pair.creditToMerchant >= cap && pair.creditToBuyer >= cap) continue;
-        const order = model.openOrder(agents[b]!, agents[m]!, pair, p, feeBps, orderSize, now);
+        const buyer = agents[b]!;
+        const merchant = agents[m]!;
+        model.refresh(buyer, p, now);
+        model.refresh(merchant, p, now);
+        // Credit is weighted by the counterparty's tier, review weight by the
+        // reviewer's own; each is capped per pair at that weight.
+        const wb = TIER_WEIGHT[buyer.tier]!;
+        const wm = TIER_WEIGHT[merchant.tier]!;
+        let amount = p.minOrder;
+        for (const v of [
+          volumeFor(weighted(p.pairCap, wb) - pair.creditToMerchant, wb),
+          volumeFor(weighted(p.pairCap, wm) - pair.creditToBuyer, wm),
+          volumeFor(weighted(p.pairCap, wb) - pair.ratedByBuyer, wb),
+          volumeFor(weighted(p.pairCap, wm) - pair.ratedByMerchant, wm),
+          p.pairCap / 10n - pair.volume,
+        ]) {
+          if (v > amount) amount = v;
+        }
+        if (amount > orderSize) amount = orderSize;
+        const order = model.openOrder(buyer, merchant, pair, p, feeBps, amount, now);
         model.deliver(order, agents[m]!, p, now);
         model.settle(order, agents[b]!, agents[m]!, pair, p, { kind: 'release' }, now);
         model.review(order, agents[b]!, agents[m]!, pair, true, 5, p, now);
         model.review(order, agents[m]!, agents[b]!, pair, false, 5, p, now);
-        volume += orderSize;
+        volume += amount;
         fees += order.paidFee;
       }
     }

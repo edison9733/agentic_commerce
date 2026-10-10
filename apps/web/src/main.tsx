@@ -1,4 +1,4 @@
-import { StrictMode } from 'react';
+import { Component, StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { ClientProvider } from '@solana/react';
 import { client } from './lib/client';
@@ -27,11 +27,42 @@ function Routes() {
   return <Landing />;
 }
 
+/** One bad value from the chain or a pasted link shows a way back, not a blank page. */
+class Boundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    if (!this.state.failed) return this.props.children;
+    return (
+      <div style={{ minHeight: '100dvh', display: 'grid', placeItems: 'center', padding: 24, textAlign: 'center' }}>
+        <div>
+          <h1 className="display text-[2.4rem]">Something went wrong on this page.</h1>
+          <p className="mt-3">
+            <a
+              className="link"
+              href="#/"
+              onClick={() => {
+                this.setState({ failed: false });
+              }}
+            >
+              Back to the home page
+            </a>
+          </p>
+        </div>
+      </div>
+    );
+  }
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ClientProvider client={client}>
       <RouterProvider>
-        <Routes />
+        <Boundary>
+          <Routes />
+        </Boundary>
       </RouterProvider>
     </ClientProvider>
   </StrictMode>,

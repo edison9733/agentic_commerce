@@ -23,6 +23,7 @@ export enum OrderState {
   Refunded,
   Disputed,
   Resolved,
+  Cancelled,
 }
 
 export type OrderStateArgs = OrderState;

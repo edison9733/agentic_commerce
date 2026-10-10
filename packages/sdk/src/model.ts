@@ -195,17 +195,21 @@ export function openOrder(
   };
 }
 
-/** `deliver`: start the hold, or settle instantly inside the instant limit. */
+/**
+ * `deliver`: start the hold, or settle instantly inside the instant limit --
+ * only while the merchant is still Trusted.
+ */
 export function deliver(order: ModelOrder, merchant: ModelAgent, p: Params, now: bigint): void {
   let hold = order.holdSecs;
   let instant = false;
   if (hold === 0) {
+    refresh(merchant, p, now);
     const exposure = merchant.instantExposure + order.amount;
-    if (exposure <= instantLimit(merchant, p)) {
+    if (merchant.tier === 3 && exposure <= instantLimit(merchant, p)) {
       merchant.instantExposure = exposure;
       instant = true;
     } else {
-      hold = p.holdSecs[2]!;
+      hold = Math.max(p.holdSecs[2]!, p.holdSecs[merchant.tier]!);
     }
   }
   order.instant = instant;
@@ -260,13 +264,11 @@ export function settle(
       pair.creditToBuyer += earned;
     }
 
-    if (pair.orders === 0) {
+    if (pair.lastSettledAt === 0n) {
       m.counterparties += 1;
       b.counterparties += 1;
     }
-    pair.orders += 1;
     pair.volume += gross;
-    if (pair.firstSettledAt === 0n) pair.firstSettledAt = now;
     pair.lastSettledAt = now;
 
     if (pair.volume >= p.pairCap / 10n) {
@@ -281,6 +283,11 @@ export function settle(
   } else if (outcome.kind === 'refund') {
     m.asMerchant.refunds += 1;
     b.asBuyer.refunds += 1;
+    // The buyer got everything back: an instant order no longer counts.
+    if (order.instant && !order.seasoned) {
+      m.instantExposure = satSub(m.instantExposure, order.amount);
+      order.seasoned = true;
+    }
     if (outcome.expired) {
       m.asMerchant.expired += 1;
       addPenalty(m, p, now, p.penaltyExpiredBps);
@@ -334,13 +341,14 @@ export function review(
   const settled = order.paidMerchant + order.paidFee;
   // A merchant's review counts once the buyer has spoken for the order; the
   // side that lost a dispute gets no weighted say.
+  const half = (order.amount * 5_000n) / BPS;
   const counts =
     order.outcome === 'release'
       ? reviewerIsBuyer || order.buyerReviewed
       : order.outcome === 'resolve'
         ? reviewerIsBuyer
-          ? settled * 2n <= order.amount
-          : settled * 2n >= order.amount
+          ? settled <= half
+          : settled >= half
         : true;
   if (reviewerIsBuyer) order.buyerReviewed = true;
   const q = TIER_WEIGHT[evaluate(reviewer, p, now).tier]!;
@@ -361,6 +369,9 @@ export function review(
  * money moves without the buyer, reputation does not.
  */
 function grantMerchantEvidence(order: ModelOrder, m: ModelAgent, pair: ModelPair, p: Params, gross: bigint, now: bigint): void {
+  // Pair history, which can waive the buyer-side hold, is the buyer's word too.
+  pair.orders += 1;
+  if (pair.firstSettledAt === 0n) pair.firstSettledAt = now;
   const pct = TIER_WEIGHT[order.buyerTier]!;
   const room = satSub(weighted(p.pairCap, pct), pair.creditToMerchant);
   const earned = minB(weighted(gross, pct), room);
@@ -376,9 +387,12 @@ function grantMerchantEvidence(order: ModelOrder, m: ModelAgent, pair: ModelPair
   touchActivity(m, p, now);
 }
 
-/** `close_order`: an instant order nobody objected to stops counting. */
+/**
+ * `close_order`: an instant order nobody objected to stops counting. One the
+ * buyer complained about keeps counting for the life of the identity.
+ */
 export function closeOrder(order: ModelOrder, merchant: ModelAgent): void {
-  if (order.instant && !order.seasoned) {
+  if (order.instant && !order.seasoned && !order.complained) {
     merchant.instantExposure = satSub(merchant.instantExposure, order.amount);
   }
 }

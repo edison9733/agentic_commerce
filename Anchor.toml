@@ -13,7 +13,9 @@ tessera = "TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ"
 tessera = "TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ"
 
 [provider]
-cluster = "devnet"
+# Local, so `anchor test` never upgrades the live program. Deploy to devnet
+# explicitly (docs/SECURITY.md).
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

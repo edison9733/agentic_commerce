@@ -12,6 +12,7 @@ import {
   fetchAllReviews,
   fetchMaybeConfig,
   OrderState,
+  safeText,
   score,
   type Agent,
   type Config,
@@ -91,7 +92,8 @@ function diff(orders: Decoded<Order>[]): FeedEvent[] {
   for (const { address, data: o } of orders) {
     const before = lastState.get(address);
     lastState.set(address, o.state);
-    if (!primed || before === o.state) continue;
+    // An abandoned quote is not news.
+    if (!primed || before === o.state || o.state === OrderState.Cancelled) continue;
     const kind = o.state === OrderState.Released && o.instant ? 'instant' : KIND[o.state]!;
     out.push({
       id: `${address}:${o.state}`,
@@ -110,6 +112,7 @@ function diff(orders: Decoded<Order>[]): FeedEvent[] {
 /** The latest thing that happened to each order, for a first paint with history in it. */
 function seed(orders: Decoded<Order>[]): FeedEvent[] {
   return orders
+    .filter(({ data: o }) => o.state !== OrderState.Cancelled)
     .map(({ address, data: o }) => {
       const at = Number(o.settledAt || o.deliveredAt || o.fundedAt || o.createdAt);
       const kind = o.state === OrderState.Released && o.instant ? 'instant' : KIND[o.state]!;
@@ -193,7 +196,7 @@ export function profileOf(a: Decoded<Agent>, params: Params, now = Date.now() / 
   return {
     address: a.address,
     wallet: d.wallet,
-    name: d.name || `${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`,
+    name: safeText(d.name, 32) || `${d.wallet.slice(0, 4)}…${d.wallet.slice(-4)}`,
     agent: d,
     eval: e,
     stars: score.averageStars(d, params),

@@ -58,6 +58,13 @@ pub mod tessera {
     ) -> Result<()> {
         validate(fee_bps, &params)?;
         let c = &mut ctx.accounts.config;
+        // Credit files store absolute period numbers; a new period length
+        // would silently move every tenure and penalty already on record.
+        require!(params.period_secs == c.params.period_secs, TesseraError::InvalidParams);
+        require!(
+            arbiter != Pubkey::default() && treasury != Pubkey::default(),
+            TesseraError::InvalidParams
+        );
         c.fee_bps = fee_bps;
         c.params = params;
         c.arbiter = arbiter;
@@ -134,6 +141,9 @@ pub mod tessera {
         let buyer = ctx.accounts.buyer.key();
         let merchant = ctx.accounts.merchant.key();
         require_keys_neq!(buyer, merchant, TesseraError::SelfDealing);
+        let arbiter = ctx.accounts.config.arbiter;
+        require!(arbiter != buyer && arbiter != merchant, TesseraError::ArbiterIsParty);
+        require!(min_hold_secs <= MAX_HOLD_SECS, TesseraError::HoldTooLong);
 
         let params = ctx.accounts.config.params;
         require!(amount >= params.min_order, TesseraError::AmountTooSmall);
@@ -149,7 +159,10 @@ pub mod tessera {
         }
         // Prior undisputed purchases from this merchant are evidence the
         // buyer is who it claims to be, so the buyer-side hold is waived --
-        // unless the buyer still carries a penalty from anywhere.
+        // unless the buyer still carries a penalty from anywhere. Only orders
+        // the buyer reviewed count as history (see `grant_merchant_evidence`):
+        // a merchant can fund orders in any buyer's name, and must not be able
+        // to waive that buyer's protection by doing so.
         let pair_trusted = pair.orders >= params.pair_history_min as u32
             && pair.disputes == 0
             && pair.first_settled_at > 0
@@ -206,8 +219,16 @@ pub mod tessera {
         let now = Clock::get()?.unix_timestamp;
         let vault_balance = ctx.accounts.vault.amount;
         let deliver_secs = ctx.accounts.config.params.deliver_secs;
+        let unpaid_secs = ctx.accounts.config.params.unpaid_secs as i64;
         let order = &mut ctx.accounts.order;
         require!(order.state == OrderState::AwaitingPayment, TesseraError::InvalidState);
+        // A quote the merchant may already have given up on cannot turn into
+        // an order it owes a delivery for; a late payment is returned by
+        // `cancel_unpaid`.
+        require!(
+            now <= order.created_at.saturating_add(unpaid_secs),
+            TesseraError::PaymentWindowClosed
+        );
         require!(vault_balance >= order.amount, TesseraError::VaultUnderfunded);
         order.state = OrderState::Funded;
         order.funded_at = now;
@@ -234,13 +255,17 @@ pub mod tessera {
         let mut hold = order.hold_secs;
         let mut instant = false;
         if hold == 0 {
+            // The tiers were snapshotted at open. A merchant that has lost
+            // Trusted since then (a lost dispute, a missed delivery) does not
+            // settle instantly on the strength of the old snapshot.
             let m = &mut ctx.accounts.merchant_agent;
+            score::refresh(m, &params, now);
             let exposure = m.instant_exposure.saturating_add(order.amount);
-            if exposure <= score::instant_limit(m, &params) {
+            if m.tier == 3 && exposure <= score::instant_limit(m, &params) {
                 m.instant_exposure = exposure;
                 instant = true;
             } else {
-                hold = params.hold_secs[2];
+                hold = params.hold_secs[2].max(params.hold_secs[m.tier as usize]);
             }
         }
 
@@ -269,7 +294,7 @@ pub mod tessera {
 
     /// Give the buyer everything back. The merchant may do it any time before
     /// release. Anyone may do it once the merchant has missed the delivery
-    /// deadline, and that costs the merchant score.
+    /// deadline, and that costs the merchant score, whoever sends it.
     pub fn refund<'info>(mut ctx: Context<'info, Settle<'info>>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let signer = ctx.accounts.authority.key();
@@ -278,11 +303,9 @@ pub mod tessera {
             let order = &ctx.accounts.order;
             match order.state {
                 OrderState::Funded => {
-                    if signer == order.merchant {
-                        expired = false;
-                    } else {
-                        require!(now > order.deliver_by, TesseraError::DeliveryWindowOpen);
-                        expired = true;
+                    expired = now > order.deliver_by;
+                    if !expired {
+                        require_keys_eq!(signer, order.merchant, TesseraError::DeliveryWindowOpen);
                     }
                 }
                 OrderState::Delivered => {
@@ -340,18 +363,27 @@ pub mod tessera {
         settle(&mut ctx, merchant_bps, OrderState::Resolved, false)
     }
 
-    /// Abandon an order that was never confirmed as paid and return the rent.
-    /// Either party may, any time; the rent payer may once the payment window
-    /// has passed. Anything that reached the vault goes back to the buyer.
+    /// Abandon an order that was never confirmed as paid. Either party may,
+    /// any time; the rent payer may once the payment window has passed.
+    /// Anything that reached the vault goes back to the buyer and the vault's
+    /// rent to the payer.
+    ///
+    /// The order account itself stays, marked Cancelled, until `close_order`
+    /// after the payment window. Closing it at once would let the merchant
+    /// reopen the same id -- the same vault address -- for another buyer,
+    /// while a payment the real buyer signed for the old order is still in
+    /// flight. Anyone may run this again on a Cancelled order whose vault was
+    /// recreated and paid into; that money goes to the buyer too.
     pub fn cancel_unpaid(ctx: Context<CancelUnpaid>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let signer = ctx.accounts.authority.key();
         let unpaid_secs = ctx.accounts.config.params.unpaid_secs as i64;
         let order = &ctx.accounts.order;
-        require!(order.state == OrderState::AwaitingPayment, TesseraError::InvalidState);
+        let cancelled = order.state == OrderState::Cancelled;
+        require!(cancelled || order.state == OrderState::AwaitingPayment, TesseraError::InvalidState);
         let is_party = signer == order.buyer || signer == order.merchant;
         let payer_may = signer == order.payer && now >= order.created_at.saturating_add(unpaid_secs);
-        require!(is_party || payer_may, TesseraError::Unauthorized);
+        require!(cancelled || is_party || payer_may, TesseraError::Unauthorized);
 
         let order_id = order.order_id;
         let bump = order.bump;
@@ -385,6 +417,12 @@ pub mod tessera {
             },
             signer_seeds,
         ))?;
+        if !cancelled {
+            let order = &mut ctx.accounts.order;
+            order.state = OrderState::Cancelled;
+            order.settled_at = now;
+            order.refunded = balance;
+        }
         Ok(())
     }
 
@@ -451,11 +489,13 @@ pub mod tessera {
         let counts = match order.state {
             OrderState::Released => reviewer_is_buyer || order.buyer_reviewed,
             OrderState::Resolved => {
-                let doubled = settled.saturating_mul(2);
+                // The same rounding `settle` used, so an even split of an odd
+                // amount leaves both sides heard.
+                let half = mul_bps(order.amount, (BPS / 2) as u16)?;
                 if reviewer_is_buyer {
-                    doubled <= order.amount
+                    settled <= half
                 } else {
-                    doubled >= order.amount
+                    settled >= half
                 }
             }
             // A refund settled nothing, so its review weighs 0 regardless.
@@ -516,22 +556,28 @@ pub mod tessera {
 
     /// Return a settled order's rent once its review window has passed. This
     /// is also where an instant order nobody objected to stops counting
-    /// against the merchant's limit. One the buyer complained about stays
-    /// locked for the longer complaint period first.
+    /// against the merchant's limit. One the buyer complained about never
+    /// does: its rent comes back after the complaint period, but the amount
+    /// stays locked for the life of the identity, so an exit scam cannot be
+    /// repeated by waiting. A cancelled order closes once its payment window
+    /// has passed.
     pub fn close_order(ctx: Context<CloseOrder>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let params = ctx.accounts.config.params;
         let order = &ctx.accounts.order;
-        require!(
-            matches!(
-                order.state,
-                OrderState::Released | OrderState::Refunded | OrderState::Resolved
-            ),
-            TesseraError::InvalidState
-        );
-        let wait = if order.complained { params.complaint_secs } else { params.review_secs };
+        let wait = match order.state {
+            OrderState::Released | OrderState::Refunded | OrderState::Resolved => {
+                if order.complained {
+                    params.complaint_secs
+                } else {
+                    params.review_secs
+                }
+            }
+            OrderState::Cancelled => params.unpaid_secs,
+            _ => return err!(TesseraError::InvalidState),
+        };
         require!(now > order.settled_at.saturating_add(wait as i64), TesseraError::TooEarly);
-        if order.instant && !order.seasoned {
+        if order.instant && !order.seasoned && !order.complained {
             let m = &mut ctx.accounts.merchant_agent;
             m.instant_exposure = m.instant_exposure.saturating_sub(order.amount);
         }
@@ -551,7 +597,31 @@ fn validate(fee_bps: u16, p: &Params) -> Result<()> {
         TesseraError::InvalidParams
     );
     require!(
-        p.penalty_dispute_bps as u64 <= BPS && p.penalty_expired_bps as u64 <= BPS,
+        p.tier_periods[0] <= p.tier_periods[1] && p.tier_periods[1] <= p.tier_periods[2],
+        TesseraError::InvalidParams
+    );
+    // A better tier never waits longer, and only Trusted may settle at once:
+    // past the instant limit an order waits like an Established one, so that
+    // hold must be real.
+    let h = p.hold_secs;
+    require!(h[0] >= h[1] && h[1] >= h[2] && h[2] >= h[3] && h[2] > 0, TesseraError::InvalidParams);
+    require!(h[0] <= MAX_HOLD_SECS, TesseraError::InvalidParams);
+    // Every window has to be open for some time, and a complaint has to
+    // outlast the review window it is made in.
+    require!(
+        p.deliver_secs > 0 && p.unpaid_secs > 0 && p.review_secs > 0 && p.complaint_secs >= p.review_secs,
+        TesseraError::InvalidParams
+    );
+    // A zero here would hand out full marks or switch the pair cap off.
+    require!(
+        p.credit_full > 0 && p.pair_cap > 0 && p.tenure_full > 0 && p.diversity_full > 0,
+        TesseraError::InvalidParams
+    );
+    require!(p.instant_fee_pct <= 100, TesseraError::InvalidParams);
+    require!(
+        p.penalty_dispute_bps as u64 <= BPS
+            && p.penalty_expired_bps as u64 <= BPS
+            && p.penalty_decay_bps as u64 <= BPS,
         TesseraError::InvalidParams
     );
     Ok(())
@@ -595,6 +665,12 @@ fn grant_points(points: &mut u32, held: &mut u16, pct: u64) {
 /// fund the order itself; only the buyer's own signature shows the buyer took
 /// part.
 fn grant_merchant_evidence(m: &mut Agent, pair: &mut Pair, params: &Params, buyer_tier: u8, gross: u64, now: i64) {
+    // Pair history, which can waive the buyer-side hold in `open_order`, is
+    // the buyer's own word too.
+    pair.orders = pair.orders.saturating_add(1);
+    if pair.first_settled_at == 0 {
+        pair.first_settled_at = now;
+    }
     let pct = score::tier_weight(buyer_tier);
     grant_credit(&mut m.credit, &mut pair.credit_to_merchant, gross, pct, params.pair_cap);
     if pair.volume >= params.pair_cap / 10 {
@@ -648,6 +724,7 @@ fn settle<'info>(
     let amount = ctx.accounts.order.amount;
     let merchant_tier = ctx.accounts.order.merchant_tier;
     let instant = ctx.accounts.order.instant;
+    let seasoned = ctx.accounts.order.seasoned;
 
     let principal = vault_balance.min(amount);
     let excess = vault_balance - principal;
@@ -714,6 +791,9 @@ fn settle<'info>(
         order.paid_merchant = to_merchant;
         order.paid_fee = fee;
         order.refunded = to_buyer;
+        if final_state == OrderState::Refunded && instant {
+            order.seasoned = true;
+        }
     }
 
     // Book-keeping from here on is saturating: a statistic must never be able
@@ -745,15 +825,11 @@ fn settle<'info>(
             let pct_for_buyer = score::tier_weight(merchant_tier);
             grant_credit(&mut b.credit, &mut pair.credit_to_buyer, merchant_gross, pct_for_buyer, params.pair_cap);
 
-            if pair.orders == 0 {
+            if pair.last_settled_at == 0 {
                 m.counterparties = m.counterparties.saturating_add(1);
                 b.counterparties = b.counterparties.saturating_add(1);
             }
-            pair.orders = pair.orders.saturating_add(1);
             pair.volume = pair.volume.saturating_add(merchant_gross);
-            if pair.first_settled_at == 0 {
-                pair.first_settled_at = now;
-            }
             pair.last_settled_at = now;
 
             // A counterparty counts toward Diversity only once the pair has
@@ -771,6 +847,11 @@ fn settle<'info>(
         OrderState::Refunded => {
             m.as_merchant.refunds = m.as_merchant.refunds.saturating_add(1);
             b.as_buyer.refunds = b.as_buyer.refunds.saturating_add(1);
+            // The buyer got everything back, so an instant order refunded
+            // after delivery no longer counts against the instant limit.
+            if instant && !seasoned {
+                m.instant_exposure = m.instant_exposure.saturating_sub(amount);
+            }
             if expired {
                 m.as_merchant.expired = m.as_merchant.expired.saturating_add(1);
                 score::add_penalty(m, &params, now, params.penalty_expired_bps);
@@ -1041,12 +1122,7 @@ pub struct OpenDispute<'info> {
 pub struct CancelUnpaid<'info> {
     #[account(seeds = [b"config"], bump = config.bump)]
     pub config: Box<Account<'info, Config>>,
-    #[account(
-        mut,
-        close = payer,
-        seeds = [b"order", order.order_id.as_ref()],
-        bump = order.bump
-    )]
+    #[account(mut, seeds = [b"order", order.order_id.as_ref()], bump = order.bump)]
     pub order: Box<Account<'info, Order>>,
     #[account(mut, associated_token::mint = mint, associated_token::authority = order)]
     pub vault: Box<Account<'info, TokenAccount>>,
@@ -1059,7 +1135,7 @@ pub struct CancelUnpaid<'info> {
         constraint = buyer_token.mint == order.mint @ TesseraError::MintMismatch
     )]
     pub buyer_token: Option<Box<Account<'info, TokenAccount>>>,
-    /// CHECK: receives the rent of both accounts; pinned to the recorded payer.
+    /// CHECK: receives the vault's rent; pinned to the recorded payer.
     #[account(mut, address = order.payer @ TesseraError::Unauthorized)]
     pub payer: UncheckedAccount<'info>,
     pub authority: Signer<'info>,

@@ -9,15 +9,22 @@ import {
 import { solanaRpc } from '@solana/kit-plugin-rpc';
 import { walletSigner } from '@solana/kit-plugin-wallet';
 
-const env = import.meta.env as Record<string, string | undefined>;
+// Each variable is read by name, so the build inlines only these two. They
+// are public: use only RPC URLs that carry no key, or keys locked to this site.
+const rpcUrls = import.meta.env.VITE_RPC_URLS as string | undefined;
+const agentsUrl = import.meta.env.VITE_AGENTS_URL as string | undefined;
 
-export const RPC_URLS = (env.VITE_RPC_URLS ?? 'https://api.devnet.solana.com,https://solana-devnet.api.onfinality.io/public')
+export const RPC_URLS = (rpcUrls ?? 'https://api.devnet.solana.com,https://solana-devnet.api.onfinality.io/public')
   .split(',')
   .map((u) => u.trim())
   .filter(Boolean);
 
-/** Where the merchant agents are served (`npm run agents`). Only the market page needs it. */
-export const AGENTS_URL = env.VITE_AGENTS_URL ?? 'http://localhost:4020';
+/**
+ * Where the merchant agents are served (`npm run agents`). Only the market
+ * page needs it. A production build without it has no market, rather than
+ * one that quietly talks to localhost.
+ */
+export const AGENTS_URL = agentsUrl ?? (import.meta.env.DEV ? 'http://localhost:4020' : 'https://agents.invalid');
 
 /**
  * One wallet-backed client for the app. The connected wallet is payer and

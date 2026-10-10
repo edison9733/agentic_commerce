@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
-import { OrderState, rewards, score } from '@tessera/sdk';
+import { OrderState, rewards, safeText, score } from '@tessera/sdk';
 import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Addr, Breakdown, EASE, Reveal, ScoreGauge, Stars, StateChip, TierBadge } from '../components/ui';
@@ -12,6 +12,16 @@ const MIRRORED = Object.values(registry.feedback).reduce((n, f) => n.set(f.asset
 import { ago, compactUsd, duration, explorerAddress, tierName, usd } from '../lib/format';
 import { go, Link } from '../lib/router';
 import { useChain, useProfiles, type Profile } from '../lib/store';
+
+/** A wallet's self-declared card address, as a link only if it is plain https. */
+function cardUrl(uri: string): URL | null {
+  try {
+    const u = new URL(uri);
+    return u.protocol === 'https:' ? u : null;
+  } catch {
+    return null;
+  }
+}
 
 type SortKey = 'score' | 'volume' | 'orders' | 'stars';
 
@@ -200,7 +210,11 @@ export function AgentProfile({ wallet }: { wallet: string }) {
             <div className="mono mt-3 flex flex-wrap gap-x-5 gap-y-1 text-[0.8rem]" style={{ color: '#4b483e' }}>
               <span>wallet <Addr a={p.wallet} n={6} /></span>
               <span>credit file <Addr a={p.address} n={6} /></span>
-              {a.uri && <a className="link" href={a.uri} target="_blank" rel="noreferrer">A2A agent card</a>}
+              {cardUrl(a.uri) && (
+                <a className="link" href={cardUrl(a.uri)!.href} target="_blank" rel="noopener noreferrer nofollow ugc">
+                  A2A agent card · {cardUrl(a.uri)!.host}
+                </a>
+              )}
               {REGISTRY.has(p.wallet) && (
                 <span title={`This agent is also registered in the Solana Agent Registry (ERC-8004 on Solana). ${MIRRORED.get(REGISTRY.get(p.wallet)!) ?? 0} of its Tessera reviews are mirrored there as feedback, each pointing at the escrow review account.`}>
                   Agent Registry (ERC-8004) <Addr a={REGISTRY.get(p.wallet)!} n={6} />
@@ -279,7 +293,7 @@ export function AgentProfile({ wallet }: { wallet: string }) {
                       {config && r.data.weight > 0n ? ` · earns ${usd(rewards.baseReward(r.data.weight, config.feeBps, rewards.DEVNET_REWARD_PARAMS), 4)} at 1×` : ''} · {ago(Number(r.data.createdAt))}
                     </span>
                   </div>
-                  <div className="text-[0.95rem]" style={{ color: '#4b483e' }}>{r.data.text || <em style={{ color: '#878371' }}>no text</em>}</div>
+                  <div className="text-[0.95rem]" style={{ color: '#4b483e' }}>{safeText(r.data.text) || <em style={{ color: '#878371' }}>no text</em>}</div>
                   <a className="mono link text-[0.7rem]" style={{ color: '#878371' }} href={explorerAddress(r.address)} target="_blank" rel="noreferrer">review account {r.address.slice(0, 8)}…</a>
                 </li>
               ))}
