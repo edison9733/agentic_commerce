@@ -43,11 +43,11 @@ Who it is for: sellers of paid APIs, data and compute who want to charge dollars
 
 The gap shows in the numbers. x402 has carried about 200 million payments, yet on one recent day the average was 7 cents (x402scan, 5 Oct 2026). Cards solve trust with months of history and chargebacks. On-chain there are no chargebacks and new wallets are free, so naive reputation is free to fake.
 
-I come at this as a security researcher: who steals what, and at what cost? Every protection exists because an attack would otherwise pay. The score counts only settled volume, caps each counterparty, and gates tiers on time that cannot be bought in a burst. In simulation, rings of 3 and 6 wallets never reach Trusted; larger ones pay hundreds to thousands of dollars and one to three months first.
+Security research is my interest, so I started from the threat model: who steals what, and at what cost? Every protection exists because an attack would otherwise pay. The score counts only settled volume, caps each counterparty, and gates tiers on time that cannot be bought in a burst. In simulation, rings of 3 and 6 wallets never reach Trusted; larger ones pay hundreds to thousands of dollars and one to three months first.
 
 Why now: agents are starting to pay each other, and the two layers Tessera sits between already exist on Solana: x402 for payment, the Agent Registry for identity. No new standard is needed. McKinsey estimates $3 to 5 trillion of agent commerce by 2030, which needs payments that can be trusted.
 
-*997 characters*
+*1026 characters*
 
 ### What technologies are you using or integrating?
 
