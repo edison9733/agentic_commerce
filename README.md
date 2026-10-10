@@ -5,38 +5,39 @@ credit score decides how long the money waits. Strangers wait. Agents with a rec
 
 > *Every payment matters.*
 
+## See it
+
+- **Live site (devnet):** <https://agentic-commerce-two-theta.vercel.app>. There is no wallet login: the Market page pays with a built-in devnet test wallet.
+- **Click-through decks:** [the pitch](https://agentic-commerce-two-theta.vercel.app/decks/tessera-pitch-slides.html) and [the technical demo](https://agentic-commerce-two-theta.vercel.app/decks/tessera-demo-slides.html). Click or press → for the next slide.
+- **In-site decks:** [/#/deck/pitch](https://agentic-commerce-two-theta.vercel.app/#/deck/pitch) and [/#/deck/demo](https://agentic-commerce-two-theta.vercel.app/#/deck/demo).
+- **Demo video (1:41):** [/videos/tessera-demo.mp4](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4).
+- **Run the site yourself:** `npm install`, then `npm run web`. It reads devnet directly and needs no keys.
+- **Try a whole trade:** [docs/TRY-IT.md](docs/TRY-IT.md) walks through one step by step, as buyer and merchant with two wallets of your own, including a refund when a merchant never delivers.
+
 | | |
 |---|---|
 | Program (devnet) | [`TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ`](https://explorer.solana.com/address/TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ?cluster=devnet) |
-| Config account | [`DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2`](https://explorer.solana.com/address/DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2?cluster=devnet) |
+| Config account (devnet) | [`DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2`](https://explorer.solana.com/address/DgwhgcXkhNwpouzppHdF7KNACA14U1JWPccFH5ZGeNE2?cluster=devnet) |
 | Settles in | devnet USDC (`4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU`), 1% protocol fee |
-| Agent Registry | The four merchant agents are registered in the [Solana Agent Registry](https://solana.com/agent-registry) (ERC-8004) on devnet. See [docs/ERC-8004.md](docs/ERC-8004.md). |
-| Status | Devnet only. Unaudited. The traffic on devnet is this project's own agents. See [what is real](#what-is-real-and-what-is-not). |
+| Agent Registry | The four honest merchant agents (atlas, quill, vera, pixel) are registered in the [Solana Agent Registry](https://solana.com/agent-registry) (ERC-8004) on devnet. See [docs/ERC-8004.md](docs/ERC-8004.md). |
+| Status | Devnet only. Unaudited by a third party. The traffic on devnet is this project's own agents. See [what is real](#what-is-real-and-what-is-not). |
 
 Built for the Colosseum Crypto World's Fair hackathon (Solana track), October 2026.
-
-**See it.** The live site is <https://agentic-commerce-two-theta.vercel.app> (devnet). The slides are
-[the pitch](https://agentic-commerce-two-theta.vercel.app/decks/tessera-pitch-slides.html) and
-[the technical demo](https://agentic-commerce-two-theta.vercel.app/decks/tessera-demo-slides.html):
-click or press → for the next slide. The [demo video](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4)
-is 1:41. To run the site yourself, run `npm install` and `npm run web`: it reads devnet directly and
-needs no keys.
-
-**Want to try it as a buyer and a merchant?** [docs/TRY-IT.md](docs/TRY-IT.md) walks through a whole
-trade with two wallets of your own, step by step, including a refund when a merchant never delivers.
 
 ---
 
 ## The problem
 
-An x402 payment is a signed token transfer. Once a facilitator settles it, it is final: there is no
-chargeback and nobody to call. Card networks answer "did I get what I paid for?" months later. Visa's
-Compelling Evidence 3.0 settles a fraud dispute with purchase history that is 120 to 365 days old
-([Checkout.com](https://www.checkout.com/blog/visa-compelling-evidence-3-0)). Agents do not have 120
-days, and on-chain a new wallet costs nothing, so a reputation that new wallets can mint is worth nothing.
+An x402 payment is a signed token transfer. Once a facilitator settles it, it is final. There is no
+chargeback and nobody to call.
 
-Escrow closes the gap, but a fixed hold is wrong for almost everyone: too long for an agent with a
-thousand clean orders, too short for a wallet created a minute ago. **The hold should be a function of
+Card networks answer "did I get what I paid for?" months later. Visa's Compelling Evidence 3.0 settles
+a fraud dispute with purchase history that is 120 to 365 days old
+([Checkout.com](https://www.checkout.com/blog/visa-compelling-evidence-3-0)). Agents do not have 120
+days. On-chain, a new wallet costs nothing, so a reputation that new wallets can mint is worth nothing.
+
+Escrow closes the gap, but a fixed hold is wrong for almost everyone. It is too long for an agent with
+a thousand clean orders and too short for a wallet created a minute ago. **The hold should be a function of
 what is known about the two parties. That function is a credit score.**
 
 ## What Tessera does
@@ -48,54 +49,63 @@ what is known about the two parties. That function is a credit score.**
 2. **A score that sets the hold.** Every wallet has a credit file. An order snapshots both parties' tiers,
    and the money is held for the longer of the two tiers' holds.
 
-   | Tier | Needs | Hold (mainnet target) | Hold (devnet) |
-   |---|---|---|---|
-   | New | nothing | 3 days | 2 min |
-   | Building | score ≥ 250, 3 active days | 1 day | 45 s |
-   | Established | score ≥ 500, 14 active days | 1 hour | 10 s |
-   | Trusted | score ≥ 750, 30 active days, no standing penalty | instant, inside a limit | instant |
+   | Tier | Needs (mainnet target) | Needs (devnet) | Hold (mainnet target) | Hold (devnet) |
+   |---|---|---|---|---|
+   | New | nothing | nothing | 3 days | 2 min |
+   | Building | score ≥ 250, 3 active days | score ≥ 250, 2 active periods | 1 day | 45 s |
+   | Established | score ≥ 500, 14 active days | score ≥ 500, 8 active periods | 1 hour | 10 s |
+   | Trusted | score ≥ 750, 30 active days, no standing penalty | score ≥ 750, 20 active periods, no standing penalty | instant, inside a limit | instant |
 
-3. **Two-sided reviews, on-chain in full**, weighted by the volume that actually settled.
+   On devnet one period is 60 seconds. The numbers are in [`packages/sdk/src/constants.ts`](packages/sdk/src/constants.ts).
+3. **Two-sided reviews, stored on-chain in full**, weighted by the volume that actually settled.
 4. **Agents that use it.** Merchant agents speak A2A with the
    [a2a-x402 extension](https://github.com/google-agentic-commerce/a2a-x402) and plain HTTP 402. Buyer
    agents check the escrow on-chain before paying, pay through a facilitator (so they need no SOL), check
    the delivery against the hash the merchant committed, and rate the merchant.
 5. **It sits between two things Solana already has.** x402 moves the money. The
    [Solana Agent Registry](https://solana.com/agent-registry) (ERC-8004 on Solana) says who an agent is.
-   Tessera decides whether the money waits. The merchant agents are registered in that registry on
-   devnet, each registry identity points at its Tessera credit file, and Tessera reviews are mirrored
-   there as feedback that carries proof of payment. See [docs/ERC-8004.md](docs/ERC-8004.md).
+   Tessera decides whether the money waits. On devnet, the merchant agents are registered in that
+   registry, each registry identity points at its Tessera credit file, and 28 Tessera reviews (7 per
+   merchant) are mirrored there as feedback that carries proof of payment. See
+   [docs/ERC-8004.md](docs/ERC-8004.md).
 
 ## Four ways in for agents
 
-One core and three thin layers over it, so an agent uses Tessera in whatever it speaks. All four
-return the same decisions and statuses; every transaction comes back unsigned for the agent's own
-wallet. Details: [docs/AGENT-API.md](docs/AGENT-API.md).
+There is one core and three thin layers over it, so an agent can use Tessera in whatever it speaks.
+All four return the same decisions and statuses. Every transaction comes back unsigned, for the
+agent's own wallet to sign. Details: [docs/AGENT-API.md](docs/AGENT-API.md).
 
 | Door | Run | Use |
 |---|---|---|
-| HTTP API (the core) | `npm run api` → `:4030/v1` | `GET /v1/merchants?need=…` → the best merchants, ranked; `POST /v1/check` → `instant`, `escrow` or `block`, with a reason |
+| HTTP API (the core) | `npm run api` → `:4030/v1` | `GET /v1/merchants?need=…` returns the best merchants, ranked. `POST /v1/check` returns `instant`, `escrow` or `block`, with a reason. |
 | MCP (Streamable HTTP) | `npm run mcp` → `:4040/mcp` | `claude mcp add --transport http tessera http://127.0.0.1:4040/mcp` |
 | Skill | [`skills/tessera/SKILL.md`](skills/tessera/SKILL.md) | "Before any paid tool call, call `check_payment`." |
-| CLI | `npm run tessera -- help` | `tessera find text summary --sort fastest`, `tessera check <merchant> 0.20 --keypair ~/.config/solana/id.json` |
+| CLI | `npm run tessera -- help` | `npm run tessera -- find text summary --sort fastest`, or a read-only check: `npm run tessera -- check <merchant> 0.20 --buyer <your devnet address>` |
 
-Tools, by phase: before paying `find_merchants`, `get_score`, `check_payment`; during `open_escrow`, `deliver_order`,
-`get_escrow`; after `release_escrow`, `reclaim_after_timeout`, `report_outcome`, `submit_transaction`.
+The MCP server and the CLI both call the HTTP API, so `npm run api` must be running.
+
+Tools, by phase:
+- **Before paying:** `find_merchants`, `get_score`, `check_payment`.
+- **During:** `open_escrow`, `deliver_order`, `get_escrow`.
+- **After:** `release_escrow`, `reclaim_after_timeout`, `report_outcome`, `submit_transaction`.
 
 **Reviews as search, for agents.** `find_merchants` answers "who is best for this, what does it cost,
-and how many seconds until it is settled" in one call. The rank uses only on-chain data, and every
-review behind it needed a real settled order, so a top spot costs real sales to fake. It is written
-for agents, not people: compact JSON, enums, and a plain-text summary at `/llms.txt` on both the API
-and the website.
+and how many seconds until it is settled" in one call. The rank uses only on-chain data. Every review
+behind it needed a real settled order, so a top spot costs real sales to fake. It is written for
+agents, not people: compact JSON, enums, and a plain-text summary at `/llms.txt` on both the API and
+the website.
 
 ## Reviews that pay
 
-A share of every fee goes back to whoever reviews:
+A share of every fee goes back to whoever reviews. Three rules:
 - **The pay never depends on the stars.** Every review that counted earns a quarter of the fee rate on the money behind it.
 - **Accuracy scales it.** An honest warning about a wallet that then fails is paid 1.5×. Praising one that then fails is paid nothing.
 - **Farming loses money.** Both sides of an order get back at most 75% of its fee, so trading with yourself to collect rewards always costs more than it pays.
 
-An airdrop pays it from the treasury (`npm run rewards`). Every payout file can be recomputed (`--verify`). Rules and a recorded run: [docs/REWARDS.md](docs/REWARDS.md).
+The payout is an off-chain airdrop that the operator runs from the treasury. `npm run rewards` previews
+it and pays nothing; `npm run rewards -- --pay` pays. Every payout file can be recomputed with
+`--verify`. It has run end to end on a local validator with the real program (`npm run demo:rewards`),
+but not yet on devnet. Rules and a recorded run: [docs/REWARDS.md](docs/REWARDS.md).
 
 ## The score
 
@@ -110,22 +120,23 @@ Evidence = 0.45 History + 0.30 Tenure + 0.25 Diversity
 - **Rating**: volume-weighted stars from counterparties, shrunk toward 3 stars.
 - **Behaviour**: falls 25% for a lost dispute and 10% for a missed delivery, and heals over time.
 
-It is integer arithmetic over public accounts. The program ([`score.rs`](programs/tessera/src/score.rs)),
-the SDK ([`score.ts`](packages/sdk/src/score.ts)) and the website run the same code and get the same
-number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
+It is integer arithmetic over public accounts. There are two implementations: the program's
+([`score.rs`](programs/tessera/src/score.rs)) and the SDK's ([`score.ts`](packages/sdk/src/score.ts)),
+which the website uses. They run the same integer arithmetic, and `npm run test:local` checks that they
+agree. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 
 ## What is checked
 
 | Command | Result | What it proves |
 |---|---|---|
-| `npm run test:local` | **395 / 395** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
+| `npm run test:local` | **395 / 395** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model. Every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
 | `npm run test:formula` | **44 / 44** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
-| `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the balances on chain, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
-| `npm run test:doors` | **pass** | All four doors against the real program on a local validator (94 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
+| `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the on-chain balances, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
+| `npm run test:doors` | **pass** (94 checks) | All four doors against the real program on a local validator: every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
 | `npm run test:agents` | **pass** | The merchant and buyer agents against the real program on a local validator: a co-signed quote, a direct payment, delivery with its evidence kept for the arbiter, release, and both reviews in the order the program weighs them. |
-| `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry is read back from the registry and matched against the Tessera review account it points at. |
+| `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry on devnet is read back from the registry and matched against the Tessera review account it points at. |
 
-Measured on devnet over a public RPC on 4 October 2026 (UTC); raw data in [`deployments/measurements.jsonl`](deployments/measurements.jsonl):
+The timings in the snapshot below were measured on devnet over a public RPC on 4 October 2026 (UTC). Raw data is in [`deployments/measurements.jsonl`](deployments/measurements.jsonl).
 
 <!-- snapshot:start -->
 Snapshot of the demo network at 2026-10-04T19:11:10.000Z (`deployments/snapshot.json`):
@@ -167,7 +178,7 @@ the rest of the demo. It measures this prototype on that endpoint, not Solana.
 
 ## Run it
 
-Needs Node 20.18+, Rust, Solana CLI 3.1, Anchor 1.1.2. Everything targets **devnet**.
+Needs Node 20.18 or newer (22 recommended), Rust, Solana CLI 3.1 and Anchor 1.1.2. Everything targets **devnet**.
 
 ```bash
 npm install
@@ -178,21 +189,21 @@ npm run test:local           # 395 checks on a local validator (about 4 minutes)
 ```
 
 To run the demo network against the deployed program you need the role keypairs in `.keys/`. They are
-not in the repo. `npm run setup:devnet` creates new ones and funds them from your Solana CLI wallet
-(it needs devnet SOL and devnet USDC from <https://faucet.circle.com>); with a different deployer you
-also have to deploy the program under your own id.
+not in the repo. `npm run setup:devnet` creates new ones and funds them from your Solana CLI wallet. It
+needs devnet SOL and devnet USDC from <https://faucet.circle.com>. With a different deployer you also
+have to deploy the program under your own id.
 
 ```bash
 npm run setup:devnet         # config, keys, funding, profiles (idempotent)
 npm run agents               # merchant agents: A2A + x402 + crank + arbiter, on :4020
 npm run swarm                # buyer agents trade for 45 periods; three attacks join later
 npm run web                  # the site, on :5173
-npm run registry -- --mirror 3   # register merchants in the Solana Agent Registry, mirror 3 reviews each
+npm run registry -- --mirror 7   # register merchants in the Solana Agent Registry, mirror 7 reviews each
 ```
 
 The agents server quotes two public x402 facilitators (x402.org and PayAI). Coinbase's CDP facilitator
-is the most used one and needs an API key: set `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` and it is
-tried first. That path loads and falls back cleanly, but it has not been run with a real key.
+needs an API key: set `CDP_API_KEY_ID` and `CDP_API_KEY_SECRET` and it is tried first. That path loads
+and falls back cleanly, but it has not been run with a real key.
 
 One purchase by one agent:
 
@@ -203,24 +214,29 @@ npm run buy -w @tessera/agents -- --buyer scout --merchant atlas --mode x402
 The site reads the chain directly, so `npm run web` alone shows the live network. Only the Market page
 needs `npm run agents`.
 
-### Hosting the API and the agents
+[`.env.example`](.env.example) lists the names of every environment variable used. Values are never
+committed.
+
+### Hosting the API and the agents (Railway)
 
 [docs/RAILWAY.md](docs/RAILWAY.md): one `Dockerfile`, a config per service in `railway/`, and the
 merchants' keys passed as one secret variable (`npm run keys:export`).
 
 ### Putting the site on Vercel
 
-The site is static files (`npm run build -w @tessera/web` writes `apps/web/dist`). In Vercel, import the
+The site is static files: `npm run build -w @tessera/web` writes `apps/web/dist`. In Vercel, import the
 GitHub repo and choose the **web** app ("Import single project"): Root Directory `apps/web`, framework
-Vite, default build and output settings. Each push to `main` redeploys. Do not add a `vercel.json` at
-the repo root: Vercel applies it to the `apps/web` project too, and its paths would be wrong there.
-`apps/web/vercel.json` is fine: it sets security headers only (a strict Content-Security-Policy, framing
-and referrer rules).
+Vite, default build and output settings. Each push to `main` redeploys.
+
+Do not add a `vercel.json` at the repo root. Vercel applies it to the `apps/web` project too, and its
+paths would be wrong there. `apps/web/vercel.json` is fine: it only sets security headers (a strict
+Content-Security-Policy, framing and referrer rules).
+
 Optional environment variables, set in the Vercel project:
 
-- `VITE_RPC_URLS`: comma-separated devnet RPC URLs, tried in order (defaults to two public ones). Public: it is compiled into the site, so never put a URL with an API key here.
+- `VITE_RPC_URLS`: comma-separated devnet RPC URLs, tried in order (defaults to two public ones). This is public, because it is compiled into the site, so never put a URL with an API key here.
 - `VITE_AGENTS_URL`: the public `https://` address of `npm run agents`, for the Market page and the demo
-  deck's checkout. The agents server is not on Vercel; without it the Market page says it is unreachable.
+  deck's checkout. The agents server is not on Vercel. Without it, the Market page says it is unreachable.
 
 These are read at build time, so redeploy after changing them.
 
@@ -238,30 +254,30 @@ skills/tessera/       SKILL.md for skill-aware agents
 apps/web/             React + Motion site: live network, credit files, market, decks
 apps/web/slides/      Source of the click-through slide decks (npm run slides)
 scripts/              Devnet bootstrap and the local-validator test suite
-docs/                 Scoring, security model, architecture, A2A extension, ERC-8004 and the
-                      Agent Registry, submission pack
+docs/                 Scoring, security model, architecture, A2A extension, agent API, rewards,
+                      ERC-8004 and the Agent Registry, Railway hosting, try-it guide
 deployments/          Public addresses, measured timings, Agent Registry assets and files
 ```
 
 ## What is real and what is not
 
-Real: the program on devnet, every account and transaction the site shows, the score (recomputed in
-your browser from those accounts), the x402 payments through public facilitators, the test results.
+**Real:** the program on devnet, every account and transaction the site shows, the score (recomputed
+in your browser from those accounts), the x402 payments through public facilitators, and the test
+results.
 
-Not real yet:
+**Not real yet:**
 
 - **The traffic is ours.** The devnet network is this project's own agents trading with recycled test
-  USDC to show what the program does with each behaviour. There are no outside users and no revenue.
+  USDC, to show what the program does with each behaviour. There are no outside users and no revenue.
 - **Time is compressed on devnet.** One period is 60 seconds instead of a day, and holds are seconds
   instead of days, so a wallet's journey can be watched in under an hour. The formula is the same.
 - **Single keys.** The arbiter and the program's upgrade authority are one key each. Both need a
   multisig before any real money.
 - **Unaudited** by a third party, and the A2A endpoint is hand-rolled from the specification rather
-  than certified. Two internal reviews found and fixed holes: ten on 7 October and a wider pass on
-  10 October, including a critical order-swap in the escrow
+  than certified. Two internal reviews found and fixed holes: ten on 7 October, and a wider pass on
+  10 October that included a critical order-swap in the escrow
   ([7 October](docs/SECURITY.md#audit-of-7-october-2026), [10 October](docs/SECURITY.md#audit-of-10-october-2026)).
-  **The program deployed on devnet predates the program fixes** until the upgrade authority redeploys it;
-  the steps are in the same section.
+  The fixes from both reviews are deployed on devnet.
 - **It prices faking; it does not detect it.** On-chain data cannot tell a bot from a customer who
   spends the same money. See the limits in [docs/SECURITY.md](docs/SECURITY.md).
 
@@ -274,9 +290,9 @@ Not real yet:
   [Solana Agent Registry](https://solana.com/agent-registry) is that standard on Solana. Tessera is the
   payment side, and is bridged to the registry on devnet: [docs/ERC-8004.md](docs/ERC-8004.md).
 - [Visa Compelling Evidence 3.0](https://www.checkout.com/blog/visa-compelling-evidence-3-0): earlier
-  undisputed purchases are evidence a later one is legitimate. The pair account is that evidence, kept
-  by the program.
-- An earlier prototype by the same author (`x402-fraud`, 22–23 September 2026, unpublished) established
+  undisputed purchases are evidence that a later one is legitimate. The pair account is that evidence,
+  kept by the program.
+- An earlier prototype by the same author (`x402-fraud`, 22 to 23 September 2026, unpublished) showed
   that an escrow account can be an x402 `payTo`. Tessera is a new program and codebase built on that idea.
 
 ## Licence

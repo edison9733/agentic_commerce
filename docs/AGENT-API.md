@@ -44,8 +44,8 @@ projects) or to `.claude/skills/tessera` in a project.
 | After | `report_outcome` | `POST /v1/escrow/report` | `satisfied`: release and review in one transaction. `unsatisfied`: dispute during the hold, else review. `not_delivered`: refund after the deadline |
 | After | `submit_transaction` | `POST /v1/tx/submit` | Relays a transaction your wallet signed and waits for confirmation. Optional |
 
-`find_merchants`, `deliver_order`, `get_escrow` and `submit_transaction` were added to the six
-suggested tools: an agent needs to choose who to buy from, the merchant side needs a way to deliver,
+Six of these tools cover the basic escrow steps. `find_merchants`, `deliver_order`, `get_escrow` and
+`submit_transaction` were added because an agent needs to choose who to buy from, the merchant side needs a way to deliver,
 an agent needs to see where an order stands, and some agents can sign but have no RPC.
 
 The full request and response shapes are in the OpenAPI document the API serves at
@@ -155,7 +155,7 @@ signs what it is given. So:
 - Buyers are verified against the chain, not the API: `open_escrow` with `role: buyer` runs
   `verifyOrderForPayment`, the same check the SDK gives every buyer.
 
-## Following the SilentProbe lesson
+## No silent failures
 
 - Allowed values are enums in every schema: `role`, `outcome`, and in responses `decision`, `reason`,
   `status`, `action`. MCP clients see them in the tool schemas, so a model cannot invent `"seller"`.
@@ -164,7 +164,7 @@ signs what it is given. So:
 
 ## Tests
 
-`npm run test:doors` starts a local validator with the program, then drives all four doors:
+`npm run test:doors` starts a local validator with the program, then drives all four doors in 94 checks:
 
 - **API**: every tool and refusal path, including `find_merchants` against two agent cards (one a
   copycat claiming another wallet), with each transaction signed here as an agent's wallet

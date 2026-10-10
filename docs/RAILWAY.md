@@ -95,8 +95,7 @@ Only its own domain is answered (DNS-rebinding protection). Add more host names 
 
 ## Things to know
 
-- **Devnet only.** These servers move test USDC. The deployed program still predates the audit
-  fixes: redeploy it first (see [SECURITY.md](SECURITY.md)).
+- **Devnet only.** These servers move test USDC.
 - **The arbiter key is on the agents server.** That is fine for a demo. For real money the arbiter
   should be a separate, better-guarded service.
 - **Cards on private addresses are not read** unless `TESSERA_ALLOW_PRIVATE_CARDS=1` is set. That's on

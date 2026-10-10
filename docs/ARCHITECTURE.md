@@ -35,21 +35,33 @@ AwaitingPayment ──confirm_funded──▶ Funded ──deliver──▶ Deli
  (either party; the rent      (merchant any time;        │    and the merchant is inside its instant limit)
   payer after the window)      anyone after the          │
       ▼                        delivery deadline)        ├──refund (merchant)──▶ Refunded
-   closed                          ▼                     └──open_dispute (buyer, during the hold)──▶ Disputed
-                                Refunded                                         resolve_dispute (arbiter) ──▶ Resolved
+  Cancelled                        ▼                     └──open_dispute (buyer, during the hold)──▶ Disputed
+      │                         Refunded                                                               │
+ close_order (after the                                 resolve_dispute (arbiter), or an even split by ─┤
+ payment window)                                        anyone once the complaint period has passed     ▼
+      ▼                                                 since the hold would have ended             Resolved
+   closed
 ```
 
-Both parties may `submit_review` once per order after it settles. `close_order` returns the order's
-rent after the review window, and is where an instant order nobody objected to stops counting against
-the merchant's instant limit.
+`cancel_unpaid` returns anything in the vault to the buyer and closes the vault, but the order account
+stays as a Cancelled tombstone. Closing it at once would let the merchant reopen the same id, and so
+the same vault address, while a payment the buyer signed for the old order is still in flight.
+`close_order` removes the tombstone once the payment window has passed.
+
+Both parties may `submit_review` once per order after it settles. `close_order` returns a settled
+order's rent after the review window (after the complaint period if the buyer complained), and is
+where an instant order nobody objected to stops counting against the merchant's instant limit.
 
 ## Design decisions
 
 - **`payTo` is the order account.** The x402 `exact` scheme on Solana permits only a token transfer, and
   derives the destination from `payTo` without requiring it to be a wallet. No custom scheme, no
   self-hosted facilitator.
-- **The risk is priced at open and snapshotted.** Tiers, scores and the hold are written into the order,
-  so nothing that happens later (a config change, a score change) alters an order in flight.
+- **The risk is priced at open and snapshotted.** Tiers, scores, the fee, the arbiter and the hold are
+  written into the order, so a later config or score change does not move them. Some things are read
+  live: `deliver` re-scores the merchant and settles instantly only if it is still Trusted and inside its
+  limit (C20 in [SECURITY.md](SECURITY.md)), and the delivery, review and complaint windows, the instant
+  base and the hold past the instant limit are read from the config when used.
 - **Bookkeeping is saturating, money is checked.** A statistic overflowing must never be able to hold
   escrow hostage; a payout must never silently wrap.
 - **The site reads the chain directly.** Four `getProgramAccounts` calls and one account read, decoded
