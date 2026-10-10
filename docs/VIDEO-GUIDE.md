@@ -39,7 +39,7 @@ This is Tessera, running live on Solana devnet. This page reads the chain direct
 
 Every wallet has a public credit file. Here is a merchant with a high score. I can see what the score is made of, and every review, with the weight it carried. Each review counts only because a real order settled.
 
-Now the Market. I press the test-funds button, which sends this browser's test wallet some devnet USDC. I pick a merchant and press buy. The page checks the order on-chain before it pays. It pays into the escrow, not to the merchant. The merchant delivers, and the page checks what arrived against the hash the merchant committed. This wallet is new, so the money is held for a while. When I am satisfied, I confirm, the merchant is paid, and I leave a review.
+Now the Market. I press the test-funds button, which sends this browser's test wallet some devnet USDC. I pick a merchant and press buy. The page checks the order on-chain before it pays. It pays into the escrow, not to the merchant. The merchant delivers, and the page checks what arrived against the hash the merchant committed. This is a fresh wallet, so the money is held for a while. When I am satisfied, I confirm, the merchant is paid, and I leave a review.
 
 Here is the score itself. It is integer arithmetic over public accounts, and this page runs the same code as the program. I pick a wallet that only sells to itself, and the score stays low. I pick a busy wallet with real customers, and it climbs, and the hold shrinks.
 
@@ -58,9 +58,9 @@ that is easier: keep the facts, drop the exact sentences.
 
 Hi, I'm Edison Liu. I study electronic and computer engineering at the ZJU-UIUC Institute, and I build working systems from start to finish, from Arduino hardware to software.
 
-AI agents are starting to pay each other with x402. A payment is final the moment it lands, so there is no chargeback, and agents only dare to move cents.
+AI agents are starting to pay each other with x402. Once an x402 payment settles, there is no chargeback, so agents mostly move small amounts.
 
-Tessera puts each payment in an escrow on Solana. An on-chain credit score decides how long the money waits. A stranger waits. Two wallets with a record settle at once. The score comes only from orders that really settled, so faking it costs real fees and time.
+Tessera puts each payment in an escrow on Solana. An on-chain credit score decides how long the money waits. A fresh wallet waits. Two Trusted-tier wallets can settle instantly. The score comes only from orders that really settled, so faking it costs real fees and time.
 
 Security research is my interest, so I started from the threat model: who steals what, and at what cost. I audited my own work twice. The second time I found a critical bug: a merchant could cancel and reopen an order to take a buyer's payment. I fixed it and wrote a test that proves it.
 
@@ -86,3 +86,24 @@ upload to YouTube, set visibility to **Unlisted**, copy the link.
 1. Check the length: the demo is under 3:00 and the pitch under 2:00.
 2. Open both links in a private browser window and confirm they play without logging in.
 3. Paste the demo link into **Please submit a demo video** and the pitch link into **Pitch video**.
+
+## Ready-made versions of both videos
+
+Two videos made from the real product are in `pitch/out/`, each with English subtitles burned in and a
+separate `.srt` file. Neither has a voice, and neither pretends to be you.
+
+| File | What it is |
+|---|---|
+| `tessera-demo-video.mp4` | The demo, driven like a person would drive it: a large cursor, real clicks, a real purchase, and real terminal output from the CLI. Recorded on a local Solana validator running the real Tessera program, and labelled so on screen. |
+| `tessera-pitch-rehearsal.mp4` | The pitch script as large subtitles over the real site, with a frame where your camera goes. Practise with it, then record yourself. |
+
+To record the same demo against the **live site and devnet** from your own computer:
+
+```bash
+npx playwright install chromium     # once
+TESSERA_API_URL=https://<your api domain> npm run video:demo
+```
+
+It writes `pitch/out/tessera-demo-video-live.mp4` and `.srt`. It needs `ffmpeg` on your computer. The
+recordings in this repository were made with `pitch/studio/up.sh` (the whole product on a local validator),
+`pitch/studio/record-demo.mjs` and `pitch/studio/record-pitch.mjs`; `pitch/studio/down.sh` cleans up.

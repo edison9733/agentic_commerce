@@ -1,0 +1,89 @@
+1
+00:00:02,500 --> 00:00:04,678
+Hi, I'm Edison Liu.
+
+2
+00:00:04,728 --> 00:00:09,572
+I study electronic and computer
+engineering at the ZJU-UIUC Institute.
+
+3
+00:00:09,622 --> 00:00:15,652
+I build working systems from start to
+finish, from Arduino hardware to software.
+
+4
+00:00:15,850 --> 00:00:20,694
+AI agents are starting to
+pay each other with x402.
+
+5
+00:00:20,744 --> 00:00:25,144
+Once an x402 payment settles,
+there is no chargeback.
+
+6
+00:00:25,194 --> 00:00:28,261
+So agents mostly move small amounts.
+
+7
+00:00:28,311 --> 00:00:32,711
+Tessera puts each payment
+in an escrow on Solana.
+
+8
+00:00:32,761 --> 00:00:37,606
+An on-chain credit score decides
+how long the money waits.
+
+9
+00:00:37,656 --> 00:00:42,500
+A fresh wallet waits. Two Trusted-tier
+wallets can settle instantly.
+
+10
+00:00:42,550 --> 00:00:50,020
+The score comes only from orders that really
+settled, so faking it costs real fees and time.
+
+11
+00:00:50,556 --> 00:00:58,746
+Security research is my interest, so I started from
+the threat model: who steals what, and at what cost.
+
+12
+00:00:59,450 --> 00:01:02,517
+I audited my own work twice.
+
+13
+00:01:02,567 --> 00:01:11,477
+The second time I found a critical bug: a merchant could
+cancel and reopen an order to take a buyer’s payment.
+
+14
+00:01:12,350 --> 00:01:17,194
+I fixed it and wrote a test that proves it.
+
+15
+00:01:17,244 --> 00:01:25,074
+I build with Claude Code. I set the requirements
+and the threat model, and I check the results.
+
+16
+00:01:25,694 --> 00:01:30,539
+The code and the tests are
+in the public repository.
+
+17
+00:01:30,589 --> 00:01:38,419
+It runs on devnet with test money. There are
+no outside users yet, and it is not audited.
+
+18
+00:01:39,039 --> 00:01:45,429
+Next, I want to talk to x402 sellers
+who would charge more than cents.
+
+19
+00:01:45,711 --> 00:01:49,941
+I intend to keep building it. Thank you.

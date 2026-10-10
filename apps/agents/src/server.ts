@@ -56,7 +56,7 @@ const arbiter = clientForSigner(await loadKeypair('.keys/arbiter.json'));
 
 const merchants = new Map<string, MerchantAgent>();
 for (const m of [...MERCHANTS, ...ADVERSARIES.filter((a) => a.role === 'merchant')]) {
-  const behaviour: Behaviour = m.behaviour === 'no-show' ? 'no-show' : 'honest';
+  const behaviour: Behaviour = m.behaviour === 'no-show' ? 'no-show' : m.behaviour === 'ring-merchant' ? 'ring' : 'honest';
   merchants.set(m.id, new MerchantAgent(m.id, m.title, clientForSigner(await loadKeypair(keyPath(m.id))), ops, behaviour));
 }
 // Every key is loaded: the secrets in TESSERA_KEYS are not needed in memory any more.
