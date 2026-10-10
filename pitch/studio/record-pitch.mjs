@@ -77,7 +77,7 @@ const browser = await chromium.launch({
   headless: true,
   executablePath: existsSync('/opt/pw-browsers/chromium-1194/chrome-linux/chrome') ? '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' : undefined,
 });
-const context = await browser.newContext({ viewport: { width: 1600, height: 900 }, recordVideo: { dir: work, size: { width: 1920, height: 1080 } } });
+const context = await browser.newContext({ viewport: { width: 1600, height: 900 }, recordVideo: { dir: work, size: { width: 1600, height: 900 } } });
 await context.addInitScript(FRAME);
 const page = await context.newPage();
 const t0 = Date.now();
