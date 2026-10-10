@@ -49,7 +49,7 @@ const pos = new WeakMap();
 const ease = (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 
 /** Move the real mouse to an element (selector or locator), the way a hand would. */
-export async function glide(page, target, ms = 850) {
+export async function glide(page, target, ms = 520) {
   const loc = typeof target === 'string' ? page.locator(target).first() : target;
   await loc.scrollIntoViewIfNeeded({ timeout: 10_000 }).catch(() => {});
   const box = await loc.boundingBox().catch(() => null);
@@ -63,7 +63,7 @@ export async function glide(page, target, ms = 850) {
     await pause(ms / steps);
   }
   pos.set(page, to);
-  await pause(250);
+  await pause(140);
   return true;
 }
 
@@ -71,18 +71,18 @@ export async function click(page) {
   await page.mouse.down();
   await pause(90);
   await page.mouse.up();
-  await pause(400);
+  await pause(250);
 }
 
 export async function smoothScroll(page, top) {
   await page.evaluate((y) => window.scrollTo({ top: y, behavior: 'smooth' }), top);
-  await pause(1400);
+  await pause(900);
 }
 
 export async function typeSlowly(page, text) {
   for (const ch of text) {
     await page.keyboard.type(ch);
-    await pause(55 + Math.random() * 45);
+    await pause(28 + Math.random() * 30);
   }
 }
 
@@ -142,14 +142,14 @@ export function terminalHtml(entries) {
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
   const add = (html) => { t.insertAdjacentHTML('beforeend', html); t.scrollTop = t.scrollHeight; };
   (async () => {
-    await wait(900);
+    await wait(500);
     for (const e of entries) {
       add('<span class="p">edison@tessera ~ $ </span><span class="c"></span>');
       const c = t.querySelectorAll('.c'); const cmd = c[c.length - 1];
-      for (const ch of e.cmd) { cmd.textContent += ch; await wait(38 + Math.random() * 40); }
-      add('\\n'); await wait(700);
-      for (const line of e.out) { add(${JSON.stringify('')} + line.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '\\n'); await wait(120); }
-      add('\\n'); await wait(2600);
+      for (const ch of e.cmd) { cmd.textContent += ch; await wait(18 + Math.random() * 22); }
+      add('\\n'); await wait(350);
+      for (const line of e.out) { add(${JSON.stringify('')} + line.replace(/&/g,'&amp;').replace(/</g,'&lt;') + '\\n'); await wait(45); }
+      add('\\n'); await wait(1600);
     }
     add('<span class="p">edison@tessera ~ $ </span><span class="caret"></span>');
     window.__typed = true;

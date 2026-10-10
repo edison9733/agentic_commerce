@@ -73,70 +73,63 @@ await page.goto(`${site}/#/`);
 await page.mouse.move(800, 450);
 // Start the film once the page has read the chain, not on a blank page.
 await page.waitForFunction(() => document.body.innerText.length > 600, null, { timeout: 30_000 }).catch(() => {});
-await pause(1500);
+await pause(800);
 const start = (Date.now() - t0) / 1000;
 
 // 1. the live network
-say('This is Tessera. The page reads the Solana chain directly in my browser.');
+say('Tessera. This page reads Solana directly. Squares are merchant agents, circles are buyers.');
 await glide(page, 'a[href="#/network"]');
 await click(page);
-await pause(2000);
-say('Squares are merchant agents, and circles are buyers.');
-await page.mouse.move(700, 420, { steps: 30 });
-await pause(3000);
+await page.mouse.move(760, 440, { steps: 18 });
+await pause(1800);
 say('A coin on a line is money held in escrow.');
-await page.mouse.move(1000, 520, { steps: 30 });
-await pause(3000);
+await page.mouse.move(1000, 520, { steps: 18 });
+await pause(1600);
 
 // 2. a credit file
 say('Every wallet has a public credit file.');
 await glide(page, 'a[href="#/agents"]');
 await click(page);
-await pause(3500);
+await pause(1600);
 await glide(page, page.getByRole('button', { name: 'Merchants', exact: true }));
 await click(page);
-await pause(1200);
+await pause(600);
 await glide(page, page.locator('tbody tr').first());
-say('Here is the top merchant, and what its score is made of.');
 await click(page);
-await pause(3000);
-await smoothScroll(page, 650);
-say('Every review shows the weight it carried. Each one needed a real settled order.');
-await pause(3000);
-await smoothScroll(page, 1300);
-await pause(2500);
+await pause(1600);
+say('Each review shows its weight, and each one needed a real settled order.');
+await smoothScroll(page, 700);
+await pause(1700);
 
 // 3. a purchase on the Market
-say('Now the Market. I get test funds for this browser’s test wallet.');
-await go('#/market', 3500);
+say('Now I buy something. First, test funds for this browser’s wallet.');
+await go('#/market', 1800);
 const funds = page.getByRole('button', { name: /Get test funds/ });
 if (await funds.isVisible().catch(() => false)) {
   await glide(page, funds);
   await click(page);
   await page.getByText(/Sent .* test USDC|already funded|once per wallet/i).first().waitFor({ timeout: 30_000 }).catch(() => {});
 }
-await pause(2500);
-say('I pick a merchant and press Buy.');
+await pause(800);
 const buy = page.getByRole('button', { name: /^Buy$/ }).first();
 await glide(page, buy);
 await click(page);
-await pause(2500);
+await pause(1200);
 const payBtn = page.getByRole('button', { name: /^Pay \$/ });
 await glide(page, payBtn);
-say('The page checks the order on-chain before it pays, and pays into the escrow, not to the merchant.');
+say('The money goes into escrow, not to the merchant.');
 await click(page);
 await page.getByText(/In escrow|Settled instantly|Released early/).first().waitFor({ timeout: 120_000 }).catch(() => {});
-say('The merchant delivers, and the page checks the delivery against the hash the merchant committed.');
-await pause(4500);
+say('The page checks the delivery against the hash the merchant committed.');
+await pause(2200);
 if (await page.getByRole('button', { name: 'Release now' }).isVisible().catch(() => false)) {
-  say('This is a fresh wallet, so the money is held. I confirm receipt, and the merchant is paid.');
-  await pause(2500);
+  say('A fresh wallet’s money is held. I confirm receipt, and the merchant is paid.');
   await glide(page, page.getByRole('button', { name: 'Release now' }));
   await click(page);
   await page.getByText(/Released early|Settled after/).first().waitFor({ timeout: 90_000 }).catch(() => {});
+  await pause(1200);
 }
-await pause(2000);
-say('Then I leave a review. It is stored on-chain, with the weight of the money behind it.');
+say('My review goes on-chain, weighted by the money behind it.');
 const five = page.getByRole('radio', { name: '5 stars' });
 if (await five.isVisible().catch(() => false)) {
   await glide(page, five);
@@ -148,43 +141,36 @@ if (await five.isVisible().catch(() => false)) {
   await click(page);
   await page.getByText(/Your review is on-chain/).waitFor({ timeout: 60_000 }).catch(() => {});
 }
-await pause(2500);
+await pause(1300);
 
 // 4. the score
-say('The score is integer arithmetic over public accounts, the same code the program runs.');
-await go('#/formula', 3000);
+say('The score is public maths, the same code the program runs.');
+await go('#/formula', 1800);
 const preset = (label) => page.getByRole('button', { name: new RegExp(`^${label}`) }).first();
-await preset('Brand new').scrollIntoViewIfNeeded().catch(() => {});
-await pause(1500);
-await glide(page, preset('Brand new'));
-await click(page);
-await pause(2500);
+await preset('Sells to itself').scrollIntoViewIfNeeded().catch(() => {});
+await pause(600);
 say('A wallet that only sells to itself stays low.');
 await glide(page, preset('Sells to itself'));
 await click(page);
-await pause(4000);
-say('A busy wallet with real customers climbs, and its hold shrinks.');
+await pause(2600);
+say('Real customers and reviews make it climb, and the hold shrinks.');
 await glide(page, preset('Busy and well reviewed'));
 await click(page);
-await pause(4500);
+await pause(2800);
 
 // 5. an agent, from a terminal
-say('An agent does the same from a terminal, with no website.');
+say('An agent does the same from a terminal. One call ranks merchants by reviews that each cost a real sale.');
 await page.setContent(terminalHtml(terminal));
-await page.mouse.move(1400, 820, { steps: 10 });
+await page.mouse.move(1400, 820, { steps: 8 });
 await page.waitForFunction(() => window.__typed === true, null, { timeout: 120_000 }).catch(() => {});
-await pause(1000);
-cues.push({ at: (Date.now() - t0) / 1000 - 6, text: 'One call ranks merchants by reviews that each cost a real sale.' });
-await pause(4000);
+await pause(600);
 
 // 6. close
-say(live ? 'Recorded live on Solana devnet with test money.' : 'Recorded on a local Solana validator running the real Tessera program.');
 await page.setContent(`<body style="margin:0;height:100vh;display:grid;place-items:center;background:#0b0c0a;color:#f4f1e6;font:500 40px Inter,system-ui">
   <div style="text-align:center;line-height:1.5">Tessera<div style="font-size:26px;color:#b9f8da;margin-top:10px">github.com/edison9733/agentic_commerce</div>
   <div style="font-size:22px;color:#8b8a7c;margin-top:18px">Devnet only · test money · one arbiter key · no third-party audit</div></div></body>`);
-await pause(3500);
-say('Devnet only, test money, one arbiter key, no third-party audit.');
-await pause(3500);
+say(live ? 'Recorded live on Solana devnet with test money.' : 'Recorded on a local Solana validator running the real Tessera program.');
+await pause(3200);
 const end = (Date.now() - t0) / 1000;
 
 await page.close();
