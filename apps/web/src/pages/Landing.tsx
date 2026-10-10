@@ -542,8 +542,8 @@ function Proof() {
   const { config } = useChain();
   const { profiles } = useProfiles();
   const rows: [string, string][] = [
-    ['294 / 294', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
-    ['27 / 27', 'formula and reward tests pass: every guarantee on this page is a test'],
+    ['393 / 393', 'checks pass against the real program on a local validator, each account compared field by field with a reference model'],
+    ['44 / 44', 'formula and reward tests pass: every guarantee on this page is a test'],
     ['79 / 79', 'checks pass across the four ways in for agents (HTTP API, MCP, skill, CLI), from finding a merchant to a refund'],
     ['0 SOL', 'spent by the buyer on a purchase paid through the x402 facilitator on devnet (balance identical before and after)'],
     [`${((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s`, `median time for the x402 facilitator to settle a payment into escrow on devnet (${snapshot.measured.viaFacilitator} payments measured)`],

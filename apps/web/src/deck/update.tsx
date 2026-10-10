@@ -61,7 +61,7 @@ export const UPDATE: Slide[] = [
             </Rise>
           ))}
         </div>
-        <Source dark={false}>294 on-chain checks pass against the program on a local validator (npm run test:local). Program TessSeP5…1CQ on devnet.</Source>
+        <Source dark={false}>393 on-chain checks pass against the program on a local validator (npm run test:local). Program TessSeP5…1CQ on devnet.</Source>
       </Frame>
     ),
   },

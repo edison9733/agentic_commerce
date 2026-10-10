@@ -340,11 +340,11 @@ let evidence = (450 * history + 300 * tenure
           </Rise>
           <div style={{ display: 'grid', gap: 26 }}>
             <Rise delay={0.7}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>294<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 294</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>393<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 393</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>checks against the real program, each account compared with a reference model</div>
             </Rise>
             <Rise delay={1.0}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>27<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 27</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>44<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 44</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>formula tests: every guarantee we state is one</div>
             </Rise>
           </div>

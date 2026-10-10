@@ -116,10 +116,10 @@ number. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 
 | Command | Result | What it proves |
 |---|---|---|
-| `npm run test:local` | **294 / 294** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
-| `npm run test:formula` | **27 / 27** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
+| `npm run test:local` | **393 / 393** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model, and every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
+| `npm run test:formula` | **44 / 44** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
 | `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the balances on chain, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
-| `npm run test:doors` | **pass** | All four doors against the real program on a local validator (79 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
+| `npm run test:doors` | **pass** | All four doors against the real program on a local validator (94 checks): every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
 | `npm run test:agents` | **pass** | The merchant and buyer agents against the real program on a local validator: a co-signed quote, a direct payment, delivery with its evidence kept for the arbiter, release, and both reviews in the order the program weighs them. |
 | `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry is read back from the registry and matched against the Tessera review account it points at. |
 
@@ -171,8 +171,8 @@ Needs Node 20.18+, Rust, Solana CLI 3.1, Anchor 1.1.2. Everything targets **devn
 npm install
 npm run build:program        # anchor build
 npm run codegen              # typed client from the IDL
-npm run test:formula         # 27 formula and reward tests, no chain needed
-npm run test:local           # 294 checks on a local validator (about 4 minutes)
+npm run test:formula         # 44 formula and reward tests, no chain needed
+npm run test:local           # 393 checks on a local validator (about 4 minutes)
 ```
 
 To run the demo network against the deployed program you need the role keypairs in `.keys/`. They are
@@ -255,9 +255,11 @@ Not real yet:
 - **Single keys.** The arbiter and the program's upgrade authority are one key each. Both need a
   multisig before any real money.
 - **Unaudited** by a third party, and the A2A endpoint is hand-rolled from the specification rather
-  than certified. An internal review on 7 October found and fixed three serious holes and seven smaller
-  ones ([docs/SECURITY.md](docs/SECURITY.md#audit-of-7-october-2026)). **The program deployed on devnet
-  predates those fixes** until it is upgraded; the steps are in the same section.
+  than certified. Two internal reviews found and fixed holes: ten on 7 October and a wider pass on
+  10 October, including a critical order-swap in the escrow
+  ([7 October](docs/SECURITY.md#audit-of-7-october-2026), [10 October](docs/SECURITY.md#audit-of-10-october-2026)).
+  **The program deployed on devnet predates the program fixes** until the upgrade authority redeploys it;
+  the steps are in the same section.
 - **It prices faking; it does not detect it.** On-chain data cannot tell a bot from a customer who
   spends the same money. See the limits in [docs/SECURITY.md](docs/SECURITY.md).
 
