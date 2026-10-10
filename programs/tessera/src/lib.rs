@@ -573,7 +573,10 @@ pub mod tessera {
                     params.review_secs
                 }
             }
-            OrderState::Cancelled => params.unpaid_secs,
+            OrderState::Cancelled => {
+                require!(ctx.accounts.vault.lamports() == 0, TesseraError::VaultStillOpen);
+                params.unpaid_secs
+            }
             _ => return err!(TesseraError::InvalidState),
         };
         require!(now > order.settled_at.saturating_add(wait as i64), TesseraError::TooEarly);
@@ -1191,6 +1194,10 @@ pub struct CloseOrder<'info> {
     pub order: Box<Account<'info, Order>>,
     #[account(mut, seeds = [b"agent", order.merchant.as_ref()], bump = merchant_agent.bump)]
     pub merchant_agent: Box<Account<'info, Agent>>,
+    /// CHECK: the order's vault. A cancelled order is only closed once its vault is gone, so a payment
+    /// that reached a cancelled order late is refunded first and its id cannot be reused with the money in it.
+    #[account(address = anchor_spl::associated_token::get_associated_token_address(&order.key(), &order.mint))]
+    pub vault: UncheckedAccount<'info>,
     /// CHECK: receives the order account's rent; pinned by `has_one`.
     #[account(mut)]
     pub payer: UncheckedAccount<'info>,

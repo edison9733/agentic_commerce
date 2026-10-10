@@ -219,7 +219,7 @@ export class MerchantAgent {
    * each. A second call for the same order shares the first one's work, so
    * the service runs once and its evidence is written once.
    */
-  readonly inflight = new Map<string, { payment: string; done: Promise<Fulfilment> }>();
+  readonly inflight = new Map<string, { payment: string; client: string; done: Promise<Fulfilment> }>();
   /**
    * What each delivered order was handed, so the holder of its claim can
    * fetch it again after a lost response. Kept on disk until the order's
@@ -454,7 +454,7 @@ export class MerchantAgent {
     const proof = payment ? JSON.stringify(payment.payload) : '';
     const running = this.inflight.get(orderAddress);
     if (running) {
-      if (running.payment !== proof) throw new Error('this order is already being fulfilled');
+      if (running.payment !== proof || (payment && running.client !== (client ?? 'local'))) throw new Error('this order is already being fulfilled');
       return running.done;
     }
     const finished = this.fulfilled.get(orderAddress);
@@ -465,7 +465,7 @@ export class MerchantAgent {
     const quote = this.quotes.get(orderAddress);
     if (!quote) throw new Error('unknown or already fulfilled order');
     const done = this.work(orderAddress, quote, payment, proof).finally(() => this.inflight.delete(orderAddress));
-    this.inflight.set(orderAddress, { payment: proof, done });
+    this.inflight.set(orderAddress, { payment: proof, client: client ?? 'local', done });
     return done;
   }
 

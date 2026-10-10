@@ -221,7 +221,7 @@ app.use(anyLimit);
 
 app.get('/health', async (_req, res) => {
   if (!ready || draining) return void res.status(503).json({ ok: false, status: draining ? 'draining' : 'starting' });
-  res.json({ ok: true, network: config.network, facilitators: (await facilitators()).map((f) => f.url), ...(stateProblem ? { warning: stateProblem } : {}) });
+  res.json({ ok: true, network: config.network, facilitators: (await facilitators()).map((f) => f.url), ...(stateProblem ? { warning: 'orders are paused: the server cannot keep its state safely' } : {}) });
 });
 
 // Nothing below works before the chain can be read, or while the process is going away.

@@ -58,6 +58,8 @@ export const TESSERA_ERROR__PAYMENT_WINDOW_CLOSED = 0x1783; // 6019
 export const TESSERA_ERROR__ARBITER_IS_PARTY = 0x1784; // 6020
 /** HoldTooLong: The hold asked for is longer than the maximum */
 export const TESSERA_ERROR__HOLD_TOO_LONG = 0x1785; // 6021
+/** VaultStillOpen: The order's vault still holds something: cancel it again to refund it first */
+export const TESSERA_ERROR__VAULT_STILL_OPEN = 0x1786; // 6022
 
 export type TesseraError =
   | typeof TESSERA_ERROR__ALREADY_REVIEWED
@@ -81,6 +83,7 @@ export type TesseraError =
   | typeof TESSERA_ERROR__TOKEN_OWNER_MISMATCH
   | typeof TESSERA_ERROR__TOO_EARLY
   | typeof TESSERA_ERROR__UNAUTHORIZED
+  | typeof TESSERA_ERROR__VAULT_STILL_OPEN
   | typeof TESSERA_ERROR__VAULT_UNDERFUNDED;
 
 let tesseraErrorMessages: Record<TesseraError, string> | undefined;
@@ -107,6 +110,7 @@ if (process.env["NODE_ENV"] !== "production") {
     [TESSERA_ERROR__TOKEN_OWNER_MISMATCH]: `Token account has the wrong owner`,
     [TESSERA_ERROR__TOO_EARLY]: `Too early for this action`,
     [TESSERA_ERROR__UNAUTHORIZED]: `Signer is not allowed to do this`,
+    [TESSERA_ERROR__VAULT_STILL_OPEN]: `The order's vault still holds something: cancel it again to refund it first`,
     [TESSERA_ERROR__VAULT_UNDERFUNDED]: `The vault holds less than the order amount`,
   };
 }

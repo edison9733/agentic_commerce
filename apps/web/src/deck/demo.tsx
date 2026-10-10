@@ -339,7 +339,7 @@ let evidence = (450 * history + 300 * tenure
           </Rise>
           <div style={{ display: 'grid', gap: 26 }}>
             <Rise delay={0.7}>
-              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>393<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 393</span></div>
+              <div className="display" style={{ fontSize: 100, color: white, lineHeight: 1 }}>395<span style={{ fontSize: 46, color: '#8b8a7c' }}> / 395</span></div>
               <div style={{ fontSize: 23, marginTop: 8 }}>checks against the real program, each account compared with a reference model</div>
             </Rise>
             <Rise delay={1.0}>
