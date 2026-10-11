@@ -1,11 +1,11 @@
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS } from '@tessera/sdk';
 import { Feed } from '../components/Feed';
 import { Graph } from '../components/Graph';
 import { Nav } from '../components/Nav';
 import { Waitlist } from '../components/Waitlist';
-import { Counter, EASE, Logo, Reveal, TierBadge, Words } from '../components/ui';
+import { Counter, EASE, Logo, Reveal, TierBadge } from '../components/ui';
 import { compactUsd, duration, explorerAddress, TIER_DARK } from '../lib/format';
 import { Link } from '../lib/router';
 import { useChain, useProfiles } from '../lib/store';
@@ -13,6 +13,49 @@ import { useChain, useProfiles } from '../lib/store';
 const REPO = 'https://github.com/edison9733/agentic_commerce';
 const PROGRAM = 'TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ';
 const jump = (id: string) => () => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+const mask = { display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', paddingBottom: '0.2em', marginBottom: '-0.12em' } as const;
+
+/** "A credit score for AI agents.", with the key words in a shimmering green and an underline that draws itself. */
+function HeroTitle() {
+  const parts: [string, boolean][] = [['A', false], ['credit score', true], ['for', false], ['AI', false], ['agents.', false]];
+  return (
+    <h1 className="display mx-auto mt-7 text-[clamp(3rem,8vw,7rem)]" style={{ maxWidth: '13ch' }} aria-label="A credit score for AI agents.">
+      {parts.map(([w, accent], i) => (
+        <Fragment key={w}>
+        <span aria-hidden style={{ position: 'relative', display: 'inline-block' }}>
+          <span style={mask}>
+            <motion.span
+              className={accent ? 'hero-accent' : undefined}
+              style={{ display: 'inline-block' }}
+              initial={{ y: '110%' }}
+              animate={{ y: 0 }}
+              transition={{ duration: 1, ease: EASE, delay: 0.1 + i * 0.08 }}
+            >
+              {w}
+            </motion.span>
+          </span>
+          {accent && (
+            <svg viewBox="0 0 300 24" preserveAspectRatio="none" aria-hidden style={{ position: 'absolute', left: '2%', right: '2%', width: '96%', bottom: '-0.02em', height: '0.24em', overflow: 'visible' }}>
+              <motion.path
+                d="M4 16 C 70 6, 150 4, 220 9 S 290 14, 296 10"
+                fill="none"
+                stroke="#4fd19a"
+                strokeWidth={5}
+                strokeLinecap="round"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 1.1, ease: EASE, delay: 0.9 }}
+              />
+            </svg>
+          )}
+        </span>
+        {i < parts.length - 1 ? ' ' : ''}
+        </Fragment>
+      ))}
+    </h1>
+  );
+}
 
 function Hero() {
   const { pairs, orders, feed, config } = useChain();
@@ -39,15 +82,13 @@ function Hero() {
           Live on Solana devnet
         </motion.a>
 
-        <h1 className="display mx-auto mt-7 text-[clamp(2.9rem,7.6vw,6.6rem)]" style={{ maxWidth: '13ch' }}>
-          <Words text="A credit score for AI agents." delay={0.1} />
-        </h1>
+        <HeroTitle />
         <motion.p
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, ease: EASE, delay: 0.5 }}
-          className="display mt-3 text-[clamp(1.9rem,4.2vw,3.4rem)]"
-          style={{ color: '#2f8f66' }}
+          className="display mt-4 text-[clamp(1.9rem,4.2vw,3.4rem)]"
+          style={{ color: '#4b483e' }}
         >
           <em>Every payment matters.</em>
         </motion.p>
