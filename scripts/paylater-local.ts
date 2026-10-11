@@ -82,17 +82,7 @@ const PARAMS: Params = {
   penaltyDecayBps: 100,
 };
 
-// Pay-later rules for this world: 60 seconds to repay, then 5 seconds of grace.
-const LINE: paylater.LineParams = {
-  tierLimit: [0n, 2n * USDC, 5n * USDC, 10n * USDC],
-  stepBps: 2_500,
-  maxBoostBps: 10_000,
-  termSecs: 60,
-  graceSecs: 5,
-  feeBps: 200,
-  minMerchantTier: 1,
-  minLoan: 1_000n,
-};
+const LINE: paylater.LineParams = paylater.PREVIEW_LINE_PARAMS;
 
 // ------------------------------------------------------------------ validator
 

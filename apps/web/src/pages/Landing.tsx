@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useScroll, useTransform } from 'motion/react';
 import { Fragment, useEffect, useRef, useState } from 'react';
-import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS } from '@tessera/sdk';
+import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS, paylater } from '@tessera/sdk';
 import registry from '../../../../deployments/registry.json';
 import snapshot from '../../../../deployments/snapshot.json';
 import { AttackLab } from '../components/AttackLab';
@@ -378,6 +378,73 @@ function Lanes() {
   );
 }
 
+const PL = paylater.PREVIEW_LINE_PARAMS;
+const usdcOf = (u: bigint) => (Number(u) / 1e6).toFixed(2);
+
+function PayLater() {
+  const steps = [
+    ['Buy now', 'The pool pays the merchant at once, minus a 2% fee. The buyer agent signs; nobody can borrow in its name.'],
+    ['Pay later', 'The buyer repays the full price by the due date, with no interest. Each on-time repayment raises its limit by 25%, up to double.'],
+    ['Or default', 'Miss the due date and its grace period, and anyone can mark the loan in default. The line freezes at zero, in public.'],
+  ];
+  const path = usePath();
+  const ref = useRef<HTMLElement>(null);
+  // #/pay-later opens the home page on this section.
+  useEffect(() => {
+    if (path === '/pay-later') ref.current?.scrollIntoView({ block: 'start' });
+  }, [path]);
+  return (
+    <section ref={ref} id="pay-later" className="py-24 md:py-32" style={{ background: '#f4efe0', scrollMarginTop: 68 }}>
+      <div className="wrap">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+          <Reveal className="min-w-0">
+            <div className="eyebrow" style={{ color: '#878371' }}>New · pay later for agents</div>
+            <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
+              A good score earns speed. <em>Now it earns credit.</em>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1} className="min-w-0">
+            <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
+              The same score that shortens the hold now sets how much an agent can buy now and pay later. A wallet with no history gets nothing. A wallet that earned its tier through real, settled trade gets a credit line, read straight from its credit file.
+            </p>
+            <p className="mono mt-4 text-[0.76rem]" style={{ color: '#878371' }}>
+              Preview: a second Solana program, tested on a local validator (npm run paylater:local). Not deployed to devnet yet. The escrow program is unchanged.
+            </p>
+          </Reveal>
+        </div>
+        <div className="mt-12 grid gap-3 md:grid-cols-3">
+          {steps.map(([title, body], i) => (
+            <Reveal key={title} delay={i * 0.08}>
+              <div className="card h-full p-6">
+                <div className="mono text-[0.72rem]" style={{ color: '#878371' }}>{String(i + 1).padStart(2, '0')}</div>
+                <div className="display mt-2 text-[1.9rem]">{title}</div>
+                <p className="mt-3 text-[0.95rem] leading-relaxed" style={{ color: '#4b483e' }}>{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal delay={0.1}>
+          <div className="card mt-3 grid gap-4 p-6 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="flex flex-wrap gap-x-8 gap-y-3">
+              {[0, 1, 2, 3].map((t) => (
+                <div key={t} className="flex items-center gap-3">
+                  <TierBadge tier={t} />
+                  <span className="display text-[1.5rem]">{usdcOf(PL.tierLimit[t]!)}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mono text-[0.76rem] md:text-right" style={{ color: '#878371' }}>
+              limit at a perfect score, test USDC
+              <br />
+              limit = tier limit × score ÷ 1000 × on-time boost
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 function Score() {
   return (
     <section className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
@@ -734,6 +801,7 @@ export function Landing() {
       <Problem />
       <HowItWorks />
       <Lanes />
+      <PayLater />
       <Demo />
       <Developers />
       <Score />

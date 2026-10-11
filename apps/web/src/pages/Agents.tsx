@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
-import { OrderState, rewards, safeText, score } from '@tessera/sdk';
+import { OrderState, paylater, rewards, safeText, score } from '@tessera/sdk';
 import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Addr, Breakdown, EASE, Reveal, ScoreGauge, Stars, StateChip, TierBadge } from '../components/ui';
@@ -233,6 +233,14 @@ export function AgentProfile({ wallet }: { wallet: string }) {
                   <div className="mt-1 text-[0.78rem]" style={{ color: '#878371' }}>{hint}</div>
                 </div>
               ))}
+            </div>
+            <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 rounded-2xl p-4 text-[0.9rem]" style={{ background: '#eef6f0', border: '1px solid #cfe5d6', color: '#14130f' }}>
+              <span>
+                <strong>Pay-later limit:</strong>{' '}
+                {(Number(paylater.limit(paylater.NO_LINE, paylater.PREVIEW_LINE_PARAMS, p.eval.tier, p.eval.score)) / 1e6).toFixed(2)} test USDC
+                {p.eval.tier === 0 && ' (no credit until it earns a tier)'}
+              </span>
+              <Link to="/pay-later" className="mono link text-[0.72rem]" >preview on a local validator · not on devnet yet</Link>
             </div>
             {a.penaltyBps > 0 && (
               <div className="mt-4 rounded-2xl p-4 text-[0.9rem]" style={{ background: '#fdecea', border: '1px solid #f3c4bf', color: '#7a1f1f' }}>

@@ -29,3 +29,19 @@ export function available(line: LimitLine, p: LineParams, tier: number, score: n
 }
 
 export const feeOf = (amount: bigint, p: LineParams): bigint => (amount * BigInt(p.feeBps)) / BPS;
+
+/**
+ * The rules `npm run paylater:local` runs under, in test USDC. The website
+ * shows limits under these too, labelled as a local preview: the pay-later
+ * program is not deployed to devnet.
+ */
+export const PREVIEW_LINE_PARAMS: LineParams = {
+  tierLimit: [0n, 2_000_000n, 5_000_000n, 10_000_000n],
+  stepBps: 2_500,
+  maxBoostBps: 10_000,
+  termSecs: 60,
+  graceSecs: 5,
+  feeBps: 200,
+  minMerchantTier: 1,
+  minLoan: 1_000n,
+};
