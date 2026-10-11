@@ -124,6 +124,59 @@ function RewardsSlide() {
   );
 }
 
+function PayLaterSlide() {
+  const rows: [string, string, string, string][] = [
+    ['Fresh wallet', 'New · no settled trade yet', '0.00', '#8b8a7c'],
+    ['Alice', 'Established 775 · bought 1.50, repaid on time', '3.88 → 4.84', mint],
+    ['Bob', 'Established 775 · bought 2.00, never repaid', 'frozen 0.00', '#ec835a'],
+  ];
+  return (
+    <Frame pad={84}>
+      <Kicker>New · pay later for agents</Kicker>
+      <Big size={78} max="22ch" color={white}>
+        A good score earns speed. <em>Now it earns credit.</em>
+      </Big>
+      <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 52, marginTop: 36, alignItems: 'start' }}>
+        <Rise delay={0.4}>
+          <div style={{ display: 'grid', gap: 10 }}>
+            {rows.map(([name, line, limit, color], k) => (
+              <Rise key={name} delay={0.6 + k * 0.16}>
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 22px', borderRadius: 16, border: `1px solid ${k === 1 ? mint : '#272b21'}`, background: k === 1 ? '#121a14' : '#10120e' }}>
+                  <div style={{ flex: 1 }}>
+                    <span className="display" style={{ fontSize: 32, color: white }}>{name}</span>
+                    <div className="mono" style={{ fontSize: 16, color: k === 0 ? '#8b8a7c' : color }}>{line}</div>
+                  </div>
+                  <span className="display" style={{ fontSize: 40, color }}>{limit}</span>
+                </div>
+              </Rise>
+            ))}
+          </div>
+          <Rise delay={1.2}>
+            <div className="mono" style={{ fontSize: 17, marginTop: 14, color: '#c9c6b6' }}>
+              Limit in test USDC. The merchant got <span style={{ color: mint }}>1.47 of 1.50 at once</span>; the pool kept 2%.
+            </div>
+          </Rise>
+        </Rise>
+        <div style={{ display: 'grid', gap: 16 }}>
+          {[
+            ['Buy now', 'A pool pays the merchant at once. Only the buyer agent can spend its own credit.'],
+            ['Pay later', 'The full price by the due date, no interest. On time raises the limit by 25%.'],
+            ['Or default, in public', 'Anyone can mark a late loan. The line freezes at zero for good.'],
+          ].map(([h, b], k) => (
+            <Rise key={h} delay={0.9 + k * 0.15}>
+              <div style={{ padding: '18px 24px', borderRadius: 18, border: '1px solid #272b21', background: '#10120e' }}>
+                <div className="display" style={{ fontSize: 32, color: white }}>{h}</div>
+                <div style={{ fontSize: 21, marginTop: 6, lineHeight: 1.35, color: '#c9c6b6' }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+      </div>
+      <Source>Recorded 2026-10-11 on a local validator running the escrow program and the new pay-later program (preview, not on devnet). Reproduce: npm run build:program && npm run paylater:local</Source>
+    </Frame>
+  );
+}
+
 function TierSlide() {
   const loop = [6.5, 3.6, 1.8, 0.7];
   return (
@@ -256,6 +309,12 @@ export const PITCH: Slide[] = [
     seconds: 6,
     say: "And reviewers get paid, and paid more when their warning proves right.",
     render: () => <RewardsSlide />,
+  },
+  {
+    id: 'pay-later',
+    seconds: 14,
+    say: 'And a good score now earns credit. Agents can buy now and pay later. A pool pays the merchant at once, and the buyer repays by the due date. The limit comes from the Tessera score: a new wallet gets nothing, paying on time raises it, and a default freezes it in public.',
+    render: () => <PayLaterSlide />,
   },
   {
     id: 'close',

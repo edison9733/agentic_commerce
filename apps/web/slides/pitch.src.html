@@ -92,6 +92,25 @@
   <p class="source">Recorded 2026-10-10: real purchases, reviews, a missed delivery and the airdrop payout, on a local validator running the real program. Reproduce: npm run build:program &amp;&amp; npm run demo:rewards</p>
 </section>
 
+<section data-document-role="page" data-label="Pay later" data-speaker-notes="And a good score now earns credit. Agents can buy now and pay later. A pool pays the merchant at once, and the buyer repays by the due date. The limit comes from the Tessera score: a new wallet gets nothing, paying on time raises it, and a default freezes it in public.">
+  <p class="kicker">New · pay later for agents</p>
+  <h1 style="font-size: 78px; max-width: 22ch;">A good score earns speed. <em>Now it earns credit.</em></h1>
+  <div class="row" style="gap: 52px; margin-top: 36px;">
+    <div class="col" style="flex: 1.25; gap: 10px;">
+      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Fresh wallet</span><div class="mono grey" style="font-size: 16px;">New · no settled trade yet</div></div><span class="display grey" style="font-size: 40px;">0.00</span></div>
+      <div class="card on" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Alice</span><div class="mono mint" style="font-size: 16px;">Established 775 · bought 1.50, repaid on time</div></div><span class="display mint" style="font-size: 40px;">3.88 → 4.84</span></div>
+      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Bob</span><div class="mono warn" style="font-size: 16px;">Established 775 · bought 2.00, never repaid</div></div><span class="display warn" style="font-size: 40px;">frozen 0.00</span></div>
+      <div class="mono" style="font-size: 17px; margin-top: 4px;">Limit in test USDC. The merchant got <span class="mint">1.47 of 1.50 at once</span>; the pool kept 2%.</div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3>Buy now</h3><p>A pool pays the merchant at once. Only the buyer agent can spend its own credit.</p></div>
+      <div class="card"><h3>Pay later</h3><p>The full price by the due date, no interest. On time raises the limit by 25%.</p></div>
+      <div class="card"><h3>Or default, in public</h3><p>Anyone can mark a late loan. The line freezes at zero for good.</p></div>
+    </div>
+  </div>
+  <p class="source">Recorded 2026-10-11 on a local validator running the escrow program and the new pay-later program (preview, not on devnet). Reproduce: npm run build:program &amp;&amp; npm run paylater:local</p>
+</section>
+
 <section class="center" data-document-role="page" data-label="Close" data-speaker-notes="Why me? Every x402 payment already leaves a public record on the chain. My idea is to use that data to lower the risk of being scammed in agentic commerce. Without it, a payment is just a payment, and the data goes to waste. Micropayments were the easy part. Every payment matters. This is Tessera.">
   <h1 style="font-size: 70px; color: #8b8a7c; max-width: 20ch;">Micropayments were the easy part.</h1>
   <h1 style="font-size: 150px; max-width: 12ch; margin-top: 20px;">Every payment <em class="mint">matters.</em></h1>
