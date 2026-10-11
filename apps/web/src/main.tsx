@@ -5,7 +5,6 @@ import { PitchDeck } from './deck/pitch';
 import { UpdateDeck } from './deck/update';
 import { RouterProvider, useMatch, usePath } from './lib/router';
 import { AgentProfile, Agents } from './pages/Agents';
-import { Developers } from './pages/Developers';
 import { Formula } from './pages/Formula';
 import { Landing } from './pages/Landing';
 import { Market } from './pages/Market';
@@ -23,7 +22,6 @@ function Routes() {
   if (path.startsWith('/agents')) return <Agents />;
   if (path.startsWith('/market')) return <Market />;
   if (path.startsWith('/formula')) return <Formula />;
-  if (path.startsWith('/developers')) return <Developers />;
   return <Landing />;
 }
 
