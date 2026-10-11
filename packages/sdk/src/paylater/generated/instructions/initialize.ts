@@ -166,6 +166,11 @@ export type InitializeAsyncInput<
     InstructionAccountInput,
 > = {
   pool?: TAccountPool;
+  /**
+   * `init_if_needed`: anyone can create ATA(mint, pool) before the pool
+   * exists, and a plain `init` would then fail forever. Anchor still checks
+   * the mint, the owner and that it is the associated account.
+   */
   vault?: TAccountVault;
   authority: TAccountAuthority;
   mint: TAccountMint;
@@ -440,6 +445,11 @@ export type InitializeInput<
     InstructionAccountInput,
 > = {
   pool: TAccountPool;
+  /**
+   * `init_if_needed`: anyone can create ATA(mint, pool) before the pool
+   * exists, and a plain `init` would then fail forever. Anchor still checks
+   * the mint, the owner and that it is the associated account.
+   */
   vault: TAccountVault;
   authority: TAccountAuthority;
   mint: TAccountMint;
@@ -669,6 +679,11 @@ export type ParsedInitializeInstruction<
   programAddress: Address<TProgram>;
   accounts: {
     pool: TAccountMetas[0];
+    /**
+     * `init_if_needed`: anyone can create ATA(mint, pool) before the pool
+     * exists, and a plain `init` would then fail forever. Anchor still checks
+     * the mint, the owner and that it is the associated account.
+     */
     vault: TAccountMetas[1];
     authority: TAccountMetas[2];
     mint: TAccountMetas[3];

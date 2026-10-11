@@ -172,7 +172,7 @@ function PayLaterSlide() {
           ))}
         </div>
       </div>
-      <Source>Recorded 2026-10-11 on a local validator running the escrow program and the new pay-later program (preview, not on devnet). Reproduce: npm run build:program && npm run paylater:local</Source>
+      <Source>Recorded 2026-10-11 on a local validator running the escrow program and the new pay-later program (preview, not on devnet). Tested by npm run test:paylater. Try it: npm run build:program && npm run paylater:local</Source>
     </Frame>
   );
 }

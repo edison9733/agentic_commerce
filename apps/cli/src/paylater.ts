@@ -146,7 +146,12 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
   if (cmd === 'buy-later') {
     const merchant = addr(a1, '<merchant>');
     if (!a2) o.die('<amount> is required (see: tessera help)');
-    const amount = toUnits(a2);
+    let amount: bigint;
+    try {
+      amount = toUnits(a2);
+    } catch (e) {
+      return o.die(`<amount>: ${(e as Error).message}`);
+    }
     const now = await chainNow();
     const [b, m] = await Promise.all([standing(kp.address, now), standing(merchant, now)]);
     console.log(`buyer    ${short(kp.address)}  ${TIERS[b.tier]} ${b.score}  available ${usdc(b.available)}`);
@@ -178,7 +183,7 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
   const left = d.dueAt - now;
   if (cmd === 'mark-default') {
     if (d.state !== paylater.LoanState.Open) o.die(`this loan is already ${STATE[d.state]}`);
-    const wait = d.dueAt + BigInt(p.graceSecs) - now;
+    const wait = d.defaultAfter - now;
     console.log(`loan ${short(loanAddr)}  buyer ${short(d.buyer)}  owes ${usdc(d.amount)}  ${wait < 0n ? `${-left} s past due, grace over` : `grace ends in ${wait + 1n} s`}`);
     return sendOrPrint(kp, await paylater.getMarkDefaultInstructionAsync({ loan: loanAddr, line: await paylater.linePdaOf(d.buyer) }));
   }

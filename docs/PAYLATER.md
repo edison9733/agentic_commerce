@@ -44,16 +44,17 @@ The pool only pays merchants at **Building** or above.
 
 ## Checks
 
-`npm run test:paylater` (**40 / 40**) starts a local validator with both programs. Wallets earn their
+`npm run test:paylater` (**48 / 48**) starts a local validator with both programs. Wallets earn their
 tiers through real escrow orders, then:
 
 - a New wallet, a wallet with no credit file, a New merchant, self-dealing and an amount below the minimum are all refused;
 - a tiered buyer buys, the merchant is paid at once minus the fee, the loan snapshot matches the buyer's live score, and the limit matches the off-chain formula;
 - spending past the limit, repaying twice, marking a default early or during the grace period, and a stranger taking a repaid loan's rent are all refused;
-- an on-time repayment raises the limit by exactly 25%;
+- an on-time repayment raises the limit by exactly 25%, and the program applies it: a purchase above the old limit goes through and one unit more is refused;
 - a buyer who never repays is marked in default by a stranger, the line freezes, and a late repayment clears the debt but not the default;
+- each loan keeps the grace period it opened with: cutting it to 0 in the rules does not let anyone mark an open loan early, and an unpaid loan cannot be closed;
 - the pool's balance equals deposits minus withdrawals minus what merchants were paid, plus repayments;
-- only the authority can create the pool, change its rules or withdraw, and an empty pool refuses purchases.
+- only the authority can create the pool, change its rules or withdraw, the rules can never give New wallets credit, a vault account created by someone else before the pool does not block it, and an empty pool refuses purchases.
 
 ## Try it
 
@@ -75,6 +76,9 @@ npm run tessera -- mark-default <loan> --keypair <stranger.json> --rpc http://12
   then the buyer's line freezes. The limit is only worth having after real settled trade with
   independent counterparties (see the farming costs in [SECURITY.md](SECURITY.md)), so the preview
   limits are kept small next to what a tier costs to earn.
+- **The boost counts repayments, not their size.** Small loans repaid at once raise the limit as
+  much as large ones, up to the cap (double). Each still pays the pool fee and needs a merchant at
+  Building or above.
 - **One lender.** The pool's authority funds it and alone can withdraw. There are no outside lenders,
   shares or interest for depositors.
 - **No instalments.** A loan is repaid in one payment.

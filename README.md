@@ -145,7 +145,7 @@ agree. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 | Command | Result | What it proves |
 |---|---|---|
 | `npm run test:local` | **395 / 395** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model. Every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
-| `npm run test:paylater` | **40 / 40** | The pay-later program next to the real escrow program on a local validator: limits from live Tessera scores matched against the off-chain formula, buy, on-time repayment, default and freeze, pool accounting, and every refusal path as a real transaction. |
+| `npm run test:paylater` | **48 / 48** | The pay-later program next to the real escrow program on a local validator: limits from live Tessera scores matched against the off-chain formula, buy, on-time repayment, default and freeze, pool accounting, and the main refusal paths as real transactions. |
 | `npm run test:formula` | **44 / 44** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
 | `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the on-chain balances, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
 | `npm run test:doors` | **pass** (94 checks) | All four doors against the real program on a local validator: every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
@@ -202,7 +202,7 @@ npm run build:program        # anchor build
 npm run codegen              # typed client from the IDL
 npm run test:formula         # 44 formula and reward tests, no chain needed
 npm run test:local           # 395 checks on a local validator (about 4 minutes)
-npm run test:paylater        # 40 pay-later checks on a local validator
+npm run test:paylater        # 48 pay-later checks on a local validator
 npm run paylater:local       # a local pay-later world to try the CLI by hand (docs/PAYLATER.md)
 ```
 

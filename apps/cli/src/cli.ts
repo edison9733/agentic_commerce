@@ -543,7 +543,9 @@ const need = (v: unknown, what: string) => (v === undefined || v === '' ? die(`$
 
 if (PAYLATER_COMMANDS.has(cmd)) {
   const rpcUrl = endpoint(String(flags.rpc ?? ((process.env.TESSERA_RPC_URLS ?? '').split(',')[0]!.trim() || 'https://api.devnet.solana.com')), flags.rpc ? '--rpc' : 'TESSERA_RPC_URLS');
-  await payLater(cmd, a1, a2, { rpcUrl, kp, send: Boolean(flags.send), json: Boolean(flags.json), request: json(flags.request as string, '--request'), die });
+  await payLater(cmd, a1, a2, { rpcUrl, kp, send: Boolean(flags.send), json: Boolean(flags.json), request: json(flags.request as string, '--request'), die }).catch(
+    (e: Error) => die(`${cmd} failed: ${e.message} (RPC ${new URL(rpcUrl).host})`),
+  );
   process.exit(0);
 }
 

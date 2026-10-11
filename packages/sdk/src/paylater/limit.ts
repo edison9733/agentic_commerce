@@ -9,6 +9,7 @@ import type { CreditLine } from './generated/accounts/creditLine.js';
 import type { LineParams } from './generated/types/lineParams.js';
 
 const BPS = 10_000n;
+const U64_MAX = 0xffff_ffff_ffff_ffffn;
 const min = (a: bigint, b: bigint) => (a < b ? a : b);
 
 export type LimitLine = Pick<CreditLine, 'defaults' | 'repaidOnTime' | 'outstanding'>;
@@ -20,7 +21,7 @@ export function limit(line: LimitLine, p: LineParams, tier: number, score: numbe
   if (line.defaults > 0) return 0n;
   const base = (p.tierLimit[Math.min(tier, 3)]! * BigInt(Math.min(score, 1000))) / 1000n;
   const boost = min(BigInt(line.repaidOnTime) * BigInt(p.stepBps), BigInt(p.maxBoostBps));
-  return (base * (BPS + boost)) / BPS;
+  return min((base * (BPS + boost)) / BPS, U64_MAX);
 }
 
 export function available(line: LimitLine, p: LineParams, tier: number, score: number): bigint {

@@ -408,7 +408,7 @@ function PayLater() {
               The same score that shortens the hold now sets how much an agent can buy now and pay later. A wallet with no history gets nothing. A wallet that earned its tier through real, settled trade gets a credit line, read straight from its credit file.
             </p>
             <p className="mono mt-4 text-[0.76rem]" style={{ color: '#878371' }}>
-              Preview: a second Solana program, tested on a local validator (npm run paylater:local). Not deployed to devnet yet. The escrow program is unchanged.
+              Preview: a second Solana program, tested on a local validator (npm run test:paylater; try it by hand with npm run paylater:local). Not deployed to devnet yet. The escrow program is unchanged.
             </p>
           </Reveal>
         </div>

@@ -8,7 +8,7 @@
  *      repays on time and its limit grows;
  *   3. a buyer that never repays is marked in default by a stranger and its
  *      line is frozen;
- *   4. every check in the program is attacked with a real transaction.
+ *   4. the main refusal paths are attacked with real transactions.
  *
  * Every limit the program applies is recomputed off-chain from the same
  * public accounts (packages/sdk/src/paylater/limit.ts) and must match.
@@ -60,7 +60,8 @@ import {
   type ScriptClient,
 } from './lib.js';
 
-const RPC_PORT = 18999;
+// Its own port, so it never attaches to `npm run paylater:local` or another suite's validator.
+const RPC_PORT = Number(process.env.PAYLATER_TEST_RPC_PORT ?? 19599);
 const LOCAL: Cluster = { rpcUrl: `http://127.0.0.1:${RPC_PORT}` };
 const USDC = 1_000_000n;
 const PAYLATER = paylater.TESSERA_PAYLATER_PROGRAM_ADDRESS;
@@ -306,10 +307,18 @@ try {
     initPool(deployer, { ...LINE, tierLimit: [USDC, 2n * USDC, 5n * USDC, 10n * USDC] }),
   );
   await expectFail('the pool keeps more than 10% of each purchase', 'InvalidParams', () => initPool(deployer, { ...LINE, feeBps: 1_001 }));
+  // Anyone can create ATA(mint, pool) before the pool exists; that must not block it.
+  await stranger.sendTransaction([await tok.ensureAtaIx(pool, stranger)]);
+  eq('an attacker created the pool vault before the pool', (await rpc.getAccountInfo(await tok.ata(pool), { encoding: 'base64' }).send()).value !== null, true);
   await initPool(deployer, LINE);
-  eq('pool params stored on-chain', (await paylater.fetchPool(rpc, pool)).data.params, LINE);
+  eq('pool params stored on-chain, the vault created first is accepted', (await paylater.fetchPool(rpc, pool)).data.params, LINE);
+  const updateIx = async (by: ScriptClient, params: paylater.LineParams) =>
+    paylater.getUpdateParamsInstructionAsync({ authority: by.identity, params });
   await expectFail('a stranger rewrites the pool rules', 'Unauthorized', async () =>
-    stranger.sendTransaction([await paylater.getUpdateParamsInstructionAsync({ authority: stranger.identity, params: { ...LINE, feeBps: 0 } })]),
+    stranger.sendTransaction([await updateIx(stranger, { ...LINE, feeBps: 0 })]),
+  );
+  await expectFail('the authority changes the rules to give New wallets credit', 'InvalidParams', async () =>
+    deployer.sendTransaction([await updateIx(deployer, { ...LINE, tierLimit: [1n, 2n * USDC, 5n * USDC, 10n * USDC] })]),
   );
   await server.sendTransaction([
     await paylater.getDepositInstructionAsync({ mint, funder: server.identity, funderToken: await tok.ata(server.identity.address), amount: 50n * USDC }),
@@ -390,6 +399,18 @@ try {
   const grown = paylater.limit(line2.data, LINE, nowS.tier, nowS.score);
   const flat = paylater.limit(paylater.NO_LINE, LINE, nowS.tier, nowS.score);
   eq('repaying on time raised her limit by 25%', grown, (flat * 12_500n) / 10_000n);
+  // The program must apply that boost too: buy more than the unboosted limit allows.
+  const boosted = flat + (grown - flat) / 2n;
+  const loanA2 = await buy(alice, m1.identity.address, boosted);
+  const la3 = (await paylater.fetchLoan(rpc, loanA2)).data;
+  const at3 = await live(alice, la3.createdAt);
+  eq('the program applied the boost: a purchase above the unboosted limit went through', [boosted > flat, la3.amount], [true, boosted]);
+  eq('and its limit matches the off-chain formula with the boost', la3.limitAtOpen, paylater.limit(line2.data, LINE, at3.tier, at3.score));
+  await expectFail('one unit past the boosted limit', 'CreditLimitExceeded', async () =>
+    alice.sendTransaction([(await buyIx(alice, m1.identity.address, la3.limitAtOpen - boosted + 1n)).ix]),
+  );
+  await alice.sendTransaction([await repayIx(loanA2, alice)]);
+  eq('alice repaid that one on time too', (await paylater.fetchLoan(rpc, loanA2)).data.state, paylater.LoanState.RepaidOnTime);
   await expectFail('a stranger closes alice\'s loan to take the rent', 'Unauthorized', async () =>
     stranger.sendTransaction([paylater.getCloseLoanInstruction({ loan: loanA, buyer: stranger.identity.address })]),
   );
@@ -403,9 +424,15 @@ try {
   const lb = (await paylater.fetchLoan(rpc, loanB)).data;
   const bobLine = await paylater.linePdaOf(bob.identity.address);
   const markIx = async () => paylater.getMarkDefaultInstructionAsync({ loan: loanB, line: bobLine });
+  eq('the loan carries its own default deadline', lb.defaultAfter, lb.dueAt + BigInt(LINE.graceSecs));
+  // A later rules change must not shorten the grace period of a loan already open.
+  await deployer.sendTransaction([await updateIx(deployer, { ...LINE, graceSecs: 0 })]);
   await waitForChainTime(server, lb.dueAt + 1n);
-  await expectFail('marked in default during the grace period', 'NotOverdue', async () => stranger.sendTransaction([await markIx()]));
-  await waitForChainTime(server, lb.dueAt + BigInt(LINE.graceSecs) + 1n);
+  await expectFail('marked in default during the grace period, after the rules cut grace to 0', 'NotOverdue', async () =>
+    stranger.sendTransaction([await markIx()]),
+  );
+  await deployer.sendTransaction([await updateIx(deployer, LINE)]);
+  await waitForChainTime(server, lb.defaultAfter + 1n);
   await stranger.sendTransaction([await markIx()]);
   eq('a stranger marked bob\'s loan in default', (await paylater.fetchLoan(rpc, loanB)).data.state, paylater.LoanState.Defaulted);
   const bl = (await paylater.fetchCreditLine(rpc, bobLine)).data;
@@ -415,6 +442,9 @@ try {
     bob.sendTransaction([(await buyIx(bob, m1.identity.address, 1_000n)).ix]),
   );
   await expectFail('the default is marked twice', 'InvalidState', async () => stranger.sendTransaction([await markIx()]));
+  await expectFail('bob closes his unpaid loan to make it disappear', 'InvalidState', async () =>
+    bob.sendTransaction([paylater.getCloseLoanInstruction({ loan: loanB, buyer: bob.identity.address })]),
+  );
   await bob.sendTransaction([await repayIx(loanB, bob)]);
   const bl2 = (await paylater.fetchCreditLine(rpc, bobLine)).data;
   eq('bob can still pay the debt late: it clears, the default stays', [bl2.outstanding, bl2.repaidLate, bl2.defaults], [0n, 1, 1]);

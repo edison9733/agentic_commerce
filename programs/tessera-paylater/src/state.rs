@@ -99,6 +99,10 @@ pub struct Loan {
     pub limit_at_open: u64,
     pub created_at: i64,
     pub due_at: i64,
+    /// After this, anyone may mark the loan in default: the due date plus the
+    /// grace period in force when the loan opened, so a later rules change
+    /// cannot shorten it.
+    pub default_after: i64,
     pub repaid_at: i64,
     pub bump: u8,
 }

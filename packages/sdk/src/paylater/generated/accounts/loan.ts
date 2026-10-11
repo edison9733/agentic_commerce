@@ -75,6 +75,12 @@ export type Loan = {
   limitAtOpen: bigint;
   createdAt: bigint;
   dueAt: bigint;
+  /**
+   * After this, anyone may mark the loan in default: the due date plus the
+   * grace period in force when the loan opened, so a later rules change
+   * cannot shorten it.
+   */
+  defaultAfter: bigint;
   repaidAt: bigint;
   bump: number;
 };
@@ -96,6 +102,12 @@ export type LoanArgs = {
   limitAtOpen: number | bigint;
   createdAt: number | bigint;
   dueAt: number | bigint;
+  /**
+   * After this, anyone may mark the loan in default: the due date plus the
+   * grace period in force when the loan opened, so a later rules change
+   * cannot shorten it.
+   */
+  defaultAfter: number | bigint;
   repaidAt: number | bigint;
   bump: number;
 };
@@ -118,6 +130,7 @@ export function getLoanEncoder(): FixedSizeEncoder<LoanArgs> {
       ["limitAtOpen", getU64Encoder()],
       ["createdAt", getI64Encoder()],
       ["dueAt", getI64Encoder()],
+      ["defaultAfter", getI64Encoder()],
       ["repaidAt", getI64Encoder()],
       ["bump", getU8Encoder()],
     ]),
@@ -142,6 +155,7 @@ export function getLoanDecoder(): FixedSizeDecoder<Loan> {
     ["limitAtOpen", getU64Decoder()],
     ["createdAt", getI64Decoder()],
     ["dueAt", getI64Decoder()],
+    ["defaultAfter", getI64Decoder()],
     ["repaidAt", getI64Decoder()],
     ["bump", getU8Decoder()],
   ]);
@@ -206,5 +220,5 @@ export async function fetchAllMaybeLoan(
 }
 
 export function getLoanSize(): number {
-  return 190;
+  return 198;
 }

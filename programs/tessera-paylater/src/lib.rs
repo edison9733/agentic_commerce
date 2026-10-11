@@ -134,6 +134,7 @@ pub mod tessera_paylater {
         loan.limit_at_open = limit;
         loan.created_at = now;
         loan.due_at = due_at;
+        loan.default_after = due_at + p.grace_secs as i64;
         loan.bump = ctx.bumps.loan;
 
         emit!(LoanOpened {
@@ -201,10 +202,9 @@ pub mod tessera_paylater {
     /// buyer's line is frozen for good; the debt stays and can still be repaid.
     pub fn mark_default(ctx: Context<MarkDefault>) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
-        let grace = ctx.accounts.pool.params.grace_secs as i64;
         let loan = &mut ctx.accounts.loan;
         require!(loan.state == LoanState::Open, PayLaterError::InvalidState);
-        require!(now > loan.due_at + grace, PayLaterError::NotOverdue);
+        require!(now > loan.default_after, PayLaterError::NotOverdue);
         loan.state = LoanState::Defaulted;
 
         let line = &mut ctx.accounts.line;
@@ -312,8 +312,11 @@ pub struct LoanDefaulted {
 pub struct Initialize<'info> {
     #[account(init, payer = authority, space = 8 + Pool::INIT_SPACE, seeds = [b"pool"], bump)]
     pub pool: Box<Account<'info, Pool>>,
+    /// `init_if_needed`: anyone can create ATA(mint, pool) before the pool
+    /// exists, and a plain `init` would then fail forever. Anchor still checks
+    /// the mint, the owner and that it is the associated account.
     #[account(
-        init,
+        init_if_needed,
         payer = authority,
         associated_token::mint = mint,
         associated_token::authority = pool
