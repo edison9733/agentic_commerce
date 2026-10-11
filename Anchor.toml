@@ -8,9 +8,11 @@ skip-lint = false
 
 [programs.devnet]
 tessera = "TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ"
+tessera_paylater = "7uM4V7H5xH6PGPEvqzw2CJ7s3EY3Qs95RUcV9kPJELDU"
 
 [programs.localnet]
 tessera = "TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ"
+tessera_paylater = "7uM4V7H5xH6PGPEvqzw2CJ7s3EY3Qs95RUcV9kPJELDU"
 
 [provider]
 # Local, so `anchor test` never upgrades the live program. Deploy to devnet

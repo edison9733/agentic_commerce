@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tessera · pitch</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%2314130f%22%2F%3E%3Cpath%20d%3D%22M14%2032a18%2018%200%200%201%2018-18v36a18%2018%200%200%201-18-18z%22%20fill%3D%22%23f6f1e3%22%2F%3E%3Cpath%20d%3D%22M36%2014a18%2018%200%200%201%200%2036l5-9-5-9%205-9z%22%20fill%3D%22%23b8f5c8%22%2F%3E%3C%2Fsvg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;1,400&family=Inter:wght@400;500&family=Roboto+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: #000; overflow: hidden; cursor: pointer; -webkit-font-smoothing: antialiased; touch-action: manipulation; }
+#stage { position: absolute; left: 50%; top: 50%; width: 1920px; height: 1080px; transform-origin: 0 0; }
+section { position: absolute; inset: 0; overflow: hidden; padding: 96px 110px; background: #0d0e0b; color: #c9c6b6; font-family: Inter, 'Helvetica Neue', Arial, sans-serif; font-size: 26px; display: none; flex-direction: column;
+  background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px); background-size: 28px 28px; }
+section.active { display: flex; }
+section.paper { background-color: #fbf8ef; color: #14130f; background-image: radial-gradient(rgba(20,19,15,0.05) 1px, transparent 1px); }
+section.center { align-items: center; justify-content: center; text-align: center; }
+.kicker { font-family: 'Roboto Mono', Menlo, monospace; font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: #8b8a7c; margin: 0 0 22px; }
+.paper .kicker { color: #878371; }
+h1 { font-family: 'EB Garamond', Georgia, serif; font-weight: 400; color: #f1eee2; margin: 0; line-height: 1.04; letter-spacing: -0.01em; }
+.paper h1 { color: #14130f; }
+h1 em, .display em { font-style: italic; }
+.display { font-family: 'EB Garamond', Georgia, serif; font-weight: 400; line-height: 1; }
+.mono { font-family: 'Roboto Mono', Menlo, monospace; }
+.mint { color: #b9f8da; } .white { color: #f1eee2; } .grey { color: #8b8a7c; } .warn { color: #ec835a; } .gold { color: #e2b04a; }
+.card { padding: 20px 26px; border-radius: 18px; border: 1px solid #272b21; background: #10120e; }
+.card.on { border-color: #b9f8da; background: #121a14; }
+.paper .card { border-color: #ded7c2; background: #ffffff; }
+.card h3 { font-family: 'EB Garamond', Georgia, serif; font-weight: 400; font-size: 34px; color: #f1eee2; margin: 0; }
+.paper .card h3 { color: #14130f; }
+.card p { margin: 6px 0 0; font-size: 21px; line-height: 1.38; }
+.source { position: absolute; left: 110px; right: 110px; bottom: 44px; margin: 0; font-family: 'Roboto Mono', Menlo, monospace; font-size: 14px; color: #5d5c52; line-height: 1.5; }
+.paper .source { color: #8f8a77; }
+.row { display: flex; gap: 48px; }
+.col { display: flex; flex-direction: column; gap: 16px; }
+pre { margin: 0; font-family: 'Roboto Mono', Menlo, monospace; white-space: pre; }
+.term { border-radius: 22px; background: #050605; border: 1px solid #272b21; padding: 26px 32px; flex: 1; }
+.term div { font-family: 'Roboto Mono', Menlo, monospace; white-space: pre; overflow: hidden; line-height: 1.62; }
+.caption { position: absolute; padding: 18px 26px; border-radius: 18px; background: rgba(10,11,9,0.92); border: 1px solid #272b21; color: #f1eee2; line-height: 1.35; }
+.shot { border-radius: 18px; overflow: hidden; box-shadow: 0 30px 80px rgba(0,0,0,0.45); }
+.shot img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+/* motion: every marked element rises in, one after another */
+.a { opacity: 0; }
+section.active .a { animation: rise 0.9s cubic-bezier(0.2, 0.7, 0.1, 1) both; animation-delay: calc(var(--i) * var(--gap, 110ms) + 120ms); }
+@keyframes rise { from { opacity: 0; transform: translateY(26px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+section.active .a.pop { animation-name: pop; }
+@keyframes pop { from { opacity: 0; transform: scale(0.6) rotate(-18deg); } to { opacity: 1; transform: none; } }
+section.active .a.wipe { animation-name: wipe; animation-duration: 1.6s; }
+@keyframes wipe { from { opacity: 1; clip-path: inset(0 100% 0 0); } to { opacity: 1; clip-path: inset(0 0 0 0); } }
+section.active .kb img { animation: kb 14s ease-out both; }
+@keyframes kb { from { transform: scale(1.0); } to { transform: scale(1.07); } }
+.bar { height: 14px; border-radius: 8px; background: #1c1f18; overflow: hidden; }
+.bar i { display: block; height: 100%; border-radius: 8px; transform-origin: left; transform: scaleX(0); }
+section.active .bar i { animation: grow 1.4s cubic-bezier(0.2, 0.7, 0.1, 1) both; animation-delay: calc(var(--i, 0) * 110ms + 500ms); }
+@keyframes grow { to { transform: scaleX(1); } }
+.track { position: relative; flex: 1; height: 22px; }
+.track::before { content: ''; position: absolute; left: 0; right: 0; top: 10px; height: 2px; background: #272b21; }
+.track b { position: absolute; top: 2px; left: 0; width: 18px; height: 18px; border-radius: 18px; }
+section.active .track b { animation: run var(--t) linear infinite; }
+@keyframes run { 0% { left: 0; } 85%, 100% { left: calc(100% - 18px); } }
+.line { position: absolute; background: #3a3f33; transform-origin: left top; }
+section.active .line { animation: draw 1.2s ease both; animation-delay: 1.3s; }
+@keyframes draw { from { clip-path: inset(0 100% 100% 0); } to { clip-path: inset(0 0 0 0); } }
+
+#progress { position: fixed; left: 0; bottom: 0; height: 4px; width: 0; background: #2f9e73; transition: width 0.5s ease; z-index: 5; }
+#notes { position: fixed; left: 24px; right: 24px; bottom: 24px; padding: 18px 24px; border-radius: 14px; background: rgba(0,0,0,0.85); color: #f1eee2; font: 20px/1.45 Inter, Arial, sans-serif; display: none; z-index: 6; }
+#notes.on { display: block; }
+#hint { position: fixed; right: 18px; top: 14px; font: 13px Inter, Arial, sans-serif; color: rgba(255,255,255,0.45); z-index: 6; transition: opacity 1s; display: none; }
+#fallback { position: fixed; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; color: #f1eee2; font: 20px/1.5 Inter, Arial, sans-serif; z-index: 7; }
+#fallback a { color: #b9f8da; }
+</style>
+</head>
+<body>
+<div id="fallback">The slides are loading. If nothing appears, open the PDF version: <a href="tessera-pitch-deck-v1.pdf">tessera-pitch-deck-v1.pdf</a></div>
+<div id="stage">
+<section class="center" data-document-role="page" data-label="Title" data-speaker-notes="GM everyone. I'm Edison Liu, a computer engineering student at the ZJU-UIUC Institute. I'm building Tessera, the credit layer for agentic commerce.">
+  <div class="pop"><svg width="120" height="120" viewBox="14 14 36 36" aria-label="Tessera logo"><path d="M14 32a18 18 0 0 1 18-18v36a18 18 0 0 1-18-18z" fill="#f6f1e3"/><path d="M36 14a18 18 0 0 1 0 36l5-9-5-9 5-9z" fill="#b8f5c8"/></svg></div>
+  <h1 style="font-size: 150px; margin-top: 30px;">Tessera</h1>
+  <p style="font-size: 38px; margin: 26px 0 0;">The credit layer for agentic commerce.</p>
+  <p class="mono grey" style="font-size: 22px; margin: 64px 0 0;">Edison Liu · Computer Engineering, ZJU-UIUC Institute</p>
+</section>
+
+<section data-document-role="page" data-label="Hook" data-speaker-notes="AI agents can now pay each other with x402, the payment protocol from Coinbase. The Solana Foundation reports about two hundred million x402 payments so far, most under fifty cents. On one recent day, the average was seven cents.">
+  <p class="kicker">x402, the payment protocol from Coinbase</p>
+  <h1 style="font-size: 96px; max-width: 16ch;">AI agents now <em>pay each other.</em></h1>
+  <div class="row" style="gap: 96px; margin-top: 84px;">
+    <div><div class="display mint" style="font-size: 150px;">≈<span data-count="200">200</span>M</div><p style="font-size: 26px; margin: 14px 0 0;">x402 payments so far</p></div>
+    <div><div class="display white" style="font-size: 150px;">7¢</div><p style="font-size: 26px; margin: 14px 0 0;">average payment on one recent day</p></div>
+  </div>
+  <p class="source">Solana Foundation, 5 Aug 2026: “roughly 200 million transactions … Most transactions are under 50 cents.” x402scan.com, 24 h to 5 Oct 2026: 118,341 payments, $8.01K.</p>
+</section>
+
+<section data-document-role="page" data-label="Why payments stay small" data-speaker-notes="Here is the pain point. Payments stay small because an x402 payment is final once it settles. There is no chargeback. Seven cents can afford to be wrong. Seven hundred dollars cannot. So I focus on one question: how likely is this trade to succeed?">
+  <p class="kicker">The pain point</p>
+  <h1 style="font-size: 104px; max-width: 15ch;">Final once it settles. <em>No chargeback.</em></h1>
+  <p style="font-size: 40px; max-width: 27ch; margin: 40px 0 0; line-height: 1.3;">Seven cents can afford to be wrong. Seven hundred dollars cannot.</p>
+  <p style="font-size: 34px; margin: 56px 0 0; color: #b9f8da;">The question that matters: how likely is this trade to succeed?</p>
+  <p class="source">Our reading, not a measured cause. An x402 <span class="mono">exact</span> payment is a signed token transfer with no chargeback. Median facilitator settlement on devnet here: 1.2 s (51 payments).</p>
+</section>
+
+<section data-document-role="page" data-label="What Tessera does" data-speaker-notes="Tessera puts the payment in escrow, and the escrow knows who it is dealing with. Every wallet has an on-chain score, built from settled orders, ratings and behaviour. At our mainnet target, a fresh wallet's money waits three days. Two Trusted agents settle instantly.">
+  <p class="kicker">What Tessera does</p>
+  <h1 style="font-size: 84px; max-width: 19ch;">Escrow that knows <em>who it is dealing with.</em></h1>
+  <p style="font-size: 30px; margin: 30px 0 0;">Every wallet has an on-chain score, built from settled orders, ratings and behaviour.</p>
+  <div class="col" style="margin-top: 40px;">
+    <div class="card" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #f1eee2; font-size: 22px;">○○○○ &nbsp;New</span><span class="track" style="--t: 6.5s;"><b style="background: #4b5a46;"></b></span><span class="display white" style="font-size: 44px; width: 270px; text-align: right;">3 d <span class="mono grey" style="font-size: 14px;">hold</span></span></div>
+    <div class="card" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #f1eee2; font-size: 22px;">●○○○ &nbsp;Building</span><span class="track" style="--t: 3.6s;"><b style="background: #5f8c6e;"></b></span><span class="display white" style="font-size: 44px; width: 270px; text-align: right;">24 h <span class="mono grey" style="font-size: 14px;">hold</span></span></div>
+    <div class="card" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #f1eee2; font-size: 22px;">●●●○ &nbsp;Established</span><span class="track" style="--t: 1.8s;"><b style="background: #7cc79c;"></b></span><span class="display white" style="font-size: 44px; width: 270px; text-align: right;">60 min <span class="mono grey" style="font-size: 14px;">hold</span></span></div>
+    <div class="card on" style="display: flex; align-items: center; gap: 28px;"><span style="width: 230px; color: #b9f8da; font-size: 22px;">●●●● &nbsp;Trusted</span><span class="track" style="--t: 0.9s;"><b style="background: #b9f8da;"></b></span><span class="display mint" style="font-size: 44px; width: 270px; text-align: right;">instant</span></div>
+  </div>
+  <p class="source">Mainnet target holds. On devnet the same four tiers hold for 2 min, 45 s, 10 s and 0.</p>
+</section>
+
+<section data-document-role="page" data-label="No new standard" data-speaker-notes="Nothing new to adopt. One field changes: payTo points to an escrow account instead of the merchant.">
+  <p class="kicker">Nothing new to adopt</p>
+  <h1 style="font-size: 88px; max-width: 18ch;">One field changes: <em>where payTo points.</em></h1>
+  <div class="card" style="margin-top: 54px; padding: 34px 40px; border-radius: 22px;">
+<pre style="font-size: 27px; line-height: 1.7; color: #c9c6b6;">HTTP/1.1 402 Payment Required
+{
+  "scheme":  "exact",
+  "network": "solana:EtWTRABZ…",     // devnet
+  "amount":  "200000",
+  "payTo":   <span class="mint">"JE6F5J7i…WdUW"</span>     <span style="color: #5d5c52;">// an escrow account, not the merchant</span>
+}</pre>
+  </div>
+  <div class="row" style="gap: 44px; margin-top: 44px; font-size: 25px; color: #f1eee2;"><span>A2A to ask</span><span>x402 to pay</span><span>a facilitator settles</span><span>a Solana program holds</span></div>
+  <p class="source">A real order from this project on devnet. The x402 <span class="mono">exact</span> scheme derives the token account from payTo, so an escrow account is a valid payTo.</p>
+</section>
+
+<section data-document-role="page" data-label="Reviews as search" data-speaker-notes="Agents can also search for sellers in one call. Each result says instant or escrow.">
+  <p class="kicker">Reviews as search, for agents</p>
+  <h1 style="font-size: 78px; max-width: 21ch;">Who should I buy from? <em>One call.</em></h1>
+  <div class="row" style="gap: 52px; margin-top: 36px;">
+    <div class="col" style="flex: 1.3; gap: 10px;">
+      <div class="card mono" style="font-size: 21px; padding: 16px 24px;">$ tessera find <span class="mint">text summary</span></div>
+      <div class="card on" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display mint" style="font-size: 34px; width: 36px;">1</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Quill</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Trusted 905 · ★4.76 · 5 sales</div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.25 USDC<div class="grey" style="font-size: 15px;">escrow · ~9 s</div></div></div>
+      <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display grey" style="font-size: 34px; width: 36px;">2</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Scribe</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Established 658 · ★4.26 · 2 sales</div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.15 USDC<div class="grey" style="font-size: 15px;">escrow · ~13 s</div></div></div>
+      <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display grey" style="font-size: 34px; width: 36px;">3</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Glib</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Building 181 · ★2.38 · 2 sales<span class="warn"> · 1 missed delivery</span></div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.10 USDC<div class="grey" style="font-size: 15px;">escrow · ~9 s</div></div></div>
+      <div class="mono" style="font-size: 17px; margin-top: 4px;">A regular customer asking the same: <span class="mint">Quill · instant · ~1 s to settled</span></div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3>Ranked by money, not words</h3><p>Each review needed a real settled order and counts by what it paid.</p></div>
+      <div class="card"><h3>Answers the next question too</h3><p>Every row says instant or escrow, and the seconds from paying to settled.</p></div>
+      <div class="card"><h3>Built for agents</h3><p>Compact JSON with enums, over an API, MCP, a skill or a CLI. No pages to read.</p></div>
+    </div>
+  </div>
+  <p class="source">Recorded 2026-10-09: twelve purchases between real agents on a local validator running the real program, then one call. Reproduce: npm run build:program &amp;&amp; npm run demo:find</p>
+</section>
+
+<section data-document-role="page" data-label="Reviews that pay" data-speaker-notes="And reviewers get paid, and paid more when their warning proves right.">
+  <p class="kicker">Reviews that pay</p>
+  <h1 style="font-size: 78px; max-width: 22ch;">Paid to review. <em>Paid more for being right.</em></h1>
+  <div class="row" style="gap: 52px; margin-top: 36px;">
+    <div class="col" style="flex: 1.25; gap: 10px;">
+      <div class="mono" style="font-size: 19px;">Three buyers reviewed Glib. Then Glib took an order and never delivered.</div>
+      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Scout</span> <span class="gold" style="font-size: 24px;">★★★★★</span><div class="mono warn" style="font-size: 16px;">0× · praised it, then it failed</div></div><span class="display grey" style="font-size: 40px;">$0.00</span></div>
+      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Nova</span> <span class="gold" style="font-size: 24px;">★★★★</span><span style="font-size: 24px; color: #3a3f33;">★</span><div class="mono warn" style="font-size: 16px;">0× · praised it, then it failed</div></div><span class="display grey" style="font-size: 40px;">$0.00</span></div>
+      <div class="card on" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Orbit</span> <span class="gold" style="font-size: 24px;">★★</span><span style="font-size: 24px; color: #3a3f33;">★★★</span><div class="mono mint" style="font-size: 16px;">1.5× · warned, then it failed</div></div><span class="display mint" style="font-size: 40px;">$0.045</span></div>
+      <div class="mono" style="font-size: 17px; margin-top: 4px;">Paid on chain: <span class="mint">0.169 USDC of 1.25 USDC in fees</span>, to 6 reviews</div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3>Same pay for 1★ or 5★</h3><p>A quarter of the fee rate on the money behind the review. Stars never change it.</p></div>
+      <div class="card"><h3>Judged on what happened next</h3><p>An honest warning is paid 1.5×. Praising a wallet that then failed is paid nothing.</p></div>
+      <div class="card"><h3>Faking it loses money</h3><p>At most 75% of an order’s fee comes back, so farming with your own wallets never pays.</p></div>
+    </div>
+  </div>
+  <p class="source">Recorded 2026-10-10: real purchases, reviews, a missed delivery and the airdrop payout, on a local validator running the real program. Reproduce: npm run build:program &amp;&amp; npm run demo:rewards</p>
+</section>
+
+<section class="center" data-document-role="page" data-label="Close" data-speaker-notes="Why me? Every x402 payment already leaves a public record on the chain. My idea is to use that data to lower the risk of being scammed in agentic commerce. Without it, a payment is just a payment, and the data goes to waste. Micropayments were the easy part. Every payment matters. This is Tessera.">
+  <h1 style="font-size: 70px; color: #8b8a7c; max-width: 20ch;">Micropayments were the easy part.</h1>
+  <h1 style="font-size: 150px; max-width: 12ch; margin-top: 20px;">Every payment <em class="mint">matters.</em></h1>
+  <div class="row" style="gap: 16px; margin-top: 56px; align-items: center;">
+    <svg width="40" height="40" viewBox="14 14 36 36" aria-label="Tessera logo"><path d="M14 32a18 18 0 0 1 18-18v36a18 18 0 0 1-18-18z" fill="#f6f1e3"/><path d="M36 14a18 18 0 0 1 0 36l5-9-5-9 5-9z" fill="#b8f5c8"/></svg>
+    <span class="mono" style="font-size: 22px;">agentic-commerce-two-theta.vercel.app</span>
+  </div>
+  <p class="mono grey" style="font-size: 18px; margin: 22px 0 0;">Live on Solana devnet · github.com/edison9733/agentic_commerce</p>
+</section>
+
+</div>
+<div id="progress"></div>
+<div id="notes"></div>
+<div id="hint">click or → for the next slide · ← back · F full screen · N notes</div>
+<script src="slides.js" defer></script>
+</body>
+</html>
