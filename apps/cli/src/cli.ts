@@ -1,9 +1,10 @@
 /**
- * tessera: the Tessera API from a terminal. Every command is one call to the
- * HTTP API. With --keypair the CLI signs the returned transaction locally,
- * after reading the order from the chain itself and checking every
+ * tessera: the Tessera API from a terminal. Every escrow command is one call
+ * to the HTTP API. With --keypair the CLI signs the returned transaction
+ * locally, after reading the order from the chain itself and checking every
  * instruction against what was asked; the API is not trusted, and the key
- * never leaves this machine.
+ * never leaves this machine. Pay-later commands read the chain directly
+ * (paylater.ts).
  *
  *   npm run tessera -- check <merchant> 0.25 --buyer <wallet>
  *   npm run tessera -- help
@@ -62,6 +63,7 @@ import {
   verifyOrderForPayment,
 } from '@tessera/sdk';
 import { OUTCOMES, ROLES, TOOLS, type ToolName } from '@tessera/api/contract';
+import { PAYLATER_COMMANDS, PAYLATER_HELP, payLater } from './paylater.js';
 
 const HELP = `tessera: credit checks and non-custodial escrow for agent payments on Solana
 
@@ -81,6 +83,8 @@ After payment
   reclaim <order> [--signer W]                   missed delivery, unpaid quote, silent arbiter
   report <order> --outcome ${OUTCOMES.join('|')} [--rating 1-5] [--comment TEXT] [--reporter W]
   submit <signed-base64>
+
+${PAYLATER_HELP}
 
 Options
   --api URL        Tessera API (default $TESSERA_API_URL or http://127.0.0.1:4030)
@@ -536,6 +540,12 @@ if (!cmd || flags.help || cmd === 'help') {
 const kp = flags.keypair ? await loadKeypair(String(flags.keypair)) : undefined;
 const me = (flag: string): string | undefined => (flags[flag] as string | undefined) ?? kp?.address;
 const need = (v: unknown, what: string) => (v === undefined || v === '' ? die(`${what} is required (see: tessera help)`) : v);
+
+if (PAYLATER_COMMANDS.has(cmd)) {
+  const rpcUrl = endpoint(String(flags.rpc ?? ((process.env.TESSERA_RPC_URLS ?? '').split(',')[0]!.trim() || 'https://api.devnet.solana.com')), flags.rpc ? '--rpc' : 'TESSERA_RPC_URLS');
+  await payLater(cmd, a1, a2, { rpcUrl, kp, send: Boolean(flags.send), json: Boolean(flags.json), request: json(flags.request as string, '--request'), die });
+  process.exit(0);
+}
 
 let tool: ToolName;
 let args: Record<string, unknown>;
