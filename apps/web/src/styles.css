@@ -297,3 +297,22 @@ select {
   outline-offset: 4px;
   border-radius: 8px;
 }
+
+/* The accented words in the home page headline: italic, in a slow green shimmer. */
+.hero-accent {
+  font-style: italic;
+  padding-right: 0.06em;
+  background: linear-gradient(100deg, #0f5c40 0%, #2f8f66 28%, #6fe0ad 50%, #2f8f66 72%, #0f5c40 100%);
+  background-size: 250% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: hero-shimmer 7s ease-in-out infinite;
+}
+@keyframes hero-shimmer {
+  0%, 100% { background-position: 100% 0; }
+  50% { background-position: 0% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-accent { animation: none; }
+}

@@ -37,7 +37,7 @@ export function Words({ text, className, delay = 0, italic = [] }: { text: strin
   return (
     <span className={className} aria-label={text}>
       {words.map((w, i) => (
-        <span key={i} style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', paddingBottom: '0.08em' }} aria-hidden>
+        <span key={i} style={{ display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', paddingBottom: '0.2em', marginBottom: '-0.12em' }} aria-hidden>
           <motion.span
             style={{ display: 'inline-block', fontStyle: italic.includes(w.replace(/[.,]/g, '')) ? 'italic' : undefined }}
             initial={{ y: '110%' }}
