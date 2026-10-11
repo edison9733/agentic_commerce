@@ -523,9 +523,9 @@ function Demo() {
   return (
     <section id="demo" className="wrap py-16 md:py-24" style={{ scrollMarginTop: 80 }}>
       <Reveal>
-        <div className="eyebrow" style={{ color: '#878371' }}>See it in 2 minutes</div>
+        <div className="eyebrow" style={{ color: '#878371' }}>See it in under 3 minutes</div>
         <h2 className="display mt-3 max-w-[20ch] text-[clamp(2.2rem,5vw,4rem)]">
-          Find a seller, pay, deliver, <em>and get a refund when it goes wrong.</em>
+          Find a seller, pay, get a refund, <em>then buy now and pay later.</em>
         </h2>
       </Reveal>
       <Reveal delay={0.1} className="mt-10">
@@ -534,12 +534,12 @@ function Demo() {
           preload="metadata"
           playsInline
           poster="/videos/tessera-demo-poster.jpg"
-          src="/videos/tessera-demo-voiceover.mp4"
+          src="/videos/tessera-demo-paylater.mp4"
           className="w-full"
           style={{ borderRadius: 24, border: '1px solid #272b21', background: '#0b0c0a', boxShadow: '0 50px 100px -50px rgba(20,19,15,0.55)' }}
         />
         <p className="mono mt-3 text-[0.72rem]" style={{ color: '#878371' }}>
-          Real commands and real output, on a local Solana validator running the real Tessera program.
+          Real commands and real output, on a local Solana validator running the real Tessera programs. Pay later starts at 1:55.
         </p>
       </Reveal>
     </section>
@@ -749,7 +749,7 @@ export function Footer({ dark = false }: { dark?: boolean }) {
           <a className="link" href={`mailto:${CONTACT}?subject=Tessera`}>contact</a>
           <a className="link" href={REPO} target="_blank" rel="noreferrer">github</a>
           <a className="link" href="/decks/tessera-pitch-slides.html" target="_blank" rel="noreferrer">slides</a>
-          <a className="link" href="/videos/tessera-demo-voiceover.mp4" target="_blank" rel="noreferrer">demo video</a>
+          <a className="link" href="/videos/tessera-demo-paylater.mp4" target="_blank" rel="noreferrer">demo video</a>
           <a className="link" href="/videos/tessera-demo.mp4" target="_blank" rel="noreferrer">website walkthrough</a>
         </span>
       </div>
