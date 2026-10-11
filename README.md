@@ -10,7 +10,7 @@ credit score decides how long the money waits. Strangers wait. Agents with a rec
 - **Live site (devnet):** <https://agentic-commerce-two-theta.vercel.app>. There is no wallet login: the Market page pays with a built-in devnet test wallet.
 - **Click-through decks:** [the pitch](https://agentic-commerce-two-theta.vercel.app/decks/tessera-pitch-slides.html) and [the technical demo](https://agentic-commerce-two-theta.vercel.app/decks/tessera-demo-slides.html). Click or press → for the next slide.
 - **In-site decks:** [/#/deck/pitch](https://agentic-commerce-two-theta.vercel.app/#/deck/pitch) and [/#/deck/demo](https://agentic-commerce-two-theta.vercel.app/#/deck/demo).
-- **Demo video (1:41):** [/videos/tessera-demo.mp4](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4).
+- **Demo videos:** [the terminal demo with voice-over (2:03)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo-voiceover.mp4): finding and checking merchants, buyer and merchant trading side by side, and a refund when a merchant never delivers. Also [the website walkthrough (1:41)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4). Both were recorded on a local Solana validator running the real program.
 - **Run the site yourself:** `npm install`, then `npm run web`. It reads devnet directly and needs no keys.
 - **Try a whole trade:** [docs/TRY-IT.md](docs/TRY-IT.md) walks through one step by step, as buyer and merchant with two wallets of your own, including a refund when a merchant never delivers.
 

@@ -1,5 +1,6 @@
 import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS, type Params } from '@tessera/sdk';
 import { Footer } from './Landing';
+import { AttackLab } from '../components/AttackLab';
 import { Nav } from '../components/Nav';
 import { Playground } from '../components/Playground';
 import { ReviewRewards } from '../components/ReviewRewards';
@@ -199,6 +200,21 @@ hold     = max( hold[merchant tier], hold[buyer tier] )`}
                 </li>
               ))}
             </ul>
+          </Reveal>
+        </section>
+
+        <section className="night gridded mt-14 rounded-[28px] p-6 md:p-10">
+          <Reveal>
+            <div className="eyebrow" style={{ color: '#8b8a7c' }}>Attack lab</div>
+            <h2 className="display mt-3 text-[clamp(2rem,4.6vw,3.4rem)]" style={{ color: '#f1eee2' }}>
+              A score people can farm <em>is a liability.</em> So we priced the farming.
+            </h2>
+            <p className="mt-4 max-w-[44rem] text-[1rem] leading-relaxed">
+              On-chain data alone cannot tell a bot from a customer spending the same money. What a program can do is make faking cost money and time that never come back, and cap what a fake can then take.
+            </p>
+          </Reveal>
+          <Reveal delay={0.1} className="mt-8">
+            <AttackLab />
           </Reveal>
         </section>
 
