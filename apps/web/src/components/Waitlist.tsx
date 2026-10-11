@@ -1,7 +1,14 @@
 import { useState } from 'react';
 
-/** Formspree form endpoint. Set VITE_WAITLIST_URL on Vercel, or fill in the constant. */
-const FORM_URL: string = import.meta.env.VITE_WAITLIST_URL || '';
+/** Where to reach the team. Split so the address is not one plain string in the page's code. */
+export const CONTACT = ['ediedi9733', 'gmail.com'].join('@');
+
+/**
+ * Sign-ups are emailed to CONTACT through FormSubmit's AJAX endpoint. The first one sends
+ * a one-time activation email; after that each sign-up arrives as an email.
+ * VITE_WAITLIST_URL (for example a Formspree form) overrides it.
+ */
+const FORM_URL: string = import.meta.env.VITE_WAITLIST_URL || `https://formsubmit.co/ajax/${CONTACT}`;
 
 type Status = 'idle' | 'sending' | 'done' | 'error';
 
@@ -22,9 +29,10 @@ export function Waitlist({ dark = false }: { dark?: boolean }) {
       const res = await fetch(FORM_URL, {
         method: 'POST',
         headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim(), source: 'tessera-site' }),
+        body: JSON.stringify({ email: email.trim(), source: 'tessera-site', _subject: 'Tessera early access sign-up', _template: 'table' }),
       });
-      setStatus(res.ok ? 'done' : 'error');
+      const data = (await res.json().catch(() => ({}))) as { success?: string | boolean };
+      setStatus(res.ok && data.success !== 'false' && data.success !== false ? 'done' : 'error');
     } catch {
       setStatus('error');
     }

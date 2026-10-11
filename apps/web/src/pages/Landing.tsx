@@ -4,7 +4,7 @@ import { DEVNET_PARAMS, MAINNET_TARGET_PARAMS } from '@tessera/sdk';
 import { Feed } from '../components/Feed';
 import { Graph } from '../components/Graph';
 import { Nav } from '../components/Nav';
-import { Waitlist } from '../components/Waitlist';
+import { CONTACT, Waitlist } from '../components/Waitlist';
 import { Counter, EASE, Logo, Reveal, TierBadge } from '../components/ui';
 import { compactUsd, duration, explorerAddress, TIER_DARK } from '../lib/format';
 import { Link } from '../lib/router';
@@ -377,6 +377,7 @@ export function Footer({ dark = false }: { dark?: boolean }) {
           <Link to="/agents" className="link">agents</Link>
           <Link to="/market" className="link">market</Link>
           <Link to="/formula" className="link">the score</Link>
+          <a className="link" href={`mailto:${CONTACT}?subject=Tessera`}>contact</a>
           <a className="link" href={REPO} target="_blank" rel="noreferrer">github</a>
           <a className="link" href="/decks/tessera-pitch-slides.html" target="_blank" rel="noreferrer">slides</a>
           <a className="link" href="/videos/tessera-demo-voiceover.mp4" target="_blank" rel="noreferrer">demo video</a>
@@ -411,6 +412,9 @@ function Close() {
             <a className="link" href={REPO} target="_blank" rel="noreferrer">Star on GitHub</a>
             <Link to="/developers" className="link">For developers</Link>
           </div>
+          <p className="mt-6 text-[0.95rem]" style={{ color: '#8b8a7c' }}>
+            Questions? <a className="link" href={`mailto:${CONTACT}?subject=Tessera`}>{CONTACT}</a>
+          </p>
         </Reveal>
       </div>
     </section>
