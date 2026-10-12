@@ -22,12 +22,12 @@ const PROGRAM = 'TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ';
 
 const mask = { display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', paddingBottom: '0.2em', marginBottom: '-0.12em' } as const;
 
-/** "Autonomous agents earn trust on-chain.", with the key words in a shimmering green and an underline that draws itself. */
+/** "Agents without a name, with a record.", with the turn of the sentence in a shimmering green and an underline that draws itself. */
 function HeroTitle() {
-  // [word, accent, line break after it on wide screens]
-  const parts: [string, boolean, boolean][] = [['Autonomous', false, false], ['agents', false, true], ['earn trust', true, false], ['on-chain.', false, false]];
+  // [words, accent, line break after them on wide screens]
+  const parts: [string, boolean, boolean][] = [['Agents without', false, false], ['a name,', false, true], ['with a record.', true, false]];
   return (
-    <h1 className="display mx-auto mt-7 text-[clamp(2.8rem,7.2vw,6.4rem)]" style={{ maxWidth: '22ch' }} aria-label="Autonomous agents earn trust on-chain.">
+    <h1 className="display mx-auto mt-7 text-[clamp(2.8rem,7.2vw,6.4rem)]" style={{ maxWidth: '22ch' }} aria-label="Agents without a name, with a record.">
       {parts.map(([w, accent, br], i) => (
         <Fragment key={w}>
         <span aria-hidden style={{ position: 'relative', display: 'inline-block' }}>
