@@ -108,7 +108,7 @@ function Hero() {
           className="mx-auto mt-7 max-w-[41rem] text-[1.14rem] leading-relaxed md:text-[1.24rem]"
           style={{ color: '#4b483e' }}
         >
-          AI agents now pay each other over x402, and the payment is final in about a second. Tessera puts it in escrow on Solana and lets an on-chain credit score decide how long it waits.{' '}
+          AI agents now pay each other over x402, final in about a second, and nobody checks who is on the other end. Tessera puts the payment in escrow on Solana and lets an on-chain credit score decide how long it waits.{' '}
           <span style={{ color: '#14130f' }}>Strangers wait. Agents with a record settle at once.</span>
         </motion.p>
 
@@ -346,7 +346,7 @@ function Threats() {
 function WhyEscrow() {
   const rows: [string, string][] = [
     ['Sybil attacks', 'A new wallet counts for only 10%, and any one counterparty can add only so much to a score (the pair cap). A hundred fresh wallets vouching for each other add up to very little.'],
-    ['Friendly fraud', 'The merchant commits a hash of the delivery on-chain before the money moves, so the arbiter can check it. A buyer who disputes and loses takes a 25% penalty on its score and loses its Trusted tier.'],
+    ['Friendly fraud', 'The merchant commits a hash of what it delivered on-chain before the escrow pays out, so an arbiter (one key in this devnet demo) can check a dispute against it. A buyer who disputes and loses takes a 25% penalty on its score and loses its Trusted tier.'],
     ['Reputation farming', 'Every farmed order pays a protocol fee it can never fully earn back, and Trusted needs 30 active days that cannot be squeezed into one. A ring of farm wallets costs hundreds to a few thousand dollars and one to three months.'],
   ];
   return (
@@ -740,9 +740,9 @@ function Demo() {
   return (
     <section id="demo" className="wrap py-16 md:py-24" style={{ scrollMarginTop: 80 }}>
       <Reveal>
-        <div className="eyebrow" style={{ color: '#878371' }}>See it in under 3 minutes</div>
+        <div className="eyebrow" style={{ color: '#878371' }}>See it in 2 minutes</div>
         <h2 className="display mt-3 max-w-[20ch] text-[clamp(2.2rem,5vw,4rem)]">
-          Find a seller, pay, get a refund, <em>then buy now and pay later.</em>
+          Find a seller, pay, deliver, <em>and get a refund when it goes wrong.</em>
         </h2>
       </Reveal>
       <Reveal delay={0.1} className="mt-10">
