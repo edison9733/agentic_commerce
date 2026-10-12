@@ -14,7 +14,10 @@ is not deployed to devnet.
    the preview rules). The buyer owes the full price by the due date and pays no interest.
 2. **Pay later.** `repay` moves the full price back into the pool. Anyone may repay for the buyer.
    Repaying on time raises the limit.
-3. **Or default.** Once the due date and a grace period have passed, anyone may call `mark_default`.
+3. **Or run a tab.** An agent can buy several things, each inside its remaining limit, and settle
+   every loan it still owes in one transaction (`tessera repay --all`). Each loan keeps its own due
+   date, so the earliest one sets when the tab must be paid.
+4. **Or default.** Once the due date and a grace period have passed, anyone may call `mark_default`.
    The line freezes at 0 for good. The debt stays on the record and can still be repaid, as late.
 
 ## The limit
@@ -44,13 +47,14 @@ The pool only pays merchants at **Building** or above.
 
 ## Checks
 
-`npm run test:paylater` (**48 / 48**) starts a local validator with both programs. Wallets earn their
+`npm run test:paylater` (**51 / 51**) starts a local validator with both programs. Wallets earn their
 tiers through real escrow orders, then:
 
 - a New wallet, a wallet with no credit file, a New merchant, self-dealing and an amount below the minimum are all refused;
 - a tiered buyer buys, the merchant is paid at once minus the fee, the loan snapshot matches the buyer's live score, and the limit matches the off-chain formula;
 - spending past the limit, repaying twice, marking a default early or during the grace period, and a stranger taking a repaid loan's rent are all refused;
 - an on-time repayment raises the limit by exactly 25%, and the program applies it: a purchase above the old limit goes through and one unit more is refused;
+- a buyer runs a tab of three purchases, the chain lists all three as owed, and one transaction settles them;
 - a buyer who never repays is marked in default by a stranger, the line freezes, and a late repayment clears the debt but not the default;
 - each loan keeps the grace period it opened with: cutting it to 0 in the rules does not let anyone mark an open loan early, and an unpaid loan cannot be closed;
 - the pool's balance equals deposits minus withdrawals minus what merchants were paid, plus repayments;
@@ -64,6 +68,7 @@ npm run paylater:local       # validator, both programs, tiered wallets, a funde
 npm run tessera -- credit <alice> --rpc http://127.0.0.1:18999
 npm run tessera -- buy-later <shop> 1.5 --keypair <alice.json> --rpc http://127.0.0.1:18999 --send
 npm run tessera -- repay <loan> --keypair <alice.json> --rpc http://127.0.0.1:18999 --send
+npm run tessera -- repay --all --keypair <alice.json> --rpc http://127.0.0.1:18999 --send   # settle every loan still owed, at once
 npm run tessera -- mark-default <loan> --keypair <stranger.json> --rpc http://127.0.0.1:18999 --send
 ```
 
@@ -81,5 +86,5 @@ npm run tessera -- mark-default <loan> --keypair <stranger.json> --rpc http://12
   Building or above.
 - **One lender.** The pool's authority funds it and alone can withdraw. There are no outside lenders,
   shares or interest for depositors.
-- **No instalments.** A loan is repaid in one payment.
+- **No instalments.** A loan is repaid in one payment. A tab of several loans can be settled together, but each loan is all or nothing.
 - **Unaudited**, like the rest of the project.
