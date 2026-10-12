@@ -17,6 +17,14 @@ export const RPC_URLS = (rpcUrls ?? 'https://api.devnet.solana.com,https://solan
   .filter(Boolean);
 
 /**
+ * What the site is reading, for every label that names it. Devnet, unless
+ * `VITE_RPC_URLS` points at a local validator (the demo recordings do), so a
+ * recording never says devnet when it is not.
+ */
+export const NETWORK: 'devnet' | 'local validator' = /^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:|\/|$)/.test(RPC_URLS[0] ?? '') ? 'local validator' : 'devnet';
+export const NETWORK_LABEL = NETWORK === 'devnet' ? 'Solana devnet' : 'local Solana validator';
+
+/**
  * Where the merchant agents are served (`npm run agents`). Only the market
  * page needs it. A production build without it has no market, rather than
  * one that quietly talks to localhost.

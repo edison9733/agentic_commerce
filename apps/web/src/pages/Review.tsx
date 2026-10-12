@@ -24,7 +24,7 @@ import { clip200 } from './Market';
 import { Nav } from '../components/Nav';
 import { EASE, Reveal } from '../components/ui';
 import { loadBurner, sendSigned, sendWith } from '../lib/burner';
-import { readRpc } from '../lib/client';
+import { NETWORK, readRpc } from '../lib/client';
 import { ago, duration, explorerAddress, explorerTx, short, usd } from '../lib/format';
 import { left, ordersOf, SETTLED, windowText } from '../lib/reviewable';
 import { go, Link } from '../lib/router';
@@ -309,7 +309,7 @@ export function Review({ order: param }: { order?: string }) {
       <Nav />
       <main className="wrap pb-24 pt-12">
         <Reveal>
-          <div className="eyebrow" style={{ color: '#878371' }}>Review with a receipt · devnet</div>
+          <div className="eyebrow" style={{ color: '#878371' }}>Review with a receipt · {NETWORK}</div>
           <h1 className="display mt-3 text-[clamp(2.6rem,6vw,5rem)]">
             No purchase, no review. <em>The receipt is on-chain.</em>
           </h1>
@@ -331,18 +331,18 @@ export function Review({ order: param }: { order?: string }) {
             Paste the address of an order you bought or sold, or connect the wallet you traded with below to list its orders. Orders are also listed on the <Link to="/network" className="link">live network</Link> page and on each <Link to="/agents" className="link">credit file</Link>.
           </p>
         )}
-        {loaded.status === 'loading' && <p className="mono mt-5 text-[0.84rem]" style={{ color: '#878371' }}>Reading the order from devnet…</p>}
+        {loaded.status === 'loading' && <p className="mono mt-5 text-[0.84rem]" style={{ color: '#878371' }}>Reading the order from {NETWORK}…</p>}
         {loaded.status === 'invalid' && <Notice tone="bad">That is not a Solana address. Check it and try again.</Notice>}
         {loaded.status === 'missing' && (
-          <Notice tone="bad">No Tessera order at this address on devnet. It may be a different kind of account, or the order was closed after settlement and its rent returned.</Notice>
+          <Notice tone="bad">No Tessera order at this address on {NETWORK}. It may be a different kind of account, or the order was closed after settlement and its rent returned.</Notice>
         )}
-        {loaded.status === 'error' && <Notice tone="bad">Could not read devnet just now: {loaded.message}</Notice>}
+        {loaded.status === 'error' && <Notice tone="bad">Could not read {NETWORK} just now: {loaded.message}</Notice>}
 
         <section className="card mt-6 p-6" aria-label="Your orders">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="display text-[2rem]">Your orders</h2>
             <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>
-              review window on devnet: {reviewSecs !== null ? duration(reviewSecs) : '…'} after settlement
+              review window on {NETWORK}: {reviewSecs !== null ? duration(reviewSecs) : '…'} after settlement
             </span>
           </div>
           {!signer ? (
@@ -356,7 +356,7 @@ export function Review({ order: param }: { order?: string }) {
             <>
               {connected}
               <p className="mt-3 text-[0.88rem]" style={{ color: '#878371' }}>
-                On devnet the window is {reviewSecs !== null ? duration(reviewSecs) : '…'} after an order settles (14 days at the mainnet target), so review soon after a trade.
+                On {NETWORK} the window is {reviewSecs !== null ? duration(reviewSecs) : '…'} after an order settles (14 days at the mainnet target), so review soon after a trade.
               </p>
               {mine.length === 0 ? (
                 <p className="mt-3 text-[0.92rem] leading-relaxed" style={{ color: '#4b483e' }}>
@@ -394,7 +394,7 @@ export function Review({ order: param }: { order?: string }) {
             <motion.section initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, ease: EASE }} className="card p-6" aria-label="Verified receipt">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <h2 className="display text-[2rem]">Verified receipt</h2>
-                <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>read from the order account on devnet</span>
+                <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>read from the order account on {NETWORK}</span>
               </div>
               <div className="mt-4">
                 <Row label="Order">
@@ -500,7 +500,7 @@ export function Review({ order: param }: { order?: string }) {
                       />
                       <div className="mono text-right text-[0.7rem]" style={{ color: '#878371' }}>{new TextEncoder().encode(text).length} / 200 bytes</div>
                       <button className="btn btn-ink justify-center py-3.5" disabled={busy || !open} onClick={() => void submit()}>
-                        {busy ? 'Waiting for the wallet and devnet…' : 'Sign and post the review'}
+                        {busy ? 'Waiting for the wallet and {NETWORK}…' : 'Sign and post the review'}
                       </button>
                       {!open && <div className="text-[0.84rem]" style={{ color: '#878371' }}>{settled ? 'The review window has closed.' : 'Reviews open once the order settles.'}</div>}
                     </div>

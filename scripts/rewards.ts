@@ -1,5 +1,5 @@
 /**
- * The review-reward airdrop (docs/REWARDS.md).
+ * The review-reward rebate (docs/REWARDS.md).
  *
  *   npm run rewards                         preview: record new reviews, score the matured ones, pay nothing
  *   npm run rewards -- --pay                also pay, from .keys/treasury.json or --payer

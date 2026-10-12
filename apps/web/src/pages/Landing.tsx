@@ -11,6 +11,7 @@ import { CONTACT, Waitlist } from '../components/Waitlist';
 import { Playground } from '../components/Playground';
 import { ReviewRewards } from '../components/ReviewRewards';
 import { Counter, EASE, Logo, Reveal, TierBadge, Words } from '../components/ui';
+import { NETWORK_LABEL } from '../lib/client';
 import { compactUsd, duration, explorerAddress, TIER_DARK, tierName } from '../lib/format';
 import { Link, usePath } from '../lib/router';
 import { useChain, useProfiles } from '../lib/store';
@@ -84,7 +85,7 @@ function Hero() {
           style={{ borderColor: '#ded7c2', background: 'rgba(255,255,255,0.6)' }}
         >
           <span style={{ width: 7, height: 7, borderRadius: 7, background: '#2f8f66', boxShadow: '0 0 0 4px rgba(47,143,102,0.18)' }} />
-          Live on Solana devnet · program TessSe…1CQ
+          Live on {NETWORK_LABEL} · program TessSe…1CQ
         </motion.a>
 
         <HeroTitle />
@@ -138,7 +139,7 @@ function Hero() {
               </span>
             </span>
           </div>
-          <div className="grid lg:grid-cols-[1fr_340px]">
+          <div data-nav="/network" className="grid lg:grid-cols-[1fr_340px]">
             <Graph profiles={profiles} pairs={pairs} orders={orders} feed={feed} height={500} />
             <div className="hidden p-5 lg:block" style={{ borderLeft: '1px solid #1c1f18' }}>
               <div className="eyebrow" style={{ color: '#8b8a7c' }}>On-chain, just now</div>
@@ -232,7 +233,7 @@ function CreditLayer() {
     ['Ratings', 'Reviews from the other side of settled orders, weighted by the money behind them.'],
   ];
   return (
-    <section className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
+    <section data-nav="/agents" className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
       <div className="wrap">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
           <Reveal className="min-w-0">
@@ -587,7 +588,7 @@ function PayLater() {
     if (path === '/pay-later') ref.current?.scrollIntoView({ block: 'start' });
   }, [path]);
   return (
-    <section ref={ref} id="pay-later" className="py-24 md:py-32" style={{ background: '#f4efe0', scrollMarginTop: 68 }}>
+    <section data-nav="/pay-later" ref={ref} id="pay-later" className="py-24 md:py-32" style={{ background: '#f4efe0', scrollMarginTop: 68 }}>
       <div className="wrap">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
           <Reveal className="min-w-0">
@@ -640,7 +641,7 @@ function PayLater() {
 
 function Score() {
   return (
-    <section className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
+    <section data-nav="/formula" className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
       <div className="wrap">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
           <Reveal className="min-w-0">
@@ -668,7 +669,7 @@ function Score() {
 
 function Rewards() {
   return (
-    <section id="rewards" className="py-24 md:py-32">
+    <section data-nav="/review" id="rewards" className="py-24 md:py-32">
       <div className="wrap">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
           <Reveal className="min-w-0">
@@ -679,7 +680,7 @@ function Rewards() {
           </Reveal>
           <Reveal delay={0.1} className="min-w-0">
             <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
-              A share of every fee goes back to the buyers and merchants who review. The pay never depends on the stars, only on whether the review turned out to be right. An airdrop pays it from the treasury, and anyone can recompute every payout from the chain.
+              A share of every fee goes back to the buyers and merchants who review. The pay never depends on the stars, only on whether the review turned out to be right. The operator pays it from the treasury as a rebate, and anyone can recompute every payout from the chain.
             </p>
           </Reveal>
         </div>
@@ -838,7 +839,7 @@ function Developers() {
     ['Identity', 'Solana Agent Registry', `ERC-8004 on Solana. ${registered} merchants registered on devnet, ${mirrored} reviews mirrored with proof of payment.`, false],
   ];
   return (
-    <section ref={ref} id="developers" className="night gridded py-24 md:py-32" style={{ scrollMarginTop: 68 }}>
+    <section data-nav="/developers" ref={ref} id="developers" className="night gridded py-24 md:py-32" style={{ scrollMarginTop: 68 }}>
       <div className="wrap">
         <Reveal>
           <div className="eyebrow" style={{ color: '#8b8a7c' }}>For developers</div>

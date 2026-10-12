@@ -1,5 +1,5 @@
 /**
- * The review-reward airdrop, as functions: watch reviews, score the ones that
+ * The review-reward rebate, as functions: watch reviews, score the ones that
  * have matured, pay from the treasury, and check a published payout.
  * `scripts/rewards.ts` is the command line; `scripts/demo-rewards.ts` uses
  * the same functions on a local validator. The rules are in
@@ -269,10 +269,10 @@ export function lockLedger(ledgerPath: string, force = false): () => void {
   } catch (e) {
     if ((e as NodeJS.ErrnoException).code !== 'EEXIST') throw e;
     const held = readLock(path);
-    if (!held) throw new Error(`${path} exists but cannot be read. If no other airdrop is running on this ledger, rerun with --force-unlock`);
+    if (!held) throw new Error(`${path} exists but cannot be read. If no other rebate run is running on this ledger, rerun with --force-unlock`);
     const who = `pid ${held.pid} on ${held.host}, started ${held.startedAt}`;
     if (held.host === hostname() && !alive(held.pid)) throw new Error(`${path} was left by ${who}, which is no longer running. Check that its last payout is in the ledger, then rerun with --force-unlock`);
-    throw new Error(`another airdrop run holds ${path} (${who}). If it has stopped, rerun with --force-unlock`);
+    throw new Error(`another rebate run holds ${path} (${who}). If it has stopped, rerun with --force-unlock`);
   }
   try {
     writeFileSync(fd, `${JSON.stringify({ pid: process.pid, host: hostname(), startedAt: new Date().toISOString() } satisfies LockInfo)}\n`);
@@ -465,7 +465,7 @@ export async function withhold(report: Report, c: ScriptClient, mint: Address, d
   const atas = await Promise.all(wallets.map((w) => tok.ata(w as Address)));
   for (let i = 0; i < wallets.length; i += 100) {
     // One account that is not a token account makes the batch decode throw; look at them one by one then,
-    // so a single recipient cannot stop the whole airdrop.
+    // so a single recipient cannot stop the whole rebate run.
     const batch = atas.slice(i, i + 100);
     const accounts = await fetchAllMaybeToken(c.rpc, batch).catch(() =>
       Promise.all(batch.map((ata) => fetchMaybeToken(c.rpc, ata).catch(() => null))),
