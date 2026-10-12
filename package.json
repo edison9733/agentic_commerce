@@ -36,7 +36,8 @@
     "keys:export": "tsx scripts/keys-export.ts",
     "rewards": "tsx scripts/rewards.ts",
     "demo:rewards": "tsx scripts/demo-rewards.ts",
-    "slides": "node apps/web/slides/build.mjs"
+    "slides": "node apps/web/slides/build.mjs",
+    "slides:pdf": "node apps/web/slides/pdf.mjs"
   },
   "devDependencies": {
     "@solana-program/compute-budget": "^0.19.0",

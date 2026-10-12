@@ -288,7 +288,10 @@ export function AgentProfile({ wallet }: { wallet: string }) {
           <div className="card p-6">
             <div className="flex items-baseline justify-between">
               <div className="eyebrow" style={{ color: '#878371' }}>Reviews received</div>
-              <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>{mine.got.length} on-chain</span>
+              <span className="flex items-baseline gap-3">
+                <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>{mine.got.length} on-chain</span>
+                <Link to="/review" className="link text-[0.8rem]">Review an order</Link>
+              </span>
             </div>
             <ul className="mt-3 grid" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {mine.got.slice(0, 12).map((r) => (
