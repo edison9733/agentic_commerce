@@ -126,7 +126,7 @@ A share of every fee goes back to whoever reviews. Three rules:
 - **Accuracy scales it.** An honest warning about a wallet that then fails is paid 1.5×. Praising one that then fails is paid nothing.
 - **Farming loses money.** Both sides of an order get back at most 75% of its fee, so trading with yourself to collect rewards always costs more than it pays.
 
-The payout is an off-chain airdrop that the operator runs from the treasury. `npm run rewards` previews
+The payout is an off-chain rebate that the operator pays from the treasury. `npm run rewards` previews
 it and pays nothing; `npm run rewards -- --pay` pays. Every payout file can be recomputed with
 `--verify`. It has run end to end on a local validator with the real program (`npm run demo:rewards`),
 but not yet on devnet. Rules and a recorded run: [docs/REWARDS.md](docs/REWARDS.md).
@@ -183,7 +183,7 @@ agree. Full write-up: [docs/SCORING.md](docs/SCORING.md).
 | `npm run test:local` | **395 / 395** | Runs the real program on a local validator. After every instruction, every account is compared field by field with a reference model. Every attack in [docs/SECURITY.md](docs/SECURITY.md) is sent as a real transaction and must fail. |
 | `npm run test:paylater` | **48 / 48** | The pay-later program next to the real escrow program on a local validator: limits from live Tessera scores matched against the off-chain formula, buy, on-time repayment, default and freeze, pool accounting, and the main refusal paths as real transactions. |
 | `npm run test:formula` | **44 / 44** | The guarantees stated in the docs and on the site, as tests, including the review-reward rules. |
-| `npm run demo:rewards` | **pass** | The review-reward airdrop on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the on-chain balances, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
+| `npm run demo:rewards` | **pass** | The review-reward rebate on a local validator with the real program: real purchases and reviews, a merchant that then misses a delivery, and a real payout from the treasury. It checks each reward and label, the on-chain balances, the 75%-of-fees bound, and that `--verify` recomputes the payout. |
 | `npm run test:doors` | **pass** (94 checks) | All four doors against the real program on a local validator: every API tool and refusal path with transactions signed and sent, `find_merchants` against real and copycat agent cards, the MCP tools and their enums, SKILL.md, and the CLI signing locally and refusing a tampered transaction from a fake API. |
 | `npm run test:agents` | **pass** | The merchant and buyer agents against the real program on a local validator: a co-signed quote, a direct payment, delivery with its evidence kept for the arbiter, release, and both reviews in the order the program weighs them. |
 | `npm run registry -- --verify` | **28 / 28** | Every Tessera review mirrored into the Solana Agent Registry on devnet is read back from the registry and matched against the Tessera review account it points at. |

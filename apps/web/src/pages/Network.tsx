@@ -5,6 +5,7 @@ import { Feed } from '../components/Feed';
 import { Graph, GraphLegend } from '../components/Graph';
 import { Nav } from '../components/Nav';
 import { Breakdown, Counter, EASE, ScoreGauge, Stars, TierBadge } from '../components/ui';
+import { NETWORK_LABEL } from '../lib/client';
 import { compactUsd, duration, explorerAddress, short, tierName } from '../lib/format';
 import { Link } from '../lib/router';
 import { useChain, useProfiles } from '../lib/store';
@@ -34,7 +35,7 @@ export function Network() {
         <div className="flex flex-wrap items-end justify-between gap-6 pb-5 pt-6">
           <div>
             <div className="eyebrow" style={{ color: '#8b8a7c' }}>
-              Solana devnet · program <a className="link" href={explorerAddress('TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ')} target="_blank" rel="noreferrer">TessSe…1CQ</a>
+              {NETWORK_LABEL} · program <a className="link" href={explorerAddress('TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ')} target="_blank" rel="noreferrer">TessSe…1CQ</a>
             </div>
             <h1 className="display mt-2 text-[clamp(2.2rem,4.4vw,3.6rem)]" style={{ color: '#f1eee2' }}>
               The network, <em>as the chain sees it.</em>

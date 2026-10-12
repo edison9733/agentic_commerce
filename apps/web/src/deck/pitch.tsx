@@ -59,7 +59,7 @@ function RewardsSlide() {
           ))}
         </div>
       </div>
-      <Source>Recorded {payout.recordedAt}: real purchases, reviews, a missed delivery and the airdrop payout, on a local validator running the real program. Reproduce: {payout.reproduce}</Source>
+      <Source>Recorded {payout.recordedAt}: real purchases, reviews, a missed delivery and the rebate payout, on a local validator running the real program. Reproduce: {payout.reproduce}</Source>
     </Frame>
   );
 }
