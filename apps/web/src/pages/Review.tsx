@@ -26,6 +26,7 @@ import { EASE, Reveal } from '../components/ui';
 import { loadBurner, sendSigned, sendWith } from '../lib/burner';
 import { readRpc } from '../lib/client';
 import { ago, duration, explorerAddress, explorerTx, short, usd } from '../lib/format';
+import { left, ordersOf, SETTLED, windowText } from '../lib/reviewable';
 import { go, Link } from '../lib/router';
 import { refresh, useChain } from '../lib/store';
 
@@ -109,14 +110,6 @@ const STATE_NAME: Record<number, string> = {
   [OrderState.Cancelled]: 'Cancelled, never paid',
 };
 
-const SETTLED = [OrderState.Released, OrderState.Refunded, OrderState.Resolved];
-
-function left(secs: number): string {
-  if (secs <= 0) return 'closed';
-  if (secs < 3600) return `${Math.floor(secs / 60)} min ${String(Math.floor(secs % 60)).padStart(2, '0')} s`;
-  return duration(Math.floor(secs));
-}
-
 function Check({ on }: { on: boolean }) {
   return (
     <span
@@ -153,7 +146,7 @@ const Wallet = ({ w }: { w: string }) => (
 type Loaded = { status: 'idle' } | { status: 'loading' } | { status: 'invalid' } | { status: 'missing' } | { status: 'error'; message: string } | { status: 'ok'; order: Order };
 
 export function Review({ order: param }: { order?: string }) {
-  const { config } = useChain();
+  const { config, orders } = useChain();
   const [input, setInput] = useState(param ?? '');
   const [loaded, setLoaded] = useState<Loaded>({ status: 'idle' });
   const [now, setNow] = useState(Date.now() / 1000);
@@ -212,7 +205,7 @@ export function Review({ order: param }: { order?: string }) {
     return { side: 'stranger' as const, subject: null, done: false };
   }, [order, signer]);
 
-  const burnerIsParty = !!order && !!burner && (burner.address === order.buyer || burner.address === order.merchant);
+  const mine = useMemo(() => (signer ? ordersOf(orders, signer.address, reviewSecs, now) : []), [orders, signer, reviewSecs, now]);
 
   const connect = async (w: StdWallet) => {
     setError(null);
@@ -279,6 +272,38 @@ export function Review({ order: param }: { order?: string }) {
 
   const cmd = `npm run tessera -- report ${param && isAddress(param) ? param : '<order>'} --outcome satisfied --rating ${rating} --comment "${text.replace(/"/g, '\\"') || '…'}" --keypair PATH --send`;
 
+  const picker = (
+    <div className="mt-4 grid gap-2">
+      {wallets.map((w) => (
+        <button key={w.name} className="btn btn-ghost justify-start py-3" onClick={() => void connect(w)} disabled={!!connecting}>
+          {w.icon && <img src={w.icon} alt="" width={20} height={20} style={{ borderRadius: 5 }} />}
+          {connecting === w.name ? `Connecting to ${w.name}…` : `Connect ${w.name}`}
+        </button>
+      ))}
+      {burner && (
+        <button className="btn btn-ghost justify-start py-3" onClick={() => setSigner({ kind: 'burner', address: burner.address, signer: burner })}>
+          Use this browser's devnet test wallet ({short(burner.address, 4)})
+        </button>
+      )}
+      {wallets.length === 0 && (
+        <p className="text-[0.88rem]" style={{ color: '#878371' }}>
+          No browser wallet found. A Solana wallet extension that supports Wallet Standard and devnet will show up here.
+        </p>
+      )}
+    </div>
+  );
+
+  const connected = signer && (
+    <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3.5 py-2.5" style={{ background: '#f4efe0' }}>
+      <span className="text-[0.88rem]">
+        {signer.kind === 'wallet' ? signer.wallet.name : 'Devnet test wallet'} · <span className="mono">{short(signer.address, 6)}</span>
+      </span>
+      <button className="link text-[0.84rem]" style={{ cursor: 'pointer' }} onClick={() => { setSigner(null); setError(null); }}>
+        Change wallet
+      </button>
+    </div>
+  );
+
   return (
     <div>
       <Nav />
@@ -303,7 +328,7 @@ export function Review({ order: param }: { order?: string }) {
 
         {loaded.status === 'idle' && (
           <p className="mt-5 text-[0.95rem]" style={{ color: '#4b483e' }}>
-            Paste the address of an order you bought or sold. Orders are listed on the <Link to="/network" className="link">live network</Link> page and on each <Link to="/agents" className="link">credit file</Link>.
+            Paste the address of an order you bought or sold, or connect the wallet you traded with below to list its orders. Orders are also listed on the <Link to="/network" className="link">live network</Link> page and on each <Link to="/agents" className="link">credit file</Link>.
           </p>
         )}
         {loaded.status === 'loading' && <p className="mono mt-5 text-[0.84rem]" style={{ color: '#878371' }}>Reading the order from devnet…</p>}
@@ -312,6 +337,57 @@ export function Review({ order: param }: { order?: string }) {
           <Notice tone="bad">No Tessera order at this address on devnet. It may be a different kind of account, or the order was closed after settlement and its rent returned.</Notice>
         )}
         {loaded.status === 'error' && <Notice tone="bad">Could not read devnet just now: {loaded.message}</Notice>}
+
+        <section className="card mt-6 p-6" aria-label="Your orders">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 className="display text-[2rem]">Your orders</h2>
+            <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>
+              review window on devnet: {reviewSecs !== null ? duration(reviewSecs) : '…'} after settlement
+            </span>
+          </div>
+          {!signer ? (
+            <>
+              <p className="mt-2 text-[0.95rem] leading-relaxed" style={{ color: '#4b483e' }}>
+                Connect the wallet you traded with to see which of its orders can still be reviewed.
+              </p>
+              {picker}
+            </>
+          ) : (
+            <>
+              {connected}
+              <p className="mt-3 text-[0.88rem]" style={{ color: '#878371' }}>
+                On devnet the window is {reviewSecs !== null ? duration(reviewSecs) : '…'} after an order settles (14 days at the mainnet target), so review soon after a trade.
+              </p>
+              {mine.length === 0 ? (
+                <p className="mt-3 text-[0.92rem] leading-relaxed" style={{ color: '#4b483e' }}>
+                  No Tessera orders for this wallet yet. Make a trade first: buy on the <Link to="/market" className="link">Market</Link> page while the demo merchants are online, or trade from a terminal with two wallets of your own (<a className="link" href="https://github.com/edison9733/agentic_commerce/blob/main/docs/TRY-IT.md" target="_blank" rel="noreferrer">docs/TRY-IT.md</a>). Then come back within the window.
+                </p>
+              ) : (
+                <ul className="mt-3 grid" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  {mine.slice(0, 8).map((m) => (
+                    <li key={m.address} className="grid gap-2 py-3 sm:grid-cols-[1fr_auto] sm:items-center" style={{ borderTop: '1px solid #ebe4d0' }}>
+                      <div className="min-w-0 text-[0.92rem]">
+                        <span className="font-medium">{m.side === 'buyer' ? 'Bought from' : 'Sold to'}</span> <Wallet w={m.side === 'buyer' ? m.order.merchant : m.order.buyer} />
+                        <span className="mono ml-2">{usd(m.order.amount)} USDC</span>
+                        <div className="mono mt-0.5 text-[0.74rem]" style={{ color: '#878371' }}>
+                          {short(m.address, 6)} · {STATE_NAME[m.order.state] ?? 'Unknown'} · {windowText(m, now)}{m.done ? ' · you reviewed it' : ''}
+                        </div>
+                      </div>
+                      <Link to={`/review/${m.address}`} className="btn btn-ghost justify-center py-2 text-[0.84rem]">
+                        {m.open && !m.done ? 'Review it' : 'See the receipt'}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {mine.length > 8 && (
+                <p className="mono mt-2 text-[0.74rem]" style={{ color: '#878371' }}>
+                  {mine.length - 8} more on <a className="link" href={`#/agents/${signer.address}`}>this wallet's credit file</a>.
+                </p>
+              )}
+            </>
+          )}
+        </section>
 
         {order && param && (
           <div className="mt-6 grid gap-4 lg:grid-cols-[1.15fr_1fr]">
@@ -375,37 +451,8 @@ export function Review({ order: param }: { order?: string }) {
               <h2 className="display text-[2rem]">Sign your review</h2>
               <p className="mt-2 text-[0.95rem] leading-relaxed" style={{ color: '#4b483e' }}>Sign your review with the wallet that made this trade.</p>
 
-              {!signer && (
-                <div className="mt-4 grid gap-2">
-                  {wallets.map((w) => (
-                    <button key={w.name} className="btn btn-ghost justify-start py-3" onClick={() => void connect(w)} disabled={!!connecting}>
-                      {w.icon && <img src={w.icon} alt="" width={20} height={20} style={{ borderRadius: 5 }} />}
-                      {connecting === w.name ? `Connecting to ${w.name}…` : `Connect ${w.name}`}
-                    </button>
-                  ))}
-                  {wallets.length === 0 && (
-                    <p className="text-[0.88rem]" style={{ color: '#878371' }}>
-                      No browser wallet found. A Solana wallet extension that supports Wallet Standard and devnet will show up here.
-                    </p>
-                  )}
-                  {burnerIsParty && burner && (
-                    <button className="btn btn-ghost justify-start py-3" onClick={() => setSigner({ kind: 'burner', address: burner.address, signer: burner })}>
-                      Use this browser's devnet test wallet ({short(burner.address, 4)})
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {signer && (
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-xl px-3.5 py-2.5" style={{ background: '#f4efe0' }}>
-                  <span className="text-[0.88rem]">
-                    {signer.kind === 'wallet' ? signer.wallet.name : 'Devnet test wallet'} · <span className="mono">{short(signer.address, 6)}</span>
-                  </span>
-                  <button className="link text-[0.84rem]" style={{ cursor: 'pointer' }} onClick={() => { setSigner(null); setError(null); }}>
-                    Change wallet
-                  </button>
-                </div>
-              )}
+              {!signer && picker}
+              {connected}
 
               {signer && role?.side === 'stranger' && (
                 <Notice tone="bad">Only the buyer or the merchant of this order can review it. This wallet is neither, so the program would refuse it.</Notice>

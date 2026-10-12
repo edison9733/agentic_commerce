@@ -212,10 +212,10 @@ export const PITCH: Slide[] = [
   {
     id: 'attacks',
     seconds: 21,
-    say: "Then we hit three attacks. Sybil: one person posing as many agents. Friendly fraud: getting the goods, then claiming they never came. And reputation farming: trading with your own wallets until you look trusted, then taking strangers' money. So every payment goes into escrow, and waits until the wallet has earned trust. Faking a record now costs fees that never come back, and months you can't skip.",
+    say: "Then we hit three attacks. Sybil: one person posing as many agents. Friendly fraud: getting the goods, then claiming they never came. And reputation farming: trading with your own wallets until you look trusted, then taking strangers' money. So every payment goes into escrow, and waits until the wallet has earned trust. Faking a record now costs real fees, and months you can't skip.",
     render: () => (
       <Frame>
-        <Kicker>Pain 2 · three attacks we had to beat</Kicker>
+        <Kicker>Pain 2 · three attacks we had to price</Kicker>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 26, marginTop: 10 }}>
           {[
             ['Sybil', 'One person, many wallets.'],
@@ -231,7 +231,7 @@ export const PITCH: Slide[] = [
           ))}
         </div>
         <Big size={70} delay={1.2} max="32ch" color={white}>Fix 2: escrow, <em>until the wallet has earned trust.</em></Big>
-        <Body delay={1.6} size={30} max="52ch">Faking a record now costs fees that never come back, and months you can't skip.</Body>
+        <Body delay={1.6} size={30} max="52ch">Faking a record now costs real fees, and months you can't skip.</Body>
         <Source>Mainnet targets: a new wallet counts 10%, each counterparty is capped, Trusted needs 30 active days; a farming ring costs hundreds to a few thousand dollars and one to three months. Priced, not impossible (docs/SECURITY.md).</Source>
       </Frame>
     ),

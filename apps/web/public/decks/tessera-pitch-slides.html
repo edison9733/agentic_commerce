@@ -105,15 +105,15 @@ section.active .line { animation: draw 1.2s ease both; animation-delay: 1.3s; }
   <p class="source">Creating a Solana wallet needs no identity and costs nothing beyond fees. An x402 <span class="mono">exact</span> payment is a signed token transfer with no chargeback.</p>
 </section>
 
-<section data-document-role="page" data-label="Three attacks" data-speaker-notes="Then we hit three attacks. Sybil: one person posing as many agents. Friendly fraud: getting the goods, then claiming they never came. And reputation farming: trading with your own wallets until you look trusted, then taking strangers&#x27; money. So every payment goes into escrow, and waits until the wallet has earned trust. Faking a record now costs fees that never come back, and months you can&#x27;t skip.">
-  <p class="kicker">Pain 2 · three attacks we had to beat</p>
+<section data-document-role="page" data-label="Three attacks" data-speaker-notes="Then we hit three attacks. Sybil: one person posing as many agents. Friendly fraud: getting the goods, then claiming they never came. And reputation farming: trading with your own wallets until you look trusted, then taking strangers&#x27; money. So every payment goes into escrow, and waits until the wallet has earned trust. Faking a record now costs real fees, and months you can&#x27;t skip.">
+  <p class="kicker">Pain 2 · three attacks we had to price</p>
   <div class="row" style="gap: 26px; margin-top: 10px; align-items: stretch;">
     <div class="card" style="flex: 1; padding: 30px 30px 34px;"><h3 style="font-size: 46px;">Sybil</h3><p style="font-size: 26px; margin-top: 16px;">One person, many wallets.</p></div>
     <div class="card" style="flex: 1; padding: 30px 30px 34px;"><h3 style="font-size: 46px;">Friendly fraud</h3><p style="font-size: 26px; margin-top: 16px;">Got the goods, claims they never came.</p></div>
     <div class="card" style="flex: 1; padding: 30px 30px 34px; border-color: #f2b8a8;"><h3 style="font-size: 46px;">Reputation farming</h3><p style="font-size: 26px; margin-top: 16px;">Trade with yourself until you look trusted, then cash in on strangers.</p></div>
   </div>
   <h1 style="font-size: 70px; max-width: 32ch; margin-top: 48px;">Fix 2: escrow, <em>until the wallet has earned trust.</em></h1>
-  <p style="font-size: 30px; max-width: 52ch; margin: 28px 0 0;">Faking a record now costs fees that never come back, and months you can't skip.</p>
+  <p style="font-size: 30px; max-width: 52ch; margin: 28px 0 0;">Faking a record now costs real fees, and months you can't skip.</p>
   <p class="source">Mainnet targets: a new wallet counts 10%, each counterparty is capped, Trusted needs 30 active days; a farming ring costs hundreds to a few thousand dollars and one to three months. Priced, not impossible (docs/SECURITY.md).</p>
 </section>
 

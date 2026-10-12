@@ -53,7 +53,7 @@ A stranger's payment is held long enough to dispute; an agent with a real record
 prices each attack: a new wallet counts for 10% and each counterparty adds at most the pair cap
 (sybils); the merchant commits a delivery hash on-chain before the money moves, and a buyer that loses
 a dispute takes a 25% score penalty and loses Trusted (friendly fraud); every farmed order pays a fee
-that never comes back, and Trusted needs 30 active days (farming costs hundreds to a few thousand
+it can never fully earn back, and Trusted needs 30 active days (farming costs hundreds to a few thousand
 dollars and one to three months for a ring). Priced, not impossible: see
 [docs/SECURITY.md](docs/SECURITY.md#what-sybil-resistant-means-here-and-what-it-does-not).
 

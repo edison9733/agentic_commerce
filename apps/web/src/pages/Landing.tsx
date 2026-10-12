@@ -344,7 +344,7 @@ function WhyEscrow() {
   const rows: [string, string][] = [
     ['Sybil attacks', 'A new wallet counts for only 10%, and any one counterparty can add only so much to a score (the pair cap). A hundred fresh wallets vouching for each other add up to very little.'],
     ['Friendly fraud', 'The merchant commits a hash of the delivery on-chain before the money moves, so the arbiter can check it. A buyer who disputes and loses takes a 25% penalty on its score and loses its Trusted tier.'],
-    ['Reputation farming', 'Every farmed order pays a protocol fee that never comes back, and Trusted needs 30 active days that cannot be squeezed into one. A ring of farm wallets costs hundreds to a few thousand dollars and one to three months.'],
+    ['Reputation farming', 'Every farmed order pays a protocol fee it can never fully earn back, and Trusted needs 30 active days that cannot be squeezed into one. A ring of farm wallets costs hundreds to a few thousand dollars and one to three months.'],
   ];
   return (
     <section className="wrap py-24 md:py-32">
@@ -598,7 +598,7 @@ function PayLater() {
           </Reveal>
           <Reveal delay={0.1} className="min-w-0">
             <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
-              Fund the agent roughly, once. When a purchase costs more than its wallet holds, it can buy now and pay later, and the merchant is paid in the same second. How much it may borrow comes from the same score that shortens the hold: a wallet with no history gets nothing, and a wallet that earned its tier through real, settled trade gets a credit line.
+              Fund the agent roughly, once. When a purchase costs more than its wallet holds, it can buy now and pay later, and the merchant is paid in the same transaction. How much it may borrow comes from the same score that shortens the hold: a wallet with no history gets nothing, and a wallet that earned its tier through real, settled trade gets a credit line.
             </p>
             <p className="mono mt-4 text-[0.76rem]" style={{ color: '#878371' }}>
               Preview: a second Solana program, tested on a local validator (npm run test:paylater; try it by hand with npm run paylater:local). Not deployed to devnet yet. The escrow program is unchanged.
@@ -725,7 +725,7 @@ function Attacks() {
             A score people can farm <em>is a liability.</em> So we priced the farming.
           </h2>
           <p className="mt-6 max-w-[44rem] text-[1.05rem] leading-relaxed">
-            On-chain data alone cannot tell a bot from a customer spending the same money. What a program can do is make faking cost money and time that never come back, and cap what a fake can then take.
+            On-chain data alone cannot tell a bot from a customer spending the same money. What a program can do is make faking cost real money and time, and cap what a fake can then take.
           </p>
         </Reveal>
         <Reveal delay={0.1} className="mt-12">
