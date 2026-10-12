@@ -6,6 +6,7 @@
  *   tessera credit <wallet>
  *   tessera buy-later <merchant> <amount> --keypair PATH [--send]
  *   tessera repay <loan> --keypair PATH [--send]
+ *   tessera repay --all --keypair PATH [--send]      every loan still owed, in one transaction
  *   tessera mark-default <loan> --keypair PATH [--send]
  */
 import {
@@ -45,6 +46,7 @@ export const PAYLATER_HELP = `Pay later (reads the chain itself; no API)
   buy-later <merchant> <amount> --keypair PATH [--send] [--request JSON]
                                                  the pool pays the merchant now; you repay by the due date
   repay <loan> --keypair PATH [--send]           pay a loan back in full (anyone may repay for the buyer)
+  repay --all --keypair PATH [--send]            pay every loan you still owe, in one transaction
   mark-default <loan> --keypair PATH [--send]    anyone, once a loan is past its due date and grace period`;
 
 const TIERS = ['New', 'Building', 'Established', 'Trusted'] as const;
@@ -53,7 +55,10 @@ const short = (a: string) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const usdc = (u: bigint) => `${fromUnits(u)} USDC`;
 const STATE = ['open', 'repaid on time', 'repaid late', 'in default'] as const;
 
-type Opts = { rpcUrl: string; kp?: KeyPairSigner; send: boolean; json: boolean; request?: unknown; die: (m: string) => never };
+type Opts = { rpcUrl: string; kp?: KeyPairSigner; send: boolean; json: boolean; all: boolean; request?: unknown; die: (m: string) => never };
+
+/** Repay instructions per transaction: each adds one loan account, so a tab of this size fits a v0 transaction comfortably. */
+const REPAYS_PER_TX = 8;
 
 export async function payLater(cmd: string, a1: string | undefined, a2: string | undefined, o: Opts): Promise<void> {
   const rpc = createSolanaRpc(o.rpcUrl);
@@ -96,14 +101,20 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
     };
   }
 
-  async function sendOrPrint(kp: KeyPairSigner, ix: Instruction): Promise<void> {
+  /** One line per loan still owed, with how its due date stands. */
+  function describeOwed(a: Address, d: paylater.Loan, now: bigint): string {
+    const when = d.state === paylater.LoanState.Defaulted ? 'in default, a late repayment clears the debt' : d.dueAt >= now ? `due in ${d.dueAt - now} s` : `${now - d.dueAt} s late`;
+    return `  ${short(a)}  ${usdc(d.amount)}  ${when}`;
+  }
+
+  async function sendOrPrint(kp: KeyPairSigner, ixs: Instruction[]): Promise<void> {
     const { value: latest } = await rpc.getLatestBlockhash({ commitment: 'confirmed' }).send();
     const signed = await signTransactionMessageWithSigners(
       pipe(
         createTransactionMessage({ version: 0 }),
         (m) => setTransactionMessageFeePayerSigner(kp, m),
         (m) => setTransactionMessageLifetimeUsingBlockhash(latest, m),
-        (m) => appendTransactionMessageInstructions([ix], m),
+        (m) => appendTransactionMessageInstructions(ixs, m),
       ),
     );
     const wire = getBase64EncodedWireTransaction(signed);
@@ -129,12 +140,18 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
 
   if (cmd === 'credit') {
     const wallet = addr(a1, '<wallet>');
-    const s = await standing(wallet, await chainNow());
-    if (o.json) return void console.log(JSON.stringify(s, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 2));
+    const now = await chainNow();
+    const [s, loans] = await Promise.all([standing(wallet, now), paylater.fetchLoansOf(rpc, wallet)]);
+    const tab = paylater.owed(loans);
+    if (o.json) return void console.log(JSON.stringify({ ...s, owed: tab }, (_, v) => (typeof v === 'bigint' ? v.toString() : v), 2));
     console.log(`credit   ${short(wallet)}  ${TIERS[s.tier]} ${s.score}${s.known ? '' : '  (no credit file)'}`);
     console.log(`limit ${usdc(s.limit)} · owes ${usdc(s.line?.outstanding ?? 0n)} · available ${usdc(s.available)}`);
     const l = s.line;
     console.log(l ? `record: ${l.loans} loan${l.loans === 1 ? '' : 's'}, ${l.repaidOnTime} on time, ${l.repaidLate} late, ${l.defaults} default${l.defaults === 1 ? '' : 's'}` : 'record: never borrowed');
+    if (tab.length) {
+      console.log(`tab: ${tab.length} loan${tab.length === 1 ? '' : 's'} still owed; pay them all at once with: tessera repay --all --keypair PATH --send`);
+      for (const { address: a, data: d } of tab) console.log(describeOwed(a, d, now));
+    }
     if (l?.defaults) console.log('frozen: a loan went unpaid past its grace period');
     else if (s.tier === 0) console.log('no credit yet: settle orders through Tessera escrow to earn a tier');
     console.log(`terms: repay within ${p.termSecs} s, merchant paid at once, pool keeps ${p.feeBps / 100}%, no interest`);
@@ -142,6 +159,22 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
   }
 
   const kp = o.kp ?? o.die(`${cmd} needs --keypair`);
+
+  if (cmd === 'repay' && o.all) {
+    // The tab: buy as many things as the limit allows, then settle every loan in one transaction.
+    const now = await chainNow();
+    const tab = paylater.owed(await paylater.fetchLoansOf(rpc, kp.address));
+    if (tab.length === 0) o.die(`${short(kp.address)} owes nothing`);
+    const total = tab.reduce((sum, l) => sum + l.data.amount, 0n);
+    console.log(`tab for ${short(kp.address)}: ${tab.length} loan${tab.length === 1 ? '' : 's'}, ${usdc(total)} owed`);
+    for (const { address: a, data: d } of tab) console.log(describeOwed(a, d, now));
+    const [line, payerToken] = await Promise.all([paylater.linePdaOf(kp.address), findAta(kp.address, pool.data.mint)]);
+    const ixs = await Promise.all(tab.map(({ address: loan }) => paylater.getRepayInstructionAsync({ mint: pool.data.mint, loan, line, payer: kp, payerToken })));
+    const batches = Math.ceil(ixs.length / REPAYS_PER_TX);
+    console.log(`REPAY ALL  ${usdc(total)} in ${batches === 1 ? 'one transaction' : `${batches} transactions`}`);
+    for (let i = 0; i < ixs.length; i += REPAYS_PER_TX) await sendOrPrint(kp, ixs.slice(i, i + REPAYS_PER_TX));
+    return;
+  }
 
   if (cmd === 'buy-later') {
     const merchant = addr(a1, '<merchant>');
@@ -171,7 +204,7 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
     console.log(`BUY NOW  ${usdc(amount)}: merchant gets ${usdc(amount - fee)} now, pool keeps ${usdc(fee)}`);
     console.log(`you repay ${usdc(amount)} within ${p.termSecs} s, no interest`);
     console.log(`loan ${await paylater.loanPdaOf(kp.address, loanId)}`);
-    return sendOrPrint(kp, ix);
+    return sendOrPrint(kp, [ix]);
   }
 
   const loanAddr = addr(a1, '<loan>');
@@ -185,7 +218,7 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
     if (d.state !== paylater.LoanState.Open) o.die(`this loan is already ${STATE[d.state]}`);
     const wait = d.defaultAfter - now;
     console.log(`loan ${short(loanAddr)}  buyer ${short(d.buyer)}  owes ${usdc(d.amount)}  ${wait < 0n ? `${-left} s past due, grace over` : `grace ends in ${wait + 1n} s`}`);
-    return sendOrPrint(kp, await paylater.getMarkDefaultInstructionAsync({ loan: loanAddr, line: await paylater.linePdaOf(d.buyer) }));
+    return sendOrPrint(kp, [await paylater.getMarkDefaultInstructionAsync({ loan: loanAddr, line: await paylater.linePdaOf(d.buyer) })]);
   }
   console.log(`loan ${short(loanAddr)}  ${STATE[d.state]}  owes ${usdc(d.amount)}  ${left >= 0n ? `due in ${left} s: on time` : `${-left} s late`}`);
   const ix = await paylater.getRepayInstructionAsync({
@@ -195,5 +228,5 @@ export async function payLater(cmd: string, a1: string | undefined, a2: string |
     payer: kp,
     payerToken: await findAta(kp.address, pool.data.mint),
   });
-  return sendOrPrint(kp, ix);
+  return sendOrPrint(kp, [ix]);
 }

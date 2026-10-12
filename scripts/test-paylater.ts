@@ -411,6 +411,22 @@ try {
   );
   await alice.sendTransaction([await repayIx(loanA2, alice)]);
   eq('alice repaid that one on time too', (await paylater.fetchLoan(rpc, loanA2)).data.state, paylater.LoanState.RepaidOnTime);
+
+  // ------------------------------------ 2b. a tab: buy several, pay once
+  log.step('2b. Alice buys three things and settles the tab in one transaction');
+  const lineTab = await lineOf(alice);
+  if (!lineTab.exists) throw new Error('alice has no line');
+  const atTab = await live(alice);
+  const each = paylater.limit(lineTab.data, LINE, atTab.tier, atTab.score) / 4n;
+  const tab: Address[] = [];
+  for (let i = 0; i < 3; i += 1) tab.push(await buy(alice, m1.identity.address, each));
+  const owedTab = (await lineOf(alice));
+  eq('alice owes the whole tab', owedTab.exists && owedTab.data.outstanding, each * 3n);
+  const listed = paylater.owed(await paylater.fetchLoansOf(rpc, alice.identity.address)).map((l) => l.address).sort();
+  eq('the chain lists her three open loans', listed, [...tab].sort());
+  await alice.sendTransaction(await Promise.all(tab.map((loan) => repayIx(loan, alice))));
+  const settled = await lineOf(alice);
+  eq('one transaction settled the tab: nothing owed, three more on-time repayments', settled.exists && [settled.data.outstanding, settled.data.repaidOnTime], [0n, 5]);
   await expectFail('a stranger closes alice\'s loan to take the rent', 'Unauthorized', async () =>
     stranger.sendTransaction([paylater.getCloseLoanInstruction({ loan: loanA, buyer: stranger.identity.address })]),
   );

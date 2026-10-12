@@ -599,7 +599,7 @@ function PayLater() {
           </Reveal>
           <Reveal delay={0.1} className="min-w-0">
             <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
-              Fund the agent roughly, once. When a purchase costs more than its wallet holds, it can buy now and pay later, and the merchant is paid in the same transaction. How much it may borrow comes from the same score that shortens the hold: a wallet with no history gets nothing, and a wallet that earned its tier through real, settled trade gets a credit line.
+              Fund the agent roughly, once. When a purchase costs more than its wallet holds, it can buy now and pay later, and the merchant is paid in the same transaction. It can run a tab: buy several things, then settle every loan in one transaction. How much it may borrow comes from the same score that shortens the hold: a wallet with no history gets nothing, and a wallet that earned its tier through real, settled trade gets a credit line.
             </p>
             <p className="mono mt-4 text-[0.76rem]" style={{ color: '#878371' }}>
               Preview: a second Solana program, tested on a local validator (npm run test:paylater; try it by hand with npm run paylater:local). Not deployed to devnet yet. The escrow program is unchanged.
