@@ -11,6 +11,7 @@ import { CONTACT, Waitlist } from '../components/Waitlist';
 import { Playground } from '../components/Playground';
 import { ReviewRewards } from '../components/ReviewRewards';
 import { Counter, EASE, Logo, Reveal, TierBadge, Words } from '../components/ui';
+import { NETWORK_LABEL } from '../lib/client';
 import { compactUsd, duration, explorerAddress, TIER_DARK, tierName } from '../lib/format';
 import { Link, usePath } from '../lib/router';
 import { useChain, useProfiles } from '../lib/store';
@@ -21,12 +22,13 @@ const PROGRAM = 'TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ';
 
 const mask = { display: 'inline-block', overflow: 'hidden', verticalAlign: 'top', paddingBottom: '0.2em', marginBottom: '-0.12em' } as const;
 
-/** "A credit score for AI agents.", with the key words in a shimmering green and an underline that draws itself. */
+/** "Agents without a name, with a record.", with the turn of the sentence in a shimmering green and an underline that draws itself. */
 function HeroTitle() {
-  const parts: [string, boolean][] = [['A', false], ['credit score', true], ['for', false], ['AI', false], ['agents.', false]];
+  // [words, accent, line break after them on wide screens]
+  const parts: [string, boolean, boolean][] = [['Agents without', false, false], ['a name,', false, true], ['with a record.', true, false]];
   return (
-    <h1 className="display mx-auto mt-7 text-[clamp(3rem,8vw,7rem)]" style={{ maxWidth: '13ch' }} aria-label="A credit score for AI agents.">
-      {parts.map(([w, accent], i) => (
+    <h1 className="display mx-auto mt-7 text-[clamp(2.8rem,7.2vw,6.4rem)]" style={{ maxWidth: '22ch' }} aria-label="Agents without a name, with a record.">
+      {parts.map(([w, accent, br], i) => (
         <Fragment key={w}>
         <span aria-hidden style={{ position: 'relative', display: 'inline-block' }}>
           <span style={mask}>
@@ -56,6 +58,7 @@ function HeroTitle() {
           )}
         </span>
         {i < parts.length - 1 ? ' ' : ''}
+        {br && <br className="hidden md:block" />}
         </Fragment>
       ))}
     </h1>
@@ -84,7 +87,7 @@ function Hero() {
           style={{ borderColor: '#ded7c2', background: 'rgba(255,255,255,0.6)' }}
         >
           <span style={{ width: 7, height: 7, borderRadius: 7, background: '#2f8f66', boxShadow: '0 0 0 4px rgba(47,143,102,0.18)' }} />
-          Live on Solana devnet · program TessSe…1CQ
+          Live on {NETWORK_LABEL} · program TessSe…1CQ
         </motion.a>
 
         <HeroTitle />
@@ -105,7 +108,7 @@ function Hero() {
           className="mx-auto mt-7 max-w-[41rem] text-[1.14rem] leading-relaxed md:text-[1.24rem]"
           style={{ color: '#4b483e' }}
         >
-          AI agents now pay each other over x402, and the payment is final in about a second. Tessera puts it in escrow on Solana and lets an on-chain credit score decide how long it waits.{' '}
+          AI agents now pay each other over x402, final in about a second, and nobody checks who is on the other end. Tessera puts the payment in escrow on Solana and lets an on-chain credit score decide how long it waits.{' '}
           <span style={{ color: '#14130f' }}>Strangers wait. Agents with a record settle at once.</span>
         </motion.p>
 
@@ -138,7 +141,7 @@ function Hero() {
               </span>
             </span>
           </div>
-          <div className="grid lg:grid-cols-[1fr_340px]">
+          <div data-nav="/network" className="grid lg:grid-cols-[1fr_340px]">
             <Graph profiles={profiles} pairs={pairs} orders={orders} feed={feed} height={500} />
             <div className="hidden p-5 lg:block" style={{ borderLeft: '1px solid #1c1f18' }}>
               <div className="eyebrow" style={{ color: '#8b8a7c' }}>On-chain, just now</div>
@@ -180,10 +183,13 @@ function Problem() {
   return (
     <section className="wrap py-24 md:py-32">
       <Reveal>
-        <div className="eyebrow" style={{ color: '#878371' }}>The gap</div>
+        <Stage kind="pain" n={1} label="Who is on the other end?" />
         <h2 className="display mt-4 max-w-[19ch] text-[clamp(2.4rem,5.6vw,4.6rem)]">
-          An agent can pay in a second. <em>Finding out it was robbed takes longer.</em>
+          One person can launch unlimited agents. <em>Nobody checks who owns them.</em>
         </h2>
+        <p className="mt-6 max-w-[46rem] text-[1.12rem] leading-relaxed" style={{ color: '#4b483e' }}>
+          An AI agent is just a wallet. One person can create as many as they like, with no identity check, and an agent you meet today may be gone tomorrow. Yet these anonymous agents now pay each other, and the payment is final.
+        </p>
       </Reveal>
       <div className="mt-14 grid gap-4 md:grid-cols-3">
         {cards.map(([big, title, body, source], i) => (
@@ -199,10 +205,200 @@ function Problem() {
       </div>
       <Reveal delay={0.1}>
         <p className="mt-12 max-w-[46rem] text-[1.14rem] leading-relaxed" style={{ color: '#4b483e' }}>
-          Escrow closes the gap, but a fixed hold is wrong for almost everyone: too long for an agent with a thousand clean orders, too short for a wallet created a minute ago.
-          <span style={{ color: '#14130f' }}> The hold should be a function of what is known about the two parties. That function is a credit score.</span>
+          So before an agent pays a stranger, it needs one answer:
+          <span style={{ color: '#14130f' }}> has this wallet behaved well before, with real money, for real counterparties?</span>
         </p>
       </Reveal>
+    </section>
+  );
+}
+
+/** "Pain 2" above a problem and "Fix 2" above its answer, so the page reads as problem, then solution. */
+function Stage({ kind, n, label, dark = false }: { kind: 'pain' | 'fix'; n: number; label: string; dark?: boolean }) {
+  const pain = kind === 'pain';
+  const bg = pain ? (dark ? '#3a1d1a' : '#f8e3dc') : dark ? '#123526' : '#dff5e9';
+  const fg = pain ? (dark ? '#f2b8a8' : '#8a2f1c') : dark ? '#b9f8da' : '#0f5c3e';
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <span className="mono rounded-full px-3 py-1 text-[0.72rem] font-medium uppercase tracking-[0.08em]" style={{ background: bg, color: fg }}>
+        {pain ? 'Pain' : 'Fix'} {n}
+      </span>
+      <span className="eyebrow" style={{ color: dark ? '#8b8a7c' : '#878371' }}>{label}</span>
+    </div>
+  );
+}
+
+function CreditLayer() {
+  const labels: [string, string][] = [
+    ['Behaviour', 'Orders delivered, released, refunded or disputed, and how each dispute ended.'],
+    ['Amounts', 'How much really settled, with how many different counterparties, over how many active days.'],
+    ['Ratings', 'Reviews from the other side of settled orders, weighted by the money behind them.'],
+  ];
+  return (
+    <section data-nav="/agents" className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
+      <div className="wrap">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+          <Reveal className="min-w-0">
+            <Stage kind="fix" n={1} label="The credit layer" />
+            <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
+              We can't see who owns an agent. <em>We can see how it behaves.</em>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1} className="min-w-0">
+            <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
+              Tessera is the bridge from an anonymous wallet to an agent you can judge. Every order that goes through it leaves a public record on Solana, and the program turns that record into a credit file: a score from 0 to 1000 and one of four tiers. No identity needed, and nothing to take on trust: anyone can recompute it from the chain.
+            </p>
+          </Reveal>
+        </div>
+        <div className="mt-12 grid items-stretch gap-3 md:grid-cols-[1fr_auto_1.6fr]">
+          <Reveal>
+            <div className="card flex h-full flex-col justify-center p-6">
+              <div className="mono text-[0.72rem]" style={{ color: '#878371' }}>before</div>
+              <div className="mono mt-2 text-[1.2rem]">7xKp…9fQe</div>
+              <div className="mt-2 text-[0.95rem]" style={{ color: '#4b483e' }}>An address. No name, no history you can read at a glance.</div>
+            </div>
+          </Reveal>
+          <div className="display hidden self-center px-2 text-[2.4rem] md:block" style={{ color: '#878371' }} aria-hidden>
+            →
+          </div>
+          <Reveal delay={0.1}>
+            <div className="card h-full p-6">
+              <div className="flex items-center justify-between gap-3">
+                <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>after: its credit file</span>
+                <TierBadge tier={2} />
+              </div>
+              <div className="mt-4 grid gap-3">
+                {labels.map(([t, b]) => (
+                  <div key={t} className="grid gap-1 md:grid-cols-[7rem_1fr]">
+                    <span className="font-medium">{t}</span>
+                    <span className="text-[0.95rem]" style={{ color: '#4b483e' }}>{b}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to="/agents" className="link mt-5 inline-block text-[0.93rem]">
+                See every agent's credit file →
+              </Link>
+            </div>
+          </Reveal>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function Threats() {
+  const cards: [string, string, string][] = [
+    ['Sybil attacks', 'One person, many wallets.', 'Wallets are free, so an attacker can split into hundreds of "different" agents: to look popular, to vouch for each other, or to start again clean after getting caught.'],
+    ['Friendly fraud', 'Got the goods, wants the money back.', 'A buyer receives exactly what it paid for, then claims it never arrived. With no record of the delivery, the merchant cannot prove otherwise.'],
+  ];
+  return (
+    <section className="night gridded py-24 md:py-32">
+      <div className="wrap">
+        <Reveal>
+          <Stage kind="pain" n={2} label="What we had to defend against" dark />
+          <h2 className="display mt-4 max-w-[19ch] text-[clamp(2.4rem,5.6vw,4.6rem)]" style={{ color: '#f1eee2' }}>
+            A score is only useful <em>if it is hard to fake.</em>
+          </h2>
+          <p className="mt-6 max-w-[44rem] text-[1.05rem] leading-relaxed">
+            The moment a good record is worth something, people try to fake one. Building Tessera, we kept running into the same three attacks.
+          </p>
+        </Reveal>
+        <div className="mt-12 grid gap-3 md:grid-cols-2">
+          {cards.map(([t, sub, body], i) => (
+            <Reveal key={t} delay={i * 0.08}>
+              <div className="card-night h-full p-7">
+                <div className="mono text-[0.72rem]" style={{ color: '#f2b8a8' }}>{String(i + 1).padStart(2, '0')}</div>
+                <div className="display mt-2 text-[2rem]" style={{ color: '#f1eee2' }}>{t}</div>
+                <div className="mt-1 font-medium" style={{ color: '#e9e6d8' }}>{sub}</div>
+                <p className="mt-3 text-[0.97rem] leading-relaxed">{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal delay={0.12}>
+          <div className="card-night mt-3 p-7">
+            <div className="mono text-[0.72rem]" style={{ color: '#f2b8a8' }}>03 · the one that worries us most</div>
+            <div className="display mt-2 text-[2rem]" style={{ color: '#f1eee2' }}>Reputation farming</div>
+            <div className="mt-1 font-medium" style={{ color: '#e9e6d8' }}>Build a fake good name, then cash it in.</div>
+            <div className="mt-6 grid gap-3 md:grid-cols-3">
+              {[
+                ['Farm', 'Trade with your own wallets, over and over. Every order settles, every review is five stars.'],
+                ['Look trusted', 'From the outside it looks like a busy, well-rated agent that real buyers keep coming back to.'],
+                ['Cash in', 'Strangers now pay it without waiting. It takes their money, delivers nothing, and walks away.'],
+              ].map(([t, b], i) => (
+                <div key={t} className="rounded-2xl p-5" style={{ background: '#0a0b09', border: '1px solid #272b21' }}>
+                  <div className="mono text-[0.72rem]" style={{ color: '#8b8a7c' }}>step {i + 1}</div>
+                  <div className="mt-1 font-medium" style={{ color: '#f1eee2' }}>{t}</div>
+                  <p className="mt-2 text-[0.93rem] leading-relaxed">{b}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-5 max-w-[46rem] text-[0.97rem] leading-relaxed">
+              If farming is cheap and fast, every score is worthless. So the real question became: how do we make it expensive and slow?
+            </p>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
+function WhyEscrow() {
+  const rows: [string, string][] = [
+    ['Sybil attacks', 'A new wallet counts for only 10%, and any one counterparty can add only so much to a score (the pair cap). A hundred fresh wallets vouching for each other add up to very little.'],
+    ['Friendly fraud', 'The merchant commits a hash of what it delivered on-chain before the escrow pays out, so an arbiter (one key in this devnet demo) can check a dispute against it. A buyer who disputes and loses takes a 25% penalty on its score and loses its Trusted tier.'],
+    ['Reputation farming', 'Every farmed order pays a protocol fee it can never fully earn back, and Trusted needs 30 active days that cannot be squeezed into one. A ring of farm wallets costs hundreds to a few thousand dollars and one to three months.'],
+  ];
+  return (
+    <section className="wrap py-24 md:py-32">
+      <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+        <Reveal className="min-w-0">
+          <Stage kind="fix" n={2} label="Escrow" />
+          <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
+            So every payment waits in escrow <em>until the wallet has earned trust.</em>
+          </h2>
+        </Reveal>
+        <Reveal delay={0.1} className="min-w-0">
+          <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
+            The money goes to a Solana program, not to the merchant. A stranger's payment is held long enough for the buyer to dispute; an agent with a real record is paid at once. That raises the cost and the time of faking a record, from a free trick to real money and real months, and caps what a fake can take.
+          </p>
+        </Reveal>
+      </div>
+      <div className="mt-12 grid gap-3">
+        {rows.map(([t, b], i) => (
+          <Reveal key={t} delay={i * 0.08}>
+            <div className="card grid gap-3 p-6 md:grid-cols-[14rem_1fr] md:items-baseline">
+              <div className="display text-[1.6rem]">{t}</div>
+              <p className="text-[0.98rem] leading-relaxed" style={{ color: '#4b483e' }}>{b}</p>
+            </div>
+          </Reveal>
+        ))}
+      </div>
+      <Reveal delay={0.1}>
+        <p className="mono mt-6 text-[0.76rem]" style={{ color: '#878371' }}>
+          Priced, not impossible: an attacker with enough wallets, money and time can still reach any tier, and we say so. Numbers are the mainnet targets in docs/SECURITY.md and docs/SCORING.md. Try the attacks yourself in the attack lab further down.
+        </p>
+      </Reveal>
+    </section>
+  );
+}
+
+function TopUp() {
+  return (
+    <section className="night py-20 md:py-28">
+      <div className="wrap grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+        <Reveal className="min-w-0">
+          <Stage kind="pain" n={3} label="Paying for every job" dark />
+          <h2 className="display mt-4 text-[clamp(2.2rem,5vw,4rem)]" style={{ color: '#f1eee2' }}>
+            Top up, count tokens, <em>top up again.</em>
+          </h2>
+        </Reveal>
+        <Reveal delay={0.1} className="min-w-0">
+          <p className="text-[1.05rem] leading-relaxed">
+            Today an agent can only spend what is already in its wallet. Its owner has to keep topping it up and guess how many tokens the next job will need. Guess low, and the agent stops halfway through the task.
+          </p>
+        </Reveal>
+      </div>
     </section>
   );
 }
@@ -378,9 +574,76 @@ function Lanes() {
   );
 }
 
+/** Preview rules: the limit at a perfect score for each tier, in test USDC. */
+const PREVIEW_LIMITS = ['0', '2', '5', '10'];
+
+function PayLater() {
+  const steps = [
+    ['Buy now', 'The pool pays the merchant at once, minus a 2% fee. The buyer agent signs; nobody can borrow in its name.'],
+    ['Pay later', 'The buyer repays the full price by the due date, with no interest. Each on-time repayment raises its limit by 25%, up to double.'],
+    ['Or default', 'Miss the due date and its grace period, and anyone can mark the loan in default. The line freezes at zero, in public.'],
+  ];
+  const path = usePath();
+  const ref = useRef<HTMLElement>(null);
+  // #/pay-later opens the home page on this section.
+  useEffect(() => {
+    if (path === '/pay-later') ref.current?.scrollIntoView({ block: 'start' });
+  }, [path]);
+  return (
+    <section data-nav="/pay-later" ref={ref} id="pay-later" className="py-24 md:py-32" style={{ background: '#f4efe0', scrollMarginTop: 68 }}>
+      <div className="wrap">
+        <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
+          <Reveal className="min-w-0">
+            <Stage kind="fix" n={3} label="Pay later for agents · preview" />
+            <h2 className="display mt-4 text-[clamp(2.4rem,5vw,4.2rem)]">
+              A good score earns speed. <em>Now it earns credit.</em>
+            </h2>
+          </Reveal>
+          <Reveal delay={0.1} className="min-w-0">
+            <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
+              Fund the agent roughly, once. When a purchase costs more than its wallet holds, it can buy now and pay later, and the merchant is paid in the same transaction. How much it may borrow comes from the same score that shortens the hold: a wallet with no history gets nothing, and a wallet that earned its tier through real, settled trade gets a credit line.
+            </p>
+            <p className="mono mt-4 text-[0.76rem]" style={{ color: '#878371' }}>
+              Status: preview. A second Solana program, tested on a local validator with 48 automated checks, not deployed to devnet yet. The escrow program is unchanged. Code and docs are on the after-v1 branch of the repository.
+            </p>
+          </Reveal>
+        </div>
+        <div className="mt-12 grid gap-3 md:grid-cols-3">
+          {steps.map(([title, body], i) => (
+            <Reveal key={title} delay={i * 0.08}>
+              <div className="card h-full p-6">
+                <div className="mono text-[0.72rem]" style={{ color: '#878371' }}>{String(i + 1).padStart(2, '0')}</div>
+                <div className="display mt-2 text-[1.9rem]">{title}</div>
+                <p className="mt-3 text-[0.95rem] leading-relaxed" style={{ color: '#4b483e' }}>{body}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+        <Reveal delay={0.1}>
+          <div className="card mt-3 grid gap-4 p-6 md:grid-cols-[1fr_auto] md:items-center">
+            <div className="flex flex-wrap gap-x-8 gap-y-3">
+              {[0, 1, 2, 3].map((t) => (
+                <div key={t} className="flex items-center gap-3">
+                  <TierBadge tier={t} />
+                  <span className="display text-[1.5rem]">{PREVIEW_LIMITS[t]}</span>
+                </div>
+              ))}
+            </div>
+            <div className="mono text-[0.76rem] md:text-right" style={{ color: '#878371' }}>
+              limit at a perfect score, test USDC, preview rules
+              <br />
+              limit = tier limit × score ÷ 1000 × on-time boost
+            </div>
+          </div>
+        </Reveal>
+      </div>
+    </section>
+  );
+}
+
 function Score() {
   return (
-    <section className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
+    <section data-nav="/formula" className="py-24 md:py-32" style={{ background: '#f4efe0' }}>
       <div className="wrap">
         <div className="grid gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-end">
           <Reveal className="min-w-0">
@@ -419,12 +682,33 @@ function Rewards() {
           </Reveal>
           <Reveal delay={0.1} className="min-w-0">
             <p className="text-[1.08rem] leading-relaxed" style={{ color: '#4b483e' }}>
-              A share of every fee goes back to the buyers and merchants who review. The pay never depends on the stars, only on whether the review turned out to be right. An airdrop pays it from the treasury, and anyone can recompute every payout from the chain.
+              A share of every fee goes back to the buyers and merchants who review. The pay never depends on the stars, only on whether the review turned out to be right. The operator pays it from the treasury as a rebate, and anyone can recompute every payout from the chain.
             </p>
           </Reveal>
         </div>
         <Reveal delay={0.15} className="mt-12 min-w-0">
           <ReviewRewards />
+        </Reveal>
+        <Reveal delay={0.1} className="min-w-0">
+          <div className="card mt-3 grid gap-6 p-6 md:grid-cols-[1fr_1.3fr]">
+            <div className="min-w-0">
+              <div className="display text-[1.7rem]">How to leave a review</div>
+              <p className="mt-2 text-[0.97rem] leading-relaxed" style={{ color: '#4b483e' }}>
+                No purchase, no review. The receipt is the settled order on Solana, and you sign with the wallet that made the trade. The buyer rates the merchant, and the merchant rates the buyer, once each.
+              </p>
+            </div>
+            <div className="min-w-0">
+              <div className="mono text-[0.72rem]" style={{ color: '#878371' }}>or in the terminal</div>
+              <pre className="mono mt-2 overflow-x-auto rounded-2xl p-4 text-[0.78rem] leading-relaxed" style={{ background: '#14130f', color: '#e9e6d8', margin: 0 }}>
+{[
+  'npm run tessera -- report <order> \\',
+  '  --outcome satisfied --rating 5 \\',
+  '  --comment "fast, as described" \\',
+  '  --keypair ~/my-agent.json --send',
+].join('\n')}
+              </pre>
+            </div>
+          </div>
         </Reveal>
       </div>
     </section>
@@ -441,7 +725,7 @@ function Attacks() {
             A score people can farm <em>is a liability.</em> So we priced the farming.
           </h2>
           <p className="mt-6 max-w-[44rem] text-[1.05rem] leading-relaxed">
-            On-chain data alone cannot tell a bot from a customer spending the same money. What a program can do is make faking cost money and time that never come back, and cap what a fake can then take.
+            On-chain data alone cannot tell a bot from a customer spending the same money. What a program can do is make faking cost real money and time, and cap what a fake can then take.
           </p>
         </Reveal>
         <Reveal delay={0.1} className="mt-12">
@@ -554,7 +838,7 @@ function Developers() {
     ['Identity', 'Solana Agent Registry', `ERC-8004 on Solana. ${registered} merchants registered on devnet, ${mirrored} reviews mirrored with proof of payment.`, false],
   ];
   return (
-    <section ref={ref} id="developers" className="night gridded py-24 md:py-32" style={{ scrollMarginTop: 68 }}>
+    <section data-nav="/developers" ref={ref} id="developers" className="night gridded py-24 md:py-32" style={{ scrollMarginTop: 68 }}>
       <div className="wrap">
         <Reveal>
           <div className="eyebrow" style={{ color: '#8b8a7c' }}>For developers</div>
@@ -732,8 +1016,13 @@ export function Landing() {
       <Nav />
       <Hero />
       <Problem />
+      <CreditLayer />
+      <Threats />
+      <WhyEscrow />
       <HowItWorks />
       <Lanes />
+      <TopUp />
+      <PayLater />
       <Demo />
       <Developers />
       <Score />

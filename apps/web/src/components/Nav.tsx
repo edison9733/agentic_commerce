@@ -1,5 +1,6 @@
 import { motion, useMotionValueEvent, useScroll } from 'motion/react';
 import { useEffect, useState } from 'react';
+import { NETWORK } from '../lib/client';
 import { Link, usePath } from '../lib/router';
 import { useChain } from '../lib/store';
 import { Logo } from './ui';
@@ -9,8 +10,19 @@ const LINKS: [string, string][] = [
   ['/agents', 'Agents'],
   ['/market', 'Market'],
   ['/formula', 'The score'],
+  ['/pay-later', 'Pay later'],
   ['/developers', 'For agents'],
 ];
+
+/** The nav link whose home-page section has reached the top of the viewport, if any. */
+function sectionInView(): string | null {
+  if (window.scrollY < 8) return null; // the top of the page is nobody's section
+  let found: string | null = null;
+  for (const el of document.querySelectorAll<HTMLElement>('[data-nav]')) {
+    if (el.getBoundingClientRect().top <= 96) found = el.dataset.nav ?? null;
+  }
+  return found;
+}
 
 export function Nav({ dark = false }: { dark?: boolean }) {
   const path = usePath();
@@ -18,8 +30,17 @@ export function Nav({ dark = false }: { dark?: boolean }) {
   const { scrollY } = useScroll();
   const [solid, setSolid] = useState(false);
   const [open, setOpen] = useState(false);
-  useEffect(() => setOpen(false), [path]);
-  useMotionValueEvent(scrollY, 'change', (y) => setSolid(y > 24));
+  // On the home page the underline follows the section being read, not the address.
+  const [spy, setSpy] = useState<string | null>(null);
+  useEffect(() => {
+    setOpen(false);
+    setSpy(sectionInView());
+  }, [path]);
+  useMotionValueEvent(scrollY, 'change', (y) => {
+    setSolid(y > 24);
+    setSpy(sectionInView());
+  });
+  const active = spy ?? path;
   const bg = dark ? 'rgba(10,11,9,0.72)' : 'rgba(251,248,239,0.78)';
   return (
     <motion.header
@@ -45,15 +66,15 @@ export function Nav({ dark = false }: { dark?: boolean }) {
         <nav className="hidden items-center gap-7 whitespace-nowrap text-[0.93rem] lg:flex">
           {LINKS.map(([to, label]) => (
             <Link key={to} to={to} className="relative py-1">
-              <span style={{ opacity: path.startsWith(to) ? 1 : 0.68 }}>{label}</span>
-              {path.startsWith(to) && (
+              <span style={{ opacity: active.startsWith(to) ? 1 : 0.68 }}>{label}</span>
+              {active.startsWith(to) && (
                 <motion.span layoutId="nav-underline" style={{ position: 'absolute', left: 0, right: 0, bottom: -2, height: 1.5, background: 'currentColor' }} />
               )}
             </Link>
           ))}
         </nav>
         <div className="flex items-center gap-3">
-          <span className="mono hidden items-center gap-2 whitespace-nowrap text-[0.72rem] sm:inline-flex" style={{ opacity: 0.75 }} title="Read straight from Solana devnet">
+          <span className="mono hidden items-center gap-2 whitespace-nowrap text-[0.72rem] sm:inline-flex" style={{ opacity: 0.75 }} title={`Read straight from ${NETWORK === 'devnet' ? 'Solana devnet' : 'a local Solana validator'}`}>
             <span
               style={{
                 width: 7,
@@ -63,7 +84,7 @@ export function Nav({ dark = false }: { dark?: boolean }) {
                 boxShadow: status === 'live' ? '0 0 0 4px rgba(47,158,115,0.18)' : 'none',
               }}
             />
-            {status === 'live' ? 'devnet · live' : status === 'error' ? 'devnet · unreachable' : 'devnet · loading'}
+            {NETWORK} · {status === 'live' ? 'live' : status === 'error' ? 'unreachable' : 'loading'}
           </span>
           <button
             className="rounded-full border px-3.5 py-2 text-[0.88rem] lg:hidden"
@@ -79,7 +100,7 @@ export function Nav({ dark = false }: { dark?: boolean }) {
       {open && (
         <nav id="nav-menu" className="wrap grid gap-1 pb-4 lg:hidden" style={{ background: dark ? '#0a0b09' : '#fbf8ef' }}>
           {LINKS.map(([to, label]) => (
-            <Link key={to} to={to} className="rounded-xl px-3 py-3 text-[1.05rem]" style={{ background: path.startsWith(to) ? (dark ? '#272b21' : '#f1ebd8') : 'transparent' }} onClick={() => setOpen(false)}>
+            <Link key={to} to={to} className="rounded-xl px-3 py-3 text-[1.05rem]" style={{ background: active.startsWith(to) ? (dark ? '#272b21' : '#f1ebd8') : 'transparent' }} onClick={() => setOpen(false)}>
               {label}
             </Link>
           ))}
