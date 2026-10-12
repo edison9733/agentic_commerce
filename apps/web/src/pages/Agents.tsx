@@ -1,6 +1,6 @@
 import { motion } from 'motion/react';
 import { useMemo, useState } from 'react';
-import { OrderState, paylater, rewards, safeText, score } from '@tessera/sdk';
+import { OrderState, rewards, safeText, score } from '@tessera/sdk';
 import { Footer } from './Landing';
 import { Nav } from '../components/Nav';
 import { Addr, Breakdown, EASE, Reveal, ScoreGauge, Stars, StateChip, TierBadge } from '../components/ui';
@@ -234,14 +234,6 @@ export function AgentProfile({ wallet }: { wallet: string }) {
                 </div>
               ))}
             </div>
-            <div className="mt-4 flex flex-wrap items-baseline justify-between gap-2 rounded-2xl p-4 text-[0.9rem]" style={{ background: '#eef6f0', border: '1px solid #cfe5d6', color: '#14130f' }}>
-              <span>
-                <strong>Pay-later limit:</strong>{' '}
-                {(Number(paylater.limit(paylater.NO_LINE, paylater.PREVIEW_LINE_PARAMS, p.eval.tier, p.eval.score)) / 1e6).toFixed(2)} test USDC
-                {p.eval.tier === 0 && ' (no credit until it earns a tier)'}
-              </span>
-              <Link to="/pay-later" className="mono link text-[0.72rem]" >preview on a local validator · not on devnet yet</Link>
-            </div>
             {a.penaltyBps > 0 && (
               <div className="mt-4 rounded-2xl p-4 text-[0.9rem]" style={{ background: '#fdecea', border: '1px solid #f3c4bf', color: '#7a1f1f' }}>
                 <strong>Standing penalty:</strong> {(a.penaltyBps / 100).toFixed(0)}% off the score from a lost dispute or missed delivery. It heals by {(params.penaltyDecayBps / 100).toFixed(2)}% per period, and blocks {tierName(3)} until it is gone.
@@ -288,10 +280,7 @@ export function AgentProfile({ wallet }: { wallet: string }) {
           <div className="card p-6">
             <div className="flex items-baseline justify-between">
               <div className="eyebrow" style={{ color: '#878371' }}>Reviews received</div>
-              <span className="flex items-baseline gap-3">
-                <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>{mine.got.length} on-chain</span>
-                <Link to="/review" className="link text-[0.8rem]">Review an order</Link>
-              </span>
+              <span className="mono text-[0.72rem]" style={{ color: '#878371' }}>{mine.got.length} on-chain</span>
             </div>
             <ul className="mt-3 grid" style={{ listStyle: 'none', padding: 0, margin: 0 }}>
               {mine.got.slice(0, 12).map((r) => (
@@ -311,7 +300,7 @@ export function AgentProfile({ wallet }: { wallet: string }) {
               {mine.got.length === 0 && <li className="mono py-6 text-[0.84rem]" style={{ color: '#878371' }}>No reviews yet. An unreviewed wallet is treated as 3 stars.</li>}
             </ul>
             <p className="mt-3 text-[0.78rem] leading-relaxed" style={{ color: '#878371' }}>
-              A review's weight is the volume that settled on that order, scaled by the reviewer's own tier and capped per pair. A review of a refunded order weighs nothing, a merchant's review counts once the buyer has reviewed the same order, and the side that lost a dispute gets no weight. Each review earns a share of the fee in the <Link to="/formula" className="link">review-reward rebate</Link>: the same for any stars, then scaled by whether it proved right.
+              A review's weight is the volume that settled on that order, scaled by the reviewer's own tier and capped per pair. A review of a refunded order weighs nothing, a merchant's review counts once the buyer has reviewed the same order, and the side that lost a dispute gets no weight. Each review earns a share of the fee in the <Link to="/formula" className="link">review-reward airdrop</Link>: the same for any stars, then scaled by whether it proved right.
             </p>
           </div>
 

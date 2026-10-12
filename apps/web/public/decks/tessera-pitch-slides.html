@@ -82,7 +82,7 @@ section.active .line { animation: draw 1.2s ease both; animation-delay: 1.3s; }
   <p class="mono grey" style="font-size: 22px; margin: 64px 0 0;">Edison Liu · Computer Engineering, ZJU-UIUC Institute</p>
 </section>
 
-<section data-document-role="page" data-label="Hook" data-speaker-notes="AI agents now pay each other with x402, the payment protocol from Coinbase: about two hundred million payments so far, and on one recent day, the average was seven cents.">
+<section data-document-role="page" data-label="Hook" data-speaker-notes="AI agents can now pay each other with x402, the payment protocol from Coinbase. The Solana Foundation reports about two hundred million x402 payments so far, most under fifty cents. On one recent day, the average was seven cents.">
   <p class="kicker">x402, the payment protocol from Coinbase</p>
   <h1 style="font-size: 96px; max-width: 16ch;">AI agents now <em>pay each other.</em></h1>
   <div class="row" style="gap: 96px; margin-top: 84px;">
@@ -92,33 +92,16 @@ section.active .line { animation: draw 1.2s ease both; animation-delay: 1.3s; }
   <p class="source">Solana Foundation, 5 Aug 2026: “roughly 200 million transactions … Most transactions are under 50 cents.” x402scan.com, 24 h to 5 Oct 2026: 118,341 payments, $8.01K.</p>
 </section>
 
-<section data-document-role="page" data-label="Anonymous agents" data-speaker-notes="But who is on the other end? One person can launch unlimited agents, with no identity check, and you can&#x27;t tell who owns them. And an x402 payment is final: no chargeback. So Tessera is the bridge. We can&#x27;t see who owns an agent, but we can see how it behaves: what it settled, how much, and how it was rated.">
-  <p class="kicker">Pain 1 · who is on the other end?</p>
-  <h1 style="font-size: 92px; max-width: 24ch;">One person, unlimited agents. <em>No ID.</em></h1>
-  <p style="font-size: 34px; max-width: 40ch; margin: 36px 0 0; line-height: 1.3;">And an x402 payment is final once it settles. No chargeback.</p>
-  <div class="row" style="gap: 22px; margin-top: 56px;">
-    <span class="mono mint" style="font-size: 26px; padding: 14px 26px; border-radius: 999px; border: 1.5px solid #b9f8da;">Behaviour</span>
-    <span class="mono mint" style="font-size: 26px; padding: 14px 26px; border-radius: 999px; border: 1.5px solid #b9f8da;">Amounts settled</span>
-    <span class="mono mint" style="font-size: 26px; padding: 14px 26px; border-radius: 999px; border: 1.5px solid #b9f8da;">Ratings</span>
-  </div>
-  <p style="font-size: 30px; margin: 44px 0 0; color: #b9f8da;">Fix 1: a credit layer that labels each anonymous agent by how it behaves.</p>
-  <p class="source">Creating a Solana wallet needs no identity and costs nothing beyond fees. An x402 <span class="mono">exact</span> payment is a signed token transfer with no chargeback.</p>
+<section data-document-role="page" data-label="Why payments stay small" data-speaker-notes="Here is the pain point. Payments stay small because an x402 payment is final once it settles. There is no chargeback. Seven cents can afford to be wrong. Seven hundred dollars cannot. So I focus on one question: how likely is this trade to succeed?">
+  <p class="kicker">The pain point</p>
+  <h1 style="font-size: 104px; max-width: 15ch;">Final once it settles. <em>No chargeback.</em></h1>
+  <p style="font-size: 40px; max-width: 27ch; margin: 40px 0 0; line-height: 1.3;">Seven cents can afford to be wrong. Seven hundred dollars cannot.</p>
+  <p style="font-size: 34px; margin: 56px 0 0; color: #b9f8da;">The question that matters: how likely is this trade to succeed?</p>
+  <p class="source">Our reading, not a measured cause. An x402 <span class="mono">exact</span> payment is a signed token transfer with no chargeback. Median facilitator settlement on devnet here: 1.2 s (51 payments).</p>
 </section>
 
-<section data-document-role="page" data-label="Three attacks" data-speaker-notes="Then we hit three attacks. Sybil: one person posing as many agents. Friendly fraud: getting the goods, then claiming they never came. And reputation farming: trading with your own wallets until you look trusted, then taking strangers&#x27; money. So every payment goes into escrow, and waits until the wallet has earned trust. Faking a record now costs real fees, and months you can&#x27;t skip.">
-  <p class="kicker">Pain 2 · three attacks we had to price</p>
-  <div class="row" style="gap: 26px; margin-top: 10px; align-items: stretch;">
-    <div class="card" style="flex: 1; padding: 30px 30px 34px;"><h3 style="font-size: 46px;">Sybil</h3><p style="font-size: 26px; margin-top: 16px;">One person, many wallets.</p></div>
-    <div class="card" style="flex: 1; padding: 30px 30px 34px;"><h3 style="font-size: 46px;">Friendly fraud</h3><p style="font-size: 26px; margin-top: 16px;">Got the goods, claims they never came.</p></div>
-    <div class="card" style="flex: 1; padding: 30px 30px 34px; border-color: #f2b8a8;"><h3 style="font-size: 46px;">Reputation farming</h3><p style="font-size: 26px; margin-top: 16px;">Trade with yourself until you look trusted, then cash in on strangers.</p></div>
-  </div>
-  <h1 style="font-size: 70px; max-width: 32ch; margin-top: 48px;">Fix 2: escrow, <em>until the wallet has earned trust.</em></h1>
-  <p style="font-size: 30px; max-width: 52ch; margin: 28px 0 0;">Faking a record now costs real fees, and months you can't skip.</p>
-  <p class="source">Mainnet targets: a new wallet counts 10%, each counterparty is capped, Trusted needs 30 active days; a farming ring costs hundreds to a few thousand dollars and one to three months. Priced, not impossible (docs/SECURITY.md).</p>
-</section>
-
-<section data-document-role="page" data-label="What Tessera does" data-speaker-notes="And the escrow knows who it is dealing with. At our mainnet target, a fresh wallet&#x27;s money waits three days. Two Trusted agents settle instantly.">
-  <p class="kicker">Fix 2 · escrow that knows who it is dealing with</p>
+<section data-document-role="page" data-label="What Tessera does" data-speaker-notes="Tessera puts the payment in escrow, and the escrow knows who it is dealing with. Every wallet has an on-chain score, built from settled orders, ratings and behaviour. At our mainnet target, a fresh wallet's money waits three days. Two Trusted agents settle instantly.">
+  <p class="kicker">What Tessera does</p>
   <h1 style="font-size: 84px; max-width: 19ch;">Escrow that knows <em>who it is dealing with.</em></h1>
   <p style="font-size: 30px; margin: 30px 0 0;">Every wallet has an on-chain score, built from settled orders, ratings and behaviour.</p>
   <div class="col" style="margin-top: 40px;">
@@ -146,7 +129,27 @@ section.active .line { animation: draw 1.2s ease both; animation-delay: 1.3s; }
   <p class="source">A real order from this project on devnet. The x402 <span class="mono">exact</span> scheme derives the token account from payTo, so an escrow account is a valid payTo.</p>
 </section>
 
-<section data-document-role="page" data-label="Reviews that pay" data-speaker-notes="Only a real buyer or seller can review, with the receipt on-chain. Reviewers get paid, and paid more when their warning proves right.">
+<section data-document-role="page" data-label="Reviews as search" data-speaker-notes="Agents can also search for sellers in one call. Each result says instant or escrow.">
+  <p class="kicker">Reviews as search, for agents</p>
+  <h1 style="font-size: 78px; max-width: 21ch;">Who should I buy from? <em>One call.</em></h1>
+  <div class="row" style="gap: 52px; margin-top: 36px;">
+    <div class="col" style="flex: 1.3; gap: 10px;">
+      <div class="card mono" style="font-size: 21px; padding: 16px 24px;">$ tessera find <span class="mint">text summary</span></div>
+      <div class="card on" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display mint" style="font-size: 34px; width: 36px;">1</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Quill</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Trusted 905 · ★4.76 · 5 sales</div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.25 USDC<div class="grey" style="font-size: 15px;">escrow · ~9 s</div></div></div>
+      <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display grey" style="font-size: 34px; width: 36px;">2</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Scribe</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Established 658 · ★4.26 · 2 sales</div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.15 USDC<div class="grey" style="font-size: 15px;">escrow · ~13 s</div></div></div>
+      <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 14px 22px;"><span class="display grey" style="font-size: 34px; width: 36px;">3</span><div style="flex: 1;"><span class="display white" style="font-size: 34px;">Glib</span><div class="mono grey" style="font-size: 16px; margin-top: 2px;">Building 181 · ★2.38 · 2 sales<span class="warn"> · 1 missed delivery</span></div></div><div class="mono white" style="font-size: 18px; text-align: right;">0.10 USDC<div class="grey" style="font-size: 15px;">escrow · ~9 s</div></div></div>
+      <div class="mono" style="font-size: 17px; margin-top: 4px;">A regular customer asking the same: <span class="mint">Quill · instant · ~1 s to settled</span></div>
+    </div>
+    <div class="col" style="flex: 1;">
+      <div class="card"><h3>Ranked by money, not words</h3><p>Each review needed a real settled order and counts by what it paid.</p></div>
+      <div class="card"><h3>Answers the next question too</h3><p>Every row says instant or escrow, and the seconds from paying to settled.</p></div>
+      <div class="card"><h3>Built for agents</h3><p>Compact JSON with enums, over an API, MCP, a skill or a CLI. No pages to read.</p></div>
+    </div>
+  </div>
+  <p class="source">Recorded 2026-10-09: twelve purchases between real agents on a local validator running the real program, then one call. Reproduce: npm run build:program &amp;&amp; npm run demo:find</p>
+</section>
+
+<section data-document-role="page" data-label="Reviews that pay" data-speaker-notes="And reviewers get paid, and paid more when their warning proves right.">
   <p class="kicker">Reviews that pay</p>
   <h1 style="font-size: 78px; max-width: 22ch;">Paid to review. <em>Paid more for being right.</em></h1>
   <div class="row" style="gap: 52px; margin-top: 36px;">
@@ -163,26 +166,7 @@ section.active .line { animation: draw 1.2s ease both; animation-delay: 1.3s; }
       <div class="card"><h3>Faking it loses money</h3><p>At most 75% of an order’s fee comes back, so farming with your own wallets never pays.</p></div>
     </div>
   </div>
-  <p class="source">Recorded 2026-10-10: real purchases, reviews, a missed delivery and the rebate payout, on a local validator running the real program. Reproduce: npm run build:program &amp;&amp; npm run demo:rewards</p>
-</section>
-
-<section data-document-role="page" data-label="Pay later" data-speaker-notes="Last pain: today you top up an agent&#x27;s wallet before every job and count the tokens it needs. With Tessera, fund it roughly once. When a purchase is more than it holds, it buys now and pays later; the merchant is paid at once. The limit comes from the score: a new wallet gets nothing, paying on time raises it, and a default freezes it in public.">
-  <p class="kicker">Pain 3 · top up before every job, count the tokens · Fix 3: pay later</p>
-  <h1 style="font-size: 78px; max-width: 22ch;">Fund it roughly once. <em>Buy now, pay later.</em></h1>
-  <div class="row" style="gap: 52px; margin-top: 36px;">
-    <div class="col" style="flex: 1.25; gap: 10px;">
-      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Fresh wallet</span><div class="mono grey" style="font-size: 16px;">New · no settled trade yet</div></div><span class="display grey" style="font-size: 40px;">0.00</span></div>
-      <div class="card on" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Alice</span><div class="mono mint" style="font-size: 16px;">Established 775 · bought 1.50, repaid on time</div></div><span class="display mint" style="font-size: 40px;">3.88 → 4.84</span></div>
-      <div class="card" style="display: flex; align-items: center; padding: 14px 22px;"><div style="flex: 1;"><span class="display white" style="font-size: 32px;">Bob</span><div class="mono warn" style="font-size: 16px;">Established 775 · bought 2.00, never repaid</div></div><span class="display warn" style="font-size: 40px;">frozen 0.00</span></div>
-      <div class="mono" style="font-size: 17px; margin-top: 4px;">Limit in test USDC. The merchant got <span class="mint">1.47 of 1.50 at once</span>; the pool kept 2%.</div>
-    </div>
-    <div class="col" style="flex: 1;">
-      <div class="card"><h3>Buy now</h3><p>A pool pays the merchant at once. Only the buyer agent can spend its own credit.</p></div>
-      <div class="card"><h3>Pay later</h3><p>The full price by the due date, no interest. On time raises the limit by 25%.</p></div>
-      <div class="card"><h3>Or default, in public</h3><p>Anyone can mark a late loan. The line freezes at zero for good.</p></div>
-    </div>
-  </div>
-  <p class="source">Recorded 2026-10-11 on a local validator running the escrow program and the new pay-later program (preview, not on devnet). Tested by npm run test:paylater. Try it: npm run build:program &amp;&amp; npm run paylater:local</p>
+  <p class="source">Recorded 2026-10-10: real purchases, reviews, a missed delivery and the airdrop payout, on a local validator running the real program. Reproduce: npm run build:program &amp;&amp; npm run demo:rewards</p>
 </section>
 
 <section class="center" data-document-role="page" data-label="Close" data-speaker-notes="Why me? Every x402 payment already leaves a public record on the chain. My idea is to use that data to lower the risk of being scammed in agentic commerce. Without it, a payment is just a payment, and the data goes to waste. Micropayments were the easy part. Every payment matters. This is Tessera.">

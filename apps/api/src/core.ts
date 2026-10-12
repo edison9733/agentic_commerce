@@ -667,7 +667,7 @@ function reviewCounts(o: Order, reviewerIsBuyer: boolean, state: OrderState): { 
 }
 
 /**
- * What this review can earn in the review-reward rebate (docs/REWARDS.md): a
+ * What this review can earn in the review-reward airdrop (docs/REWARDS.md): a
  * share of the fee, the same whatever the stars, scaled by how accurate the
  * review proves to be. An estimate: the program sets the exact weight, as
  * here: what settled at the reviewer's tier weight, but no more than this

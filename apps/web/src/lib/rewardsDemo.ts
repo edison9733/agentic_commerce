@@ -1,5 +1,5 @@
 /**
- * The review-reward rebate, as recorded by `npm run demo:rewards`: real
+ * The review-reward airdrop, as recorded by `npm run demo:rewards`: real
  * purchases, reviews, a merchant that then failed, and the payout, on a local
  * validator running the real program. Nothing here is made up.
  */

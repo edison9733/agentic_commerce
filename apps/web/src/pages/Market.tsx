@@ -76,7 +76,7 @@ const claims = {
 
 /** Whoever is paying: the built-in devnet test wallet, a throwaway key kept in this browser. */
 /** The program stores at most 200 bytes of review text; emoji and accents take more than one. */
-export function clip200(t: string): string {
+function clip200(t: string): string {
   const enc = new TextEncoder();
   let out = t;
   while (enc.encode(out).length > 200) out = [...out].slice(0, -1).join('');
@@ -416,11 +416,6 @@ function Checkout({ item, payer, onClose, onBalance }: { item: Item; payer: NonN
               </div>
             ) : (
               <div className="mt-3 text-[0.9rem]">Your review is on-chain. <a className="link" href={`#/agents/${order.merchant}`}>See it on the merchant's credit file →</a></div>
-            )}
-            {terms && (
-              <div className="mt-2 text-[0.84rem]" style={{ color: '#4b483e' }}>
-                <a className="link" href={`#/review/${terms.order}`}>Merchant? Review the buyer with the on-chain receipt →</a>
-              </div>
             )}
           </motion.div>
         )}

@@ -47,7 +47,7 @@ done:
 | D16 | The API relayed any signed transaction, for any program. | Medium | `/v1/tx/submit` relays only Tessera, token, associated-token, compute-budget and system instructions, and at least one Tessera instruction. | doors |
 | D17 | One slow agent card could stall `find_merchants` for every caller (the timeout reset on every byte). | High | One wall-clock deadline per card, a size cap, no redirects, and an overall budget with partial results. | doors |
 | D18 | The merchant server forgot quotes on restart and delivered nothing for orders funded after it, so the merchant took the missed-delivery penalty. | High | Quotes and delivery results are written to disk atomically; funded orders are completed or refunded before the deadline; delivery fails closed if its evidence cannot be saved. | agents smoke test |
-| D19 | The review-reward rebate could pay the same reviews twice if a later batch failed. | Critical | Each batch is recorded as pending, then paid, before the next one is sent; an exclusive lock; a missing ledger refuses to pay; payouts carry memos so a lost ledger can be rebuilt from the chain. | rewards tests; `demo:rewards` |
+| D19 | The review-reward airdrop could pay the same reviews twice if a later batch failed. | Critical | Each batch is recorded as pending, then paid, before the next one is sent; an exclusive lock; a missing ledger refuses to pay; payouts carry memos so a lost ledger can be rebuilt from the chain. | rewards tests; `demo:rewards` |
 
 **Both audits' program fixes are deployed on devnet** (program `TessSeP5QV5Bxpvm73iEefdsTjgtTEokKSx7jqFn1CQ`).
 They are in the source and pass the local suite. No account layout changed, so every existing account
@@ -147,7 +147,7 @@ kept working through the upgrade.
 
 ## R. Review rewards
 
-The rebate run in [REWARDS.md](REWARDS.md). It is off-chain; the program is unchanged.
+The airdrop in [REWARDS.md](REWARDS.md). It is off-chain; the program is unchanged.
 
 | # | Attack | Status | Defence |
 |---|---|---|---|
@@ -155,7 +155,7 @@ The rebate run in [REWARDS.md](REWARDS.md). It is off-chain; the program is unch
 | R2 | A merchant pays buyers for 5-star reviews. | ✅ | The base pay ignores the stars, and a 4-5 star review of a wallet that then loses a dispute or misses a delivery is paid nothing; an honest warning is paid 1.5x. Shown on chain in `npm run demo:rewards`. |
 | R3 | Reviewers herd to the consensus instead of rating what they got. | 🟡 | Agreeing pays only 1.2x against 1x, the consensus is weighted by money, and what actually happened next overrides it. |
 | R4 | The operator pays itself, or pays differently from the rules. | 🟡 | Each payout file holds every input; `npm run rewards -- --verify` recomputes it, and the transfers are on chain. The operator can still refuse to pay; an on-chain claim is the next step. |
-| R5 | A review is first seen after its subject already failed, and gets paid for "predicting" it. | ✅ | Failures are counted from the moment the rebate run first saw the review; a review first seen more than `lateSightSecs` after it was written is judged on consensus only. |
+| R5 | A review is first seen after its subject already failed, and gets paid for "predicting" it. | ✅ | Failures are counted from the moment the airdrop first saw the review; a review first seen more than `lateSightSecs` after it was written is judged on consensus only. |
 
 ## What "sybil-resistant" means here, and what it does not
 

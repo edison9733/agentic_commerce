@@ -187,7 +187,7 @@ function RewardsScene() {
   ];
   return (
     <Frame pad={72}>
-      <Kicker>Reviews that pay · the rebate, recorded {payout.recordedAt}</Kicker>
+      <Kicker>Reviews that pay · the airdrop, recorded {payout.recordedAt}</Kicker>
       <div style={{ marginTop: 22, borderRadius: 22, background: '#050605', border: '1px solid #272b21', padding: '22px 30px', flex: 1 }}>
         {lines.map(([tag, line], k) => (
           <motion.div
@@ -313,7 +313,7 @@ pub fn confirm_funded(ctx: Context<ConfirmFunded>) -> Result<()> {
   {
     id: 'rewards',
     seconds: 12,
-    say: 'Reviews are paid by a rebate from the fees. Three buyers reviewed Glib, then Glib failed a delivery. The honest warning earned the most; the glowing reviews earned nothing.',
+    say: 'Reviews are paid by an airdrop from the fees. Three buyers reviewed Glib, then Glib failed a delivery. The honest warning earned the most; the glowing reviews earned nothing.',
     render: () => <RewardsScene />,
   },
   {
