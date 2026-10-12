@@ -2,72 +2,12 @@ import { motion } from 'motion/react';
 import { MAINNET_TARGET_PARAMS as P } from '@tessera/sdk';
 import { Counter, EASE, Logo, TierBadge } from '../components/ui';
 import { duration, TIER_DARK } from '../lib/format';
-import { ranked, recordedAt, reproduce } from '../lib/findDemo';
 import * as payout from '../lib/rewardsDemo';
 import snapshot from '../../../../deployments/snapshot.json';
 import { Big, Body, Deck, Frame, Kicker, Rise, Source, type Slide } from './Deck';
 
 const mint = '#b9f8da';
 const white = '#f1eee2';
-
-function FindSlide() {
-  const rows = ranked('best');
-  const regular = ranked('returning')[0]!;
-  return (
-    <Frame pad={84}>
-      <Kicker>Reviews as search, for agents</Kicker>
-      <Big size={78} max="21ch" color={white}>
-        Who should I buy from? <em>One call.</em>
-      </Big>
-      <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 52, marginTop: 36, alignItems: 'start' }}>
-        <Rise delay={0.4}>
-          <div className="mono" style={{ fontSize: 21, padding: '16px 24px', borderRadius: 16, background: '#10120e', border: '1px solid #272b21', color: '#c9c6b6' }}>
-            $ tessera find <span style={{ color: mint }}>text summary</span>
-          </div>
-          <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
-            {rows.map((r, k) => (
-              <Rise key={r.merchant} delay={0.7 + k * 0.14}>
-                <div style={{ display: 'grid', gridTemplateColumns: '36px 1fr 150px', alignItems: 'center', gap: 16, padding: '14px 22px', borderRadius: 16, border: `1px solid ${k === 0 ? mint : '#272b21'}`, background: k === 0 ? '#121a14' : '#10120e' }}>
-                  <span className="display" style={{ fontSize: 34, color: k === 0 ? mint : '#8b8a7c' }}>{r.rank}</span>
-                  <div>
-                    <span className="display" style={{ fontSize: 34, color: white }}>{r.name}</span>
-                    <div className="mono" style={{ fontSize: 16, color: '#8b8a7c', marginTop: 2 }}>
-                      {r.tier} {r.score} · ★{r.stars.toFixed(2)} · {r.sales} sales{r.missedDeliveries ? <span style={{ color: '#ec835a' }}> · {r.missedDeliveries} missed delivery</span> : ''}
-                    </div>
-                  </div>
-                  <div className="mono" style={{ textAlign: 'right', fontSize: 18, color: white }}>
-                    {r.service?.price?.usdc} USDC
-                    <div style={{ fontSize: 15, color: '#8b8a7c' }}>{r.decision} · ~{r.expectedSecs} s</div>
-                  </div>
-                </div>
-              </Rise>
-            ))}
-          </div>
-          <Rise delay={1.3}>
-            <div className="mono" style={{ fontSize: 17, marginTop: 14, color: '#c9c6b6' }}>
-              A regular customer asking the same: <span style={{ color: mint }}>{regular.name} · {regular.decision} · ~{regular.expectedSecs} s to settled</span>
-            </div>
-          </Rise>
-        </Rise>
-        <div style={{ display: 'grid', gap: 16 }}>
-          {[
-            ['Ranked by money, not words', 'Each review needed a real settled order and counts by what it paid.'],
-            ['Answers the next question too', 'Every row says instant or escrow, and the seconds from paying to settled.'],
-            ['Built for agents', 'Compact JSON with enums, over an API, MCP, a skill or a CLI. No pages to read.'],
-          ].map(([h, b], k) => (
-            <Rise key={h} delay={0.9 + k * 0.15}>
-              <div style={{ padding: '18px 24px', borderRadius: 18, border: '1px solid #272b21', background: '#10120e' }}>
-                <div className="display" style={{ fontSize: 32, color: white }}>{h}</div>
-                <div style={{ fontSize: 21, marginTop: 6, lineHeight: 1.35, color: '#c9c6b6' }}>{b}</div>
-              </div>
-            </Rise>
-          ))}
-        </div>
-      </div>
-      <Source>Recorded {recordedAt}: twelve purchases between real agents on a local validator running the real program, then one call. Reproduce: {reproduce}</Source>
-    </Frame>
-  );
-}
 
 function RewardsSlide() {
   const glib = payout.rows.filter((r) => r.subject === 'glib');
@@ -132,9 +72,9 @@ function PayLaterSlide() {
   ];
   return (
     <Frame pad={84}>
-      <Kicker>New · pay later for agents</Kicker>
+      <Kicker>Pain 3 · top up before every job, count the tokens · Fix 3: pay later</Kicker>
       <Big size={78} max="22ch" color={white}>
-        A good score earns speed. <em>Now it earns credit.</em>
+        Fund it roughly once. <em>Buy now, pay later.</em>
       </Big>
       <div style={{ display: 'grid', gridTemplateColumns: '1.25fr 1fr', gap: 52, marginTop: 36, alignItems: 'start' }}>
         <Rise delay={0.4}>
@@ -181,7 +121,7 @@ function TierSlide() {
   const loop = [6.5, 3.6, 1.8, 0.7];
   return (
     <Frame pad={96}>
-      <Kicker>What Tessera does</Kicker>
+      <Kicker>Fix 2 · escrow that knows who it is dealing with</Kicker>
       <Big size={84} max="19ch" color={white}>
         Escrow that knows <em>who it is dealing with.</em>
       </Big>
@@ -228,8 +168,8 @@ export const PITCH: Slide[] = [
   },
   {
     id: 'hook',
-    seconds: 16,
-    say: "AI agents can now pay each other with x402, the payment protocol from Coinbase. The Solana Foundation reports about two hundred million x402 payments so far, most under fifty cents. On one recent day, the average was seven cents.",
+    seconds: 13,
+    say: "AI agents now pay each other with x402, the payment protocol from Coinbase: about two hundred million payments so far, and on one recent day, the average was seven cents.",
     render: () => (
       <Frame>
         <Kicker>x402, the payment protocol from Coinbase</Kicker>
@@ -249,23 +189,57 @@ export const PITCH: Slide[] = [
     ),
   },
   {
-    id: 'final',
-    seconds: 18,
-    say: "Here is the pain point. Payments stay small because an x402 payment is final once it settles. There is no chargeback. Seven cents can afford to be wrong. Seven hundred dollars cannot. So I focus on one question: how likely is this trade to succeed?",
+    id: 'anon',
+    seconds: 17,
+    say: "But who is on the other end? One person can launch unlimited agents, with no identity check, and you can't tell who owns them. And an x402 payment is final: no chargeback. So Tessera is the bridge. We can't see who owns an agent, but we can see how it behaves: what it settled, how much, and how it was rated.",
     render: () => (
       <Frame>
-        <Kicker>The pain point</Kicker>
-        <Big size={104} max="15ch" color={white}>Final once it settles. <em>No chargeback.</em></Big>
-        <Body delay={0.7} size={40} max="27ch">Seven cents can afford to be wrong. Seven hundred dollars cannot.</Body>
-        <Body delay={1.4} size={34} max="50ch"><span style={{ color: mint }}>The question that matters: how likely is this trade to succeed?</span></Body>
-        <Source>Our reading, not a measured cause. An x402 exact payment is a signed token transfer with no chargeback. Median facilitator settlement on devnet here: {((snapshot.measured.facilitatorSettleMsMedian ?? 0) / 1000).toFixed(1)} s ({snapshot.measured.viaFacilitator} payments).</Source>
+        <Kicker>Pain 1 · who is on the other end?</Kicker>
+        <Big size={92} max="24ch" color={white}>One person, unlimited agents. <em>No ID.</em></Big>
+        <Body delay={0.7} size={34} max="40ch">And an x402 payment is final once it settles. No chargeback.</Body>
+        <div style={{ display: 'flex', gap: 22, marginTop: 56 }}>
+          {['Behaviour', 'Amounts settled', 'Ratings'].map((t, k) => (
+            <Rise key={t} delay={1.2 + k * 0.15}>
+              <span className="mono" style={{ fontSize: 26, padding: '14px 26px', borderRadius: 999, border: `1.5px solid ${mint}`, color: mint }}>{t}</span>
+            </Rise>
+          ))}
+        </div>
+        <Body delay={1.8} size={30} max="50ch"><span style={{ color: mint }}>Fix 1: a credit layer that labels each anonymous agent by how it behaves.</span></Body>
+        <Source>Creating a Solana wallet needs no identity and costs nothing beyond fees. An x402 exact payment is a signed token transfer with no chargeback.</Source>
+      </Frame>
+    ),
+  },
+  {
+    id: 'attacks',
+    seconds: 21,
+    say: "Then we hit three attacks. Sybil: one person posing as many agents. Friendly fraud: getting the goods, then claiming they never came. And reputation farming: trading with your own wallets until you look trusted, then taking strangers' money. So every payment goes into escrow, and waits until the wallet has earned trust. Faking a record now costs fees that never come back, and months you can't skip.",
+    render: () => (
+      <Frame>
+        <Kicker>Pain 2 · three attacks we had to beat</Kicker>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 26, marginTop: 10 }}>
+          {[
+            ['Sybil', 'One person, many wallets.'],
+            ['Friendly fraud', 'Got the goods, claims they never came.'],
+            ['Reputation farming', 'Trade with yourself until you look trusted, then cash in on strangers.'],
+          ].map(([t, b], k) => (
+            <Rise key={t} delay={0.3 + k * 0.2}>
+              <div style={{ padding: '30px 30px 34px', borderRadius: 22, background: '#10120e', border: `1px solid ${k === 2 ? '#f2b8a8' : '#272b21'}`, height: '100%' }}>
+                <div className="display" style={{ fontSize: 46, color: white, lineHeight: 1.05 }}>{t}</div>
+                <div style={{ fontSize: 26, marginTop: 16, lineHeight: 1.4 }}>{b}</div>
+              </div>
+            </Rise>
+          ))}
+        </div>
+        <Big size={70} delay={1.2} max="32ch" color={white}>Fix 2: escrow, <em>until the wallet has earned trust.</em></Big>
+        <Body delay={1.6} size={30} max="52ch">Faking a record now costs fees that never come back, and months you can't skip.</Body>
+        <Source>Mainnet targets: a new wallet counts 10%, each counterparty is capped, Trusted needs 30 active days; a farming ring costs hundreds to a few thousand dollars and one to three months. Priced, not impossible (docs/SECURITY.md).</Source>
       </Frame>
     ),
   },
   {
     id: 'tiers',
-    seconds: 18,
-    say: "Tessera puts the payment in escrow, and the escrow knows who it is dealing with. Every wallet has an on-chain score, built from settled orders, ratings and behaviour. At our mainnet target, a fresh wallet's money waits three days. Two Trusted agents settle instantly.",
+    seconds: 13,
+    say: "And the escrow knows who it is dealing with. At our mainnet target, a fresh wallet's money waits three days. Two Trusted agents settle instantly.",
     render: () => <TierSlide />,
   },
   {
@@ -299,21 +273,15 @@ export const PITCH: Slide[] = [
     ),
   },
   {
-    id: 'find',
-    seconds: 7,
-    say: "Agents can also search for sellers in one call. Each result says instant or escrow.",
-    render: () => <FindSlide />,
-  },
-  {
     id: 'rewards',
-    seconds: 6,
-    say: "And reviewers get paid, and paid more when their warning proves right.",
+    seconds: 8,
+    say: "Only a real buyer or seller can review, with the receipt on-chain. Reviewers get paid, and paid more when their warning proves right.",
     render: () => <RewardsSlide />,
   },
   {
     id: 'pay-later',
-    seconds: 14,
-    say: 'And a good score now earns credit. Agents can buy now and pay later. A pool pays the merchant at once, and the buyer repays by the due date. The limit comes from the Tessera score: a new wallet gets nothing, paying on time raises it, and a default freezes it in public.',
+    seconds: 18,
+    say: "Last pain: today you top up an agent's wallet before every job and count the tokens it needs. With Tessera, fund it roughly once. When a purchase is more than it holds, it buys now and pays later; the merchant is paid at once. The limit comes from the score: a new wallet gets nothing, paying on time raises it, and a default freezes it in public.",
     render: () => <PayLaterSlide />,
   },
   {

@@ -10,7 +10,7 @@ credit score decides how long the money waits. Strangers wait. Agents with a rec
 - **Live site (devnet):** <https://agentic-commerce-two-theta.vercel.app>. There is no wallet login: the Market page pays with a built-in devnet test wallet.
 - **Click-through decks:** [the pitch](https://agentic-commerce-two-theta.vercel.app/decks/tessera-pitch-slides.html) and [the technical demo](https://agentic-commerce-two-theta.vercel.app/decks/tessera-demo-slides.html). Click or press → for the next slide.
 - **In-site decks:** [/#/deck/pitch](https://agentic-commerce-two-theta.vercel.app/#/deck/pitch) and [/#/deck/demo](https://agentic-commerce-two-theta.vercel.app/#/deck/demo).
-- **Demo videos:** [the terminal demo with voice-over and pay later (2:42)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo-paylater.mp4): finding and checking merchants, buyer and merchant trading side by side, a refund when a merchant never delivers, and from 1:55 pay later (a new wallet refused, a buyer repaying on time, a default freezing a line). The [earlier cut without pay later (2:03)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo-voiceover.mp4) and [the website walkthrough (1:41)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4) are still up. All were recorded on a local Solana validator running the real programs.
+- **Demo videos:** [the terminal demo with voice-over and pay later (2:59)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo-paylater.mp4): why Tessera exists (anonymous agents, three attacks, escrow), finding and checking merchants, buyer and merchant trading side by side, a refund when a merchant never delivers, and from 2:12 pay later (a new wallet refused, a buyer repaying on time, a default freezing a line). The [earlier cut without pay later (2:03)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo-voiceover.mp4) and [the website walkthrough (1:41)](https://agentic-commerce-two-theta.vercel.app/videos/tessera-demo.mp4) are still up. All were recorded on a local Solana validator running the real programs.
 - **Run the site yourself:** `npm install`, then `npm run web`. It reads devnet directly and needs no keys.
 - **Try a whole trade:** [docs/TRY-IT.md](docs/TRY-IT.md) walks through one step by step, as buyer and merchant with two wallets of your own, including a refund when a merchant never delivers.
 
@@ -26,19 +26,43 @@ Built for the Colosseum Crypto World's Fair hackathon (Solana track), October 20
 
 ---
 
-## The problem
+## The problem, and the fix, three times
 
-An x402 payment is a signed token transfer. Once a facilitator settles it, it is final. There is no
-chargeback and nobody to call.
+**Pain 1: nobody knows who is on the other end.** An AI agent is just a wallet. One person can create
+as many as they like, with no identity check, and these anonymous agents now pay each other. An x402
+payment is a signed token transfer: once a facilitator settles it, it is final, with no chargeback and
+nobody to call. Card networks answer "did I get what I paid for?" months later; Visa's Compelling
+Evidence 3.0 uses purchase history 120 to 365 days old
+([Checkout.com](https://www.checkout.com/blog/visa-compelling-evidence-3-0)). Agents do not have 120 days.
 
-Card networks answer "did I get what I paid for?" months later. Visa's Compelling Evidence 3.0 settles
-a fraud dispute with purchase history that is 120 to 365 days old
-([Checkout.com](https://www.checkout.com/blog/visa-compelling-evidence-3-0)). Agents do not have 120
-days. On-chain, a new wallet costs nothing, so a reputation that new wallets can mint is worth nothing.
+**Fix 1: a credit layer.** We cannot see who owns an agent, but we can see how it behaves. Tessera is
+the bridge from an anonymous wallet to an agent you can judge: every order leaves a public record, and
+the program turns it into a credit file (a score from 0 to 1000 and one of four tiers) built from the
+wallet's behaviour, the amounts that really settled and with how many counterparties, and the ratings
+it received. No identity needed, and anyone can recompute it from the chain.
 
-Escrow closes the gap, but a fixed hold is wrong for almost everyone. It is too long for an agent with
-a thousand clean orders and too short for a wallet created a minute ago. **The hold should be a function of
-what is known about the two parties. That function is a credit score.**
+**Pain 2: a score is only useful if it is hard to fake.** Building Tessera we kept meeting three attacks:
+
+- **Sybil attacks.** Wallets are free, so one person can pose as hundreds of agents.
+- **Friendly fraud.** A buyer gets exactly what it paid for, then claims it never arrived.
+- **Reputation farming.** The one that worries us most: trade with your own wallets until you look
+  like a busy, well-rated agent, then cash in by taking strangers' money and delivering nothing.
+
+**Fix 2: escrow.** So every payment waits in a Solana program until the wallet has earned trust.
+A stranger's payment is held long enough to dispute; an agent with a real record is paid at once. That
+prices each attack: a new wallet counts for 10% and each counterparty adds at most the pair cap
+(sybils); the merchant commits a delivery hash on-chain before the money moves, and a buyer that loses
+a dispute takes a 25% score penalty and loses Trusted (friendly fraud); every farmed order pays a fee
+that never comes back, and Trusted needs 30 active days (farming costs hundreds to a few thousand
+dollars and one to three months for a ring). Priced, not impossible: see
+[docs/SECURITY.md](docs/SECURITY.md#what-sybil-resistant-means-here-and-what-it-does-not).
+
+**Pain 3: top up, count tokens, top up again.** An agent can only spend what is already in its wallet,
+so its owner keeps topping it up and guessing how many tokens the next job needs.
+
+**Fix 3: pay later (preview, local validator).** Fund the agent roughly, once. When a purchase costs
+more than its wallet holds, the agent can buy now and pay later; the merchant is paid at once, and the
+limit comes from the same score. See [Pay later](#pay-later-preview) below.
 
 ## What Tessera does
 
@@ -106,6 +130,18 @@ The payout is an off-chain airdrop that the operator runs from the treasury. `np
 it and pays nothing; `npm run rewards -- --pay` pays. Every payout file can be recomputed with
 `--verify`. It has run end to end on a local validator with the real program (`npm run demo:rewards`),
 but not yet on devnet. Rules and a recorded run: [docs/REWARDS.md](docs/REWARDS.md).
+
+**How to leave a review.** No purchase, no review: the receipt is the settled order account on Solana,
+and the review is a transaction signed by the wallet that made the trade. The program accepts it only
+from that order's buyer or merchant, once each, after the order settles and before the review window
+closes (10 minutes on devnet).
+
+- **Website:** open `#/review/<order>`. It shows the verified receipt from the chain, then you sign with a
+  browser wallet (the buyer rates the merchant, the merchant rates the buyer).
+- **Terminal:** `npm run tessera -- report <order> --outcome satisfied --rating 5 --comment "…" --keypair PATH --send`.
+
+A merchant's review of a released order counts only once the buyer has reviewed it, and a review of a
+refunded order weighs 0.
 
 ## Pay later (preview)
 

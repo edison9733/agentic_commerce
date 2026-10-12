@@ -3,8 +3,8 @@
  * market can be tried without installing anything. Its key is readable by
  * any script on this origin (the site's Content-Security-Policy allows only
  * its own scripts), so it must only ever hold test funds from the demo
- * faucet. The site has no wallet login: agents sign with their own keys
- * through the API, CLI or SDK.
+ * faucet. Agents sign with their own keys through the API, CLI or SDK; only
+ * the review page also offers a browser wallet, to sign one review.
  */
 import {
   appendTransactionMessageInstructions,
@@ -16,8 +16,10 @@ import {
   setTransactionMessageFeePayerSigner,
   setTransactionMessageLifetimeUsingBlockhash,
   signTransactionMessageWithSigners,
+  type Base64EncodedWireTransaction,
   type Instruction,
   type KeyPairSigner,
+  type Signature,
   type TransactionSigner,
 } from '@solana/kit';
 import { fromHex, toHex } from '@tessera/sdk';
@@ -53,13 +55,19 @@ export async function sendWith(payer: TransactionSigner, instructions: Instructi
     (m) => appendTransactionMessageInstructions(instructions, m),
   );
   const signed = await signTransactionMessageWithSigners(message);
-  const signature = getSignatureFromTransaction(signed);
-  const wire = getBase64EncodedWireTransaction(signed);
+  return sendSigned(getBase64EncodedWireTransaction(signed), getSignatureFromTransaction(signed));
+}
+
+/**
+ * Send a transaction that is already signed (by this browser or by a wallet),
+ * then poll its signature until it is confirmed.
+ */
+export async function sendSigned(wire: Base64EncodedWireTransaction, signature: string): Promise<string> {
   await readRpc.sendTransaction(wire, { encoding: 'base64', preflightCommitment: 'confirmed' }).send();
   const started = Date.now();
   for (;;) {
     await new Promise((r) => setTimeout(r, 900));
-    const { value } = await readRpc.getSignatureStatuses([signature]).send();
+    const { value } = await readRpc.getSignatureStatuses([signature as Signature]).send();
     const st = value[0];
     if (st?.err) throw new Error('The transaction failed on-chain.');
     if (st && (st.confirmationStatus === 'confirmed' || st.confirmationStatus === 'finalized')) return signature;

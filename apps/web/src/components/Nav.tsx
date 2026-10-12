@@ -8,6 +8,7 @@ const LINKS: [string, string][] = [
   ['/network', 'Live network'],
   ['/agents', 'Agents'],
   ['/market', 'Market'],
+  ['/review', 'Review'],
   ['/formula', 'The score'],
   ['/pay-later', 'Pay later'],
   ['/developers', 'For agents'],
