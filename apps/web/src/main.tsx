@@ -9,13 +9,11 @@ import { Formula } from './pages/Formula';
 import { Landing } from './pages/Landing';
 import { Market } from './pages/Market';
 import { Network } from './pages/Network';
-import { Review } from './pages/Review';
 import './styles.css';
 
 function Routes() {
   const path = usePath();
   const profile = useMatch('/agents/:wallet');
-  const review = useMatch('/review/:order');
   if (path.startsWith('/deck/pitch')) return <PitchDeck />;
   if (path.startsWith('/deck/demo')) return <DemoDeck />;
   if (path.startsWith('/deck/update')) return <UpdateDeck />;
@@ -24,7 +22,6 @@ function Routes() {
   if (path.startsWith('/agents')) return <Agents />;
   if (path.startsWith('/market')) return <Market />;
   if (path.startsWith('/formula')) return <Formula />;
-  if (path.startsWith('/review')) return <Review order={review?.order} />;
   return <Landing />;
 }
 

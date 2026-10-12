@@ -16,8 +16,6 @@
     "codegen": "tsx packages/sdk/codama.ts",
     "test:formula": "tsx --test packages/sdk/test/*.test.ts",
     "test:local": "tsx scripts/test-local.ts",
-    "test:paylater": "tsx scripts/test-paylater.ts",
-    "paylater:local": "tsx scripts/paylater-local.ts",
     "setup:devnet": "tsx scripts/setup-devnet.ts",
     "agents": "npm run start -w @tessera/agents",
     "swarm": "npm run swarm -w @tessera/agents",
@@ -36,8 +34,7 @@
     "keys:export": "tsx scripts/keys-export.ts",
     "rewards": "tsx scripts/rewards.ts",
     "demo:rewards": "tsx scripts/demo-rewards.ts",
-    "slides": "node apps/web/slides/build.mjs",
-    "slides:pdf": "node apps/web/slides/pdf.mjs"
+    "slides": "node apps/web/slides/build.mjs"
   },
   "devDependencies": {
     "@solana-program/compute-budget": "^0.19.0",

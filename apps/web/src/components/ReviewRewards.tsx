@@ -22,7 +22,7 @@ const sizeAt = (pos: number) => Math.max(1, Math.round((pos / 100) ** 2 * 1000))
 const posOfSize = (usd: number) => Math.round(Math.sqrt(usd / 1000) * 100);
 
 /**
- * What one review earns, worked out with the same functions the rebate run runs
+ * What one review earns, worked out with the same functions the airdrop runs
  * (packages/sdk/src/rewards.ts), at the mainnet targets.
  */
 function Calculator() {
@@ -88,7 +88,7 @@ function Calculator() {
   );
 }
 
-/** The rebate run's rules, a recorded payout, and a calculator to play with. */
+/** The airdrop's rules, a recorded payout, and a calculator to play with. */
 export function ReviewRewards({ calculator = true }: { calculator?: boolean }) {
   const glib = rows.filter((r) => r.subject === 'glib');
   const quill = rows.filter((r) => r.subject === 'quill');
